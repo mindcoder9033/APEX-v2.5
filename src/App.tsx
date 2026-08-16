@@ -34,6 +34,7 @@ export function App() {
   });
 
   // UDP Live Telemetry state
+  const [isBridgeConnected, setIsBridgeConnected] = useState(false);
   const [isUdpConnected, setIsUdpConnected] = useState(false);
   const [liveFrame, setLiveFrame] = useState<TelemetryFrame | null>(null);
   const [liveFramesBuffer, setLiveFramesBuffer] = useState<TelemetryFrame[]>([]);
@@ -44,6 +45,7 @@ export function App() {
     let lapBuffer: TelemetryFrame[] = [];
     let currentLapNum: number | null = null;
     let reconnectTimer: any = null;
+    let packetWatchdogTimer: any = null;
     let isMounted = true;
 
     const connectBridge = () => {
@@ -55,7 +57,7 @@ export function App() {
 
         ws.onopen = () => {
           if (!isMounted) return;
-          setIsUdpConnected(true);
+          setIsBridgeConnected(true);
           console.log('[APEX] Connected to live Forza UDP stream bridge.');
         };
 
@@ -63,30 +65,41 @@ export function App() {
           if (!isMounted) return;
           if (event.data instanceof ArrayBuffer) {
             const packet = parseForzaBuffer(event.data);
-            if (packet && packet.isRaceOn) {
-              const distance = packet.distanceTraveledMeters > 0 
-                ? packet.distanceTraveledMeters % 3500 
-                : 0;
-              const frame = convertPacketToTelemetryFrame(packet, distance);
+            if (packet) {
+              setIsUdpConnected(true);
               
-              setLiveFrame(frame);
-              setLiveFramesBuffer(prev => [...prev.slice(-300), frame]);
+              // Reset watchdog timer: if no packets for 3 seconds, mark streaming as paused/idle
+              if (packetWatchdogTimer) clearTimeout(packetWatchdogTimer);
+              packetWatchdogTimer = setTimeout(() => {
+                if (isMounted) setIsUdpConnected(false);
+              }, 3000);
 
-              // Automatic lap segmentation when lapNumber advances
-              if (currentLapNum !== null && packet.lapNumber > currentLapNum && lapBuffer.length > 50) {
-                const completedLap = analyzeLapTelemetry(lapBuffer);
-                handleSaveLap(completedLap);
-                lapBuffer = [frame];
-              } else {
-                lapBuffer.push(frame);
+              if (packet.isRaceOn || packet.currentEngineRpm > 0) {
+                const distance = packet.distanceTraveledMeters > 0 
+                  ? packet.distanceTraveledMeters % 3500 
+                  : 0;
+                const frame = convertPacketToTelemetryFrame(packet, distance);
+                
+                setLiveFrame(frame);
+                setLiveFramesBuffer(prev => [...prev.slice(-300), frame]);
+
+                // Automatic lap segmentation when lapNumber advances
+                if (currentLapNum !== null && packet.lapNumber > currentLapNum && lapBuffer.length > 50) {
+                  const completedLap = analyzeLapTelemetry(lapBuffer);
+                  handleSaveLap(completedLap);
+                  lapBuffer = [frame];
+                } else if (packet.isRaceOn) {
+                  lapBuffer.push(frame);
+                }
+                currentLapNum = packet.lapNumber;
               }
-              currentLapNum = packet.lapNumber;
             }
           }
         };
 
         ws.onclose = () => {
           if (!isMounted) return;
+          setIsBridgeConnected(false);
           setIsUdpConnected(false);
           setLiveFrame(null);
           reconnectTimer = setTimeout(connectBridge, 2000);
@@ -94,12 +107,14 @@ export function App() {
 
         ws.onerror = () => {
           if (!isMounted) return;
+          setIsBridgeConnected(false);
           setIsUdpConnected(false);
           setLiveFrame(null);
           try { ws?.close(); } catch (_) {}
         };
       } catch (e) {
         if (!isMounted) return;
+        setIsBridgeConnected(false);
         setIsUdpConnected(false);
         setLiveFrame(null);
         reconnectTimer = setTimeout(connectBridge, 2000);
@@ -111,6 +126,7 @@ export function App() {
     return () => {
       isMounted = false;
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (packetWatchdogTimer) clearTimeout(packetWatchdogTimer);
       if (ws) {
         try { ws.close(); } catch (_) {}
       }
@@ -160,6 +176,7 @@ export function App() {
         currentView={currentView}
         setCurrentView={setCurrentView}
         isUdpConnected={isUdpConnected}
+        isBridgeConnected={isBridgeConnected}
         onExportPdf={() => setIsPdfModalOpen(true)}
         totalMasteredModules={progress.graduatedModuleIds.length}
         hasActiveLap={currentLap !== null}

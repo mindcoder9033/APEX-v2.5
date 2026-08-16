@@ -7,6 +7,7 @@ interface HeaderProps {
   currentView: AppView;
   setCurrentView: (view: AppView) => void;
   isUdpConnected: boolean;
+  isBridgeConnected?: boolean;
   onExportPdf: () => void;
   totalMasteredModules: number;
   hasActiveLap?: boolean;
@@ -16,6 +17,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentView,
   setCurrentView,
   isUdpConnected,
+  isBridgeConnected = false,
   onExportPdf,
   totalMasteredModules,
   hasActiveLap = false
@@ -101,12 +103,24 @@ export const Header: React.FC<HeaderProps> = ({
         <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg border text-xs font-mono font-medium ${
           isUdpConnected
             ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+            : isBridgeConnected
+            ? 'bg-amber-950/40 border-amber-500/40 text-amber-300'
             : 'bg-[#181822] border-[#2A2A3C] text-slate-400'
         }`}>
           <div className={`w-2 h-2 rounded-full ${
-            isUdpConnected ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'
+            isUdpConnected
+              ? 'bg-emerald-400 animate-ping'
+              : isBridgeConnected
+              ? 'bg-amber-400 animate-pulse'
+              : 'bg-slate-500'
           }`} />
-          <span>{isUdpConnected ? 'Forza 60Hz Live' : 'UDP Disconnected (Port 5300)'}</span>
+          <span>
+            {isUdpConnected
+              ? 'Forza 60Hz Live'
+              : isBridgeConnected
+              ? 'Bridge Ready • Waiting for Forza'
+              : 'Bridge Offline (Port 5300)'}
+          </span>
         </div>
 
         {/* PDF Export Button */}

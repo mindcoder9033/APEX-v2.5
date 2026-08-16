@@ -51,6 +51,7 @@ const udpSocket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
 
 let packetCount = 0;
 let lastLogTime = Date.now();
+let hasReceivedFirstPacket = false;
 
 udpSocket.on('error', (err) => {
   console.error(`[APEX UDP] Socket error:\n${err.stack}`);
@@ -58,10 +59,15 @@ udpSocket.on('error', (err) => {
 
 udpSocket.on('message', (msg, rinfo) => {
   packetCount++;
+  if (!hasReceivedFirstPacket) {
+    hasReceivedFirstPacket = true;
+    console.log(`\n🎉 [APEX UDP Ingest] SUCCESS! First Forza telemetry packet received from ${rinfo.address}:${rinfo.port} (${msg.length} bytes)!`);
+  }
+
   const now = Date.now();
-  if (now - lastLogTime >= 5000) {
+  if (now - lastLogTime >= 4000) {
     const rate = (packetCount / ((now - lastLogTime) / 1000)).toFixed(1);
-    console.log(`[APEX UDP Ingest] Ingesting Forza telemetry at ${rate} pkts/sec from ${rinfo.address}:${rinfo.port} (${msg.length} bytes)`);
+    console.log(`[APEX UDP Ingest] Ingesting Forza telemetry at ${rate} pkts/sec from ${rinfo.address}:${rinfo.port}`);
     packetCount = 0;
     lastLogTime = now;
   }
