@@ -40,6 +40,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Lime Rock Full',
+          gameType: 'Test Drive',
+          timeOfDay: 'Afternoon',
+          weather: 'Clear',
+          laps: 5,
+          drivatars: 0,
+          notes: 'Focus on hitting the late apex at Big Bend and the Downhill leading onto the main straight.'
         }
       },
       {
@@ -71,6 +81,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 82,
           unit: '/100',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Laguna Seca',
+          gameType: 'Test Drive',
+          timeOfDay: 'Morning',
+          weather: 'Mostly Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Practice unwinding lock coming out of Turn 11 onto the front straight.'
         }
       },
       {
@@ -102,6 +122,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Mid-Ohio',
+          gameType: 'Test Drive',
+          timeOfDay: 'Late Morning',
+          weather: 'Partly Cloudy',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Sacrifice the Keyhole entry to carry massive exit speed down the back straight.'
         }
       }
     ],
@@ -110,15 +140,25 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-1',
       title: 'Module 1 Graduation: Racing Line Mastery Exam',
       examOverview: 'A comprehensive 3-lap evaluation testing late apex geometry, exit track-out acceleration, and linked corner sacrifices.',
-      trackName: 'Watkins Glen Short / Laguna Seca',
-      carName: 'Formula Continental / GT3',
+      trackName: 'Laguna Seca',
+      carName: 'Mazda Formula Mazda 2015',
       requiredLaps: 3,
       passingScorePct: 82,
       requirements: [
         { title: 'Apex Consistency', description: 'Hit clipping zones on all priority turns', metric: 'Apex Accuracy', targetText: '≥ 85%', minScorePct: 85 },
         { title: 'Throttle Unwind Linearity', description: 'Smooth throttle application synchronized with steering unwind', metric: 'Unwind Score', targetText: '≥ 80/100', minScorePct: 80 },
         { title: 'Clean Lap Execution', description: '3 consecutive clean laps with zero track limit violations', metric: 'Clean Laps', targetText: '3/3 Laps', minScorePct: 100 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Mazda Formula Mazda 2015',
+        track: 'Laguna Seca',
+        gameType: 'Circuit Race',
+        timeOfDay: 'Noon',
+        weather: 'Clear',
+        laps: 3,
+        drivatars: 3,
+        notes: 'Official Module 1 Graduation Exam with light field traffic.'
+      }
     }
   },
   {
@@ -159,6 +199,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Road America',
+          gameType: 'Test Drive',
+          timeOfDay: 'Noon',
+          weather: 'Clear',
+          laps: 5,
+          drivatars: 0,
+          notes: 'Test pure straight-line braking into Turn 5 and maximum steady-state G in the Carousel.'
         }
       },
       {
@@ -190,6 +240,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 82,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Silverstone GP',
+          gameType: 'Test Drive',
+          timeOfDay: 'Afternoon',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Smoothly blend brake bleed-off into steering angle through Stowe and Brooklands.'
         }
       },
       {
@@ -220,6 +280,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Porsche 911 GT3 2021',
+          track: 'Road America',
+          gameType: 'Test Drive',
+          timeOfDay: 'Late Afternoon',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Push the GT3 tire envelope continuously around the entire 4-mile layout.'
         }
       }
     ],
@@ -228,15 +298,25 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-2',
       title: 'Module 2 Graduation: Traction Budget & G-G Certification',
       examOverview: 'Execute 3 consecutive high-grip laps demonstrating continuous friction circle utilization and smooth corner entry/exit transitions.',
-      trackName: 'Road America / Silverstone',
-      carName: 'Formula Ford / GT3',
+      trackName: 'Silverstone GP',
+      carName: 'Porsche 911 GT3 2021',
       requiredLaps: 3,
       passingScorePct: 83,
       requirements: [
         { title: 'Average Traction Budget', description: 'Maintain high grip utilization across all corners', metric: 'Traction Budget %', targetText: '≥ 83%', minScorePct: 83 },
         { title: 'Transition G Retention', description: 'Zero grip collapse during brake-to-steer transitions', metric: 'Transition Score', targetText: '≥ 80/100', minScorePct: 80 },
         { title: 'Lap Consistency', description: 'Lap delta variance within ±0.4s', metric: 'Delta Variance', targetText: '< 0.40s', minScorePct: 85 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Porsche 911 GT3 2021',
+        track: 'Silverstone GP',
+        gameType: 'Circuit Race',
+        timeOfDay: 'Afternoon',
+        weather: 'Clear',
+        laps: 3,
+        drivatars: 4,
+        notes: 'High-speed traction budget exam at Silverstone Grand Prix.'
+      }
     }
   },
   {
@@ -277,6 +357,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 140,
           unit: 'ms',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Watkins Glen Full',
+          gameType: 'Test Drive',
+          timeOfDay: 'Morning',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Focus on instant initial hit rate at the end of the back straight into the Inner Loop (Bus Stop).'
         }
       },
       {
@@ -307,6 +397,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '/100',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Porsche 911 GT3 RS 2019',
+          track: 'Circuit de Spa-Francorchamps',
+          gameType: 'Test Drive',
+          timeOfDay: 'Afternoon',
+          weather: 'Mostly Clear',
+          laps: 5,
+          drivatars: 0,
+          notes: 'Brake heavily from 250+ km/h into Les Combes and bleed pressure as downforce decays.'
         }
       },
       {
@@ -337,6 +437,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '%',
           requiredLaps: 3
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Watkins Glen Short',
+          gameType: 'Test Drive',
+          timeOfDay: 'Late Morning',
+          weather: 'Clear',
+          laps: 8,
+          drivatars: 0,
+          notes: 'Use the 300-200-100 meter boards into Turn 1 with zero marker creep.'
         }
       }
     ],
@@ -345,15 +455,25 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-3',
       title: 'Module 3 Graduation: Threshold Braking Certification',
       examOverview: 'Demonstrate rapid initial hit rate, aero-compensated modulation, and precision stopping points on a heavy-braking circuit.',
-      trackName: 'Monza / Sebring / Road America',
-      carName: 'Formula Continental / GT3',
+      trackName: 'Watkins Glen Full',
+      carName: 'Porsche 911 GT3 RS 2019',
       requiredLaps: 3,
       passingScorePct: 84,
       requirements: [
         { title: 'Initial Hit Rise Time', description: 'Average rise time under 135ms', metric: 'Rise Time', targetText: '< 135ms', minScorePct: 85 },
         { title: 'Zero Lockup Penalty', description: 'No tire flat-spotting or lockup spikes > 20% slip', metric: 'Lockup Avoidance', targetText: '100% Clean', minScorePct: 90 },
         { title: 'Stopping Consistency', description: 'Braking zone distance variation under 3%', metric: 'Consistency', targetText: '≥ 85%', minScorePct: 85 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Porsche 911 GT3 RS 2019',
+        track: 'Watkins Glen Full',
+        gameType: 'Circuit Race',
+        timeOfDay: 'Afternoon',
+        weather: 'Clear',
+        laps: 3,
+        drivatars: 5,
+        notes: 'High-speed threshold braking certification with dynamic traffic.'
+      }
     }
   },
   {
@@ -394,6 +514,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 82,
           unit: '/100',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Lime Rock Full',
+          gameType: 'Test Drive',
+          timeOfDay: 'Morning',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Master pitch control going down the hill into the final sweeper.'
         }
       },
       {
@@ -425,6 +555,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '/100',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Porsche 911 GT3 2021',
+          track: 'Mid-Ohio',
+          gameType: 'Test Drive',
+          timeOfDay: 'Afternoon',
+          weather: 'Partly Cloudy',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Trail deep into the downhill off-camber Turn 1 and Madness complex.'
         }
       },
       {
@@ -455,6 +595,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '/100',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Circuit de Spa-Francorchamps',
+          gameType: 'Test Drive',
+          timeOfDay: 'Sunset',
+          weather: 'Clear',
+          laps: 5,
+          drivatars: 0,
+          notes: 'Compare deep trail at La Source hairpin versus brief breathers at Pouhon.'
         }
       }
     ],
@@ -463,15 +613,25 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-4',
       title: 'Module 4 Graduation: Trail Braking & Rotation Mastery Exam',
       examOverview: '3-lap certification demonstrating seamless brake bleed-off, chassis pitch stabilization, and apex rotation across all corner types.',
-      trackName: 'Lime Rock Park / Mid-Ohio / Spa',
-      carName: 'Formula Continental / Porsche 911 GT3',
+      trackName: 'Lime Rock Full',
+      carName: 'Porsche 911 GT3 2021',
       requiredLaps: 3,
       passingScorePct: 85,
       requirements: [
         { title: 'Trail Braking Score', description: 'Average trail braking decay score across all sectors', metric: 'Trail Score', targetText: '≥ 85/100', minScorePct: 85 },
         { title: 'Apex Minimum Speed', description: 'Carry optimal rolling speed without over-slowing', metric: 'Apex Delta', targetText: '≥ 80%', minScorePct: 80 },
         { title: 'Chassis Stability', description: 'No sudden pitch snap or uncontrolled oversteer snaps', metric: 'Stability', targetText: '≥ 90%', minScorePct: 90 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Porsche 911 GT3 2021',
+        track: 'Lime Rock Full',
+        gameType: 'Circuit Race',
+        timeOfDay: 'Late Afternoon',
+        weather: 'Mostly Clear',
+        laps: 3,
+        drivatars: 4,
+        notes: 'Continuous trail-braking rotation exam.'
+      }
     }
   },
   {
@@ -511,6 +671,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '/100',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Circuit de Barcelona-Catalunya GP',
+          gameType: 'Test Drive',
+          timeOfDay: 'Morning',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Focus on Turn 3 long sweeper: set the wheel once and hold a pristine arc.'
         }
       },
       {
@@ -541,6 +711,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '/100',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Porsche 718 Cayman GTS 2018',
+          track: 'Suzuka Full',
+          gameType: 'Test Drive',
+          timeOfDay: 'Afternoon',
+          weather: 'Mostly Clear',
+          laps: 5,
+          drivatars: 0,
+          notes: 'Rhythmically load the chassis through the famous Sector 1 S-Curves.'
         }
       }
     ],
@@ -549,14 +729,24 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-5',
       title: 'Module 5 Graduation: Steering Precision Exam',
       examOverview: '3-lap evaluation testing smooth, single-input steering arcs and chassis roll control through complex technical sectors.',
-      trackName: 'Circuit de Barcelona-Catalunya / Suzuka',
-      carName: 'Formula Continental / GT3',
+      trackName: 'Suzuka Full',
+      carName: 'Mazda Formula Mazda 2015',
       requiredLaps: 3,
       passingScorePct: 85,
       requirements: [
         { title: 'Steering Smoothness', description: 'Zero erratic wheel corrections', metric: 'Smoothness', targetText: '≥ 85/100', minScorePct: 85 },
         { title: 'Turn-In Consistency', description: 'Precise initiation points', metric: 'Turn-In Score', targetText: '≥ 82%', minScorePct: 82 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Mazda Formula Mazda 2015',
+        track: 'Suzuka Full',
+        gameType: 'Circuit Race',
+        timeOfDay: 'Noon',
+        weather: 'Clear',
+        laps: 3,
+        drivatars: 4,
+        notes: 'Steering smoothness certification across Suzuka S-Curves and 130R.'
+      }
     }
   },
   {
@@ -596,6 +786,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Watkins Glen Full',
+          gameType: 'Test Drive',
+          timeOfDay: 'Morning',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Instantly pick up maintenance throttle at the apex of the Boot corners.'
         }
       },
       {
@@ -626,6 +826,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 88,
           unit: '/100',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Chevrolet Corvette Z06 2023',
+          track: 'Road America',
+          gameType: 'Test Drive',
+          timeOfDay: 'Afternoon',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Apply high horsepower progressively as you unwind lock out of Canada Corner.'
         }
       }
     ],
@@ -634,14 +844,24 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-6',
       title: 'Module 6 Graduation: Exit Acceleration Certification',
       examOverview: 'Complete 3 laps demonstrating zero apex coasting, rapid maintenance pickup, and perfect throttle/unwind synchronization.',
-      trackName: 'Watkins Glen Full / Road America',
-      carName: 'Formula Continental / GT3 RWD',
+      trackName: 'Watkins Glen Full',
+      carName: 'Chevrolet Corvette Z06 2023',
       requiredLaps: 3,
       passingScorePct: 86,
       requirements: [
         { title: 'Throttle Unwind Linearity', description: 'Smooth progressive power delivery', metric: 'Unwind Score', targetText: '≥ 88/100', minScorePct: 88 },
         { title: 'Apex Pickup Lag', description: 'Zero coasting between brake and throttle', metric: 'Pickup Lag', targetText: '< 160ms', minScorePct: 85 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Chevrolet Corvette Z06 2023',
+        track: 'Watkins Glen Full',
+        gameType: 'Circuit Race',
+        timeOfDay: 'Late Afternoon',
+        weather: 'Clear',
+        laps: 3,
+        drivatars: 5,
+        notes: 'High-power RWD throttle modulation and unwind graduation exam.'
+      }
     }
   },
   {
@@ -681,6 +901,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 80,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Mugello Full',
+          gameType: 'Test Drive',
+          timeOfDay: 'Morning',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Feel the 5-degree slip angle plateau around Arrabbiata 1 and 2.'
         }
       }
     ],
@@ -689,14 +919,24 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-7',
       title: 'Module 7 Graduation: Slip Angle & Limit Mastery Exam',
       examOverview: 'Demonstrate continuous cornering at the tire grip plateau without exceeding critical slip angle scrub thresholds.',
-      trackName: 'Silverstone Grand Prix / Mugello',
-      carName: 'Formula Continental / GT3',
+      trackName: 'Silverstone GP',
+      carName: 'Mazda Formula Mazda 2015',
       requiredLaps: 3,
       passingScorePct: 84,
       requirements: [
         { title: 'Slip Angle Control', description: 'Maintain optimal slip window through high-load corners', metric: 'Slip Window', targetText: '≥ 80%', minScorePct: 80 },
         { title: 'Corner Minimum Speed', description: 'Maximize rolling speed at peak grip', metric: 'Apex Speed', targetText: '≥ 85%', minScorePct: 85 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Mazda Formula Mazda 2015',
+        track: 'Silverstone GP',
+        gameType: 'Circuit Race',
+        timeOfDay: 'Afternoon',
+        weather: 'Clear',
+        laps: 3,
+        drivatars: 4,
+        notes: 'Sustained slip angle mastery test on Silverstone high-load turns.'
+      }
     }
   },
   {
@@ -736,6 +976,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Honda Civic Type R 2018',
+          track: 'Nurburgring GP',
+          gameType: 'Test Drive',
+          timeOfDay: 'Morning',
+          weather: 'Overcast Dry',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Experience FWD push characteristics and practice steering unwind recovery.'
         }
       },
       {
@@ -766,6 +1016,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Nissan Silvia Spec-R 2000',
+          track: 'Grand Oak Club',
+          gameType: 'Drift',
+          timeOfDay: 'Late Afternoon',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Master fast counter-steer reflex and steady throttle control during yaw breakaway.'
         }
       }
     ],
@@ -774,14 +1034,24 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-8',
       title: 'Module 8 Graduation: Vehicle Balance Certification',
       examOverview: '3-lap exam testing proactive balance management and instantaneous recovery from both push and loose conditions.',
-      trackName: 'Circuit of the Americas / Nürburgring GP',
-      carName: 'Formula Continental / GT3 RWD',
+      trackName: 'Nurburgring GP',
+      carName: 'Porsche 911 GT3 RS 2019',
       requiredLaps: 3,
       passingScorePct: 85,
       requirements: [
         { title: 'Vehicle Balance Index', description: 'Keep slip angle differential under ±1.5°', metric: 'Balance Score', targetText: '≥ 85/100', minScorePct: 85 },
         { title: 'Zero Spin / Loss of Control', description: 'Zero spins or off-tracks across all 3 laps', metric: 'Car Control', targetText: '100% Clean', minScorePct: 95 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Porsche 911 GT3 RS 2019',
+        track: 'Nurburgring GP',
+        gameType: 'Circuit Race',
+        timeOfDay: 'Afternoon',
+        weather: 'Mostly Clear',
+        laps: 3,
+        drivatars: 5,
+        notes: 'Chassis balance and dynamic oversteer/understeer control exam.'
+      }
     }
   },
   {
@@ -821,6 +1091,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Circuit de Spa-Francorchamps',
+          gameType: 'Test Drive',
+          timeOfDay: 'Morning',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Master curb strikes and pendulum direction changes through the Bus Stop Chicane.'
         }
       }
     ],
@@ -829,13 +1109,23 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-9',
       title: 'Module 9 Graduation: Complex Combinations Exam',
       examOverview: 'Execute 3 flawless laps through high-speed chicane complexes and linked multi-apex technical sections.',
-      trackName: 'Monza (Variante del Rettifilo) / Spa (Bus Stop & Chicane)',
-      carName: 'Formula Continental / GT3',
+      trackName: 'Circuit de Spa-Francorchamps',
+      carName: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
       requiredLaps: 3,
       passingScorePct: 84,
       requirements: [
         { title: 'Chicane Sector Score', description: 'Flawless line and momentum maintenance', metric: 'Sector Score', targetText: '≥ 85%', minScorePct: 85 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
+        track: 'Circuit de Spa-Francorchamps',
+        gameType: 'Circuit Race',
+        timeOfDay: 'Noon',
+        weather: 'Clear',
+        laps: 3,
+        drivatars: 6,
+        notes: 'High-speed chicane and complex sequence evaluation at Spa.'
+      }
     }
   },
   {
@@ -875,6 +1165,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 86,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Ford Mustang Shelby GT350R 2016',
+          track: 'VIR Full',
+          gameType: 'Test Drive',
+          timeOfDay: 'Morning',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Execute heel-toe downshifts under heavy braking into Turn 1 and the Oak Tree turn.'
         }
       }
     ],
@@ -883,13 +1183,23 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-10',
       title: 'Module 10 Graduation: Powertrain & Gearing Exam',
       examOverview: 'Demonstrate perfect downshift execution, optimal gear selection, and peak RPM exit acceleration over 3 laps.',
-      trackName: 'Virginia International Raceway / Bathurst',
-      carName: 'Formula Continental / GT3 Manual',
+      trackName: 'VIR Full',
+      carName: 'Ford Mustang Shelby GT350R 2016',
       requiredLaps: 3,
       passingScorePct: 85,
       requirements: [
         { title: 'Downshift Axle Stability', description: 'Zero rear-axle hop or lockup events', metric: 'Axle Stability', targetText: '100% Clean', minScorePct: 90 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Ford Mustang Shelby GT350R 2016',
+        track: 'VIR Full',
+        gameType: 'Circuit Race',
+        timeOfDay: 'Afternoon',
+        weather: 'Clear',
+        laps: 3,
+        drivatars: 5,
+        notes: 'Manual transmission rev-matching and rear stability exam at VIR.'
+      }
     }
   },
   {
@@ -929,6 +1239,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Silverstone GP',
+          gameType: 'Test Drive',
+          timeOfDay: 'Afternoon',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Trust the aero grip through Copse and the Maggotts-Becketts-Chapel sequence.'
         }
       }
     ],
@@ -937,13 +1257,23 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-11',
       title: 'Module 11 Graduation: High-Speed Aero Mastery Exam',
       examOverview: '3-lap certification navigating high-speed aerodynamic corners at maximum commitment and stability.',
-      trackName: 'Silverstone (Maggotts/Becketts) / Spa (Eau Rouge/Blanchimont)',
-      carName: 'Formula Continental / LMP2',
+      trackName: 'Circuit de Spa-Francorchamps',
+      carName: 'Porsche 919 Hybrid #2 Porsche Team 2017',
       requiredLaps: 3,
       passingScorePct: 85,
       requirements: [
         { title: 'Aero Sector Grip', description: 'Maintain maximum high-speed cornering load', metric: 'Aero Lateral G', targetText: '≥ 1.75 G', minScorePct: 85 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Porsche 919 Hybrid #2 Porsche Team 2017',
+        track: 'Circuit de Spa-Francorchamps',
+        gameType: 'Timed Race',
+        timeOfDay: 'Sunset',
+        weather: 'Clear',
+        laps: 3,
+        drivatars: 5,
+        notes: 'Extreme aerodynamic prototype downforce exam through Eau Rouge, Raidillon, and Blanchimont.'
+      }
     }
   },
   {
@@ -983,6 +1313,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 82,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Porsche 911 GT3 2021',
+          track: 'Silverstone GP',
+          gameType: 'Test Drive',
+          timeOfDay: 'Morning',
+          weather: 'Light Rain',
+          laps: 6,
+          drivatars: 0,
+          notes: 'Run rim-shot wide lines outside the rubbered apexes on wet Silverstone asphalt.'
         }
       }
     ],
@@ -991,13 +1331,23 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-12',
       title: 'Module 12 Graduation: Low-Grip & Rain Certification',
       examOverview: '3-lap evaluation on low-grip / wet circuit demonstrating alternative line mastery and smooth control modulation.',
-      trackName: 'Nürburgring Nordschleife (Wet) / Silverstone (Wet)',
-      carName: 'Formula Continental / GT3 Wet',
+      trackName: 'Nurburgring GP',
+      carName: 'Porsche 911 GT3 2021',
       requiredLaps: 3,
       passingScorePct: 82,
       requirements: [
         { title: 'Wet Control Consistency', description: 'Smooth control modulation on low grip surface', metric: 'Control Score', targetText: '≥ 82%', minScorePct: 82 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Porsche 911 GT3 2021',
+        track: 'Nurburgring GP',
+        gameType: 'Circuit Race',
+        timeOfDay: 'Afternoon',
+        weather: 'Moderate Rain',
+        laps: 3,
+        drivatars: 4,
+        notes: 'Wet weather certification in moderate rain conditions.'
+      }
     }
   },
   {
@@ -1037,6 +1387,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 0.35,
           unit: 'sec',
           requiredLaps: 5
+        },
+        recommendedSetup: {
+          car: 'Mazda Formula Mazda 2015',
+          track: 'Watkins Glen Short',
+          gameType: 'Timed Race',
+          timeOfDay: 'Noon',
+          weather: 'Clear',
+          laps: 5,
+          drivatars: 0,
+          notes: 'Maintain identical lap times and marker repeatability across all 5 laps.'
         }
       }
     ],
@@ -1045,14 +1405,24 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-13',
       title: 'Module 13 Graduation: Grand Master Consistency Stint',
       examOverview: 'A demanding 5-lap endurance benchmark requiring uncompromising lap-time repeatability and zero track limit penalties.',
-      trackName: 'Watkins Glen / Laguna Seca',
-      carName: 'Formula Continental / GT3',
+      trackName: 'Laguna Seca',
+      carName: 'Mazda Formula Mazda 2015',
       requiredLaps: 5,
       passingScorePct: 88,
       requirements: [
         { title: 'Stint Lap Spread', description: 'Total variance across 5 laps', metric: 'Delta Variance', targetText: '< 0.30s', minScorePct: 90 },
         { title: 'Sector Consistency', description: 'Sector time variance across laps', metric: 'Sector Spread', targetText: '< 0.15s', minScorePct: 88 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Mazda Formula Mazda 2015',
+        track: 'Laguna Seca',
+        gameType: 'Timed Race',
+        timeOfDay: 'Afternoon',
+        weather: 'Clear',
+        laps: 5,
+        drivatars: 0,
+        notes: '5-lap precision consistency graduation test with tight delta window.'
+      }
     }
   },
   {
@@ -1092,6 +1462,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
+          track: 'Watkins Glen Full',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Late Afternoon',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 5,
+          notes: 'Practice inside line dive passes into the Inner Loop and Turn 1.'
         }
       },
       {
@@ -1122,6 +1502,16 @@ export const SKIP_BARBER_MODULES: Module[] = [
           targetValue: 85,
           unit: '%',
           requiredLaps: 2
+        },
+        recommendedSetup: {
+          car: 'Chevrolet Corvette C8.R #3 Corvette Racing 2020',
+          track: 'Circuit de Spa-Francorchamps',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Sunset',
+          weather: 'Clear',
+          laps: 6,
+          drivatars: 6,
+          notes: 'Brake early at La Source, let aggressive Drivatars overshoot, and exit underneath them.'
         }
       }
     ],
@@ -1130,8 +1520,8 @@ export const SKIP_BARBER_MODULES: Module[] = [
       moduleId: 'mod-14',
       title: 'Module 14 Graduation: Skip Barber Master Race Driver Certification',
       examOverview: 'The ultimate final exam: 5 laps demonstrating complete mastery of the racing line, traction budget, threshold/trail braking, and tactical racecraft.',
-      trackName: 'Watkins Glen Grand Prix / Spa-Francorchamps',
-      carName: 'Formula Continental / GT3 Competition',
+      trackName: 'Circuit de Spa-Francorchamps',
+      carName: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
       requiredLaps: 5,
       passingScorePct: 88,
       requirements: [
@@ -1139,7 +1529,17 @@ export const SKIP_BARBER_MODULES: Module[] = [
         { title: 'Traction Budget Average', description: 'Continuous friction circle utilization', metric: 'Traction Budget', targetText: '≥ 85%', minScorePct: 85 },
         { title: 'Trail-Braking & Apex Score', description: 'Flawless pitch control and rotation', metric: 'Trail Score', targetText: '≥ 88/100', minScorePct: 88 },
         { title: 'Consistency Spread', description: 'Stint time variance within 0.35s', metric: 'Delta Spread', targetText: '< 0.35s', minScorePct: 90 }
-      ]
+      ],
+      recommendedSetup: {
+        car: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
+        track: 'Circuit de Spa-Francorchamps',
+        gameType: 'Circuit Race',
+        timeOfDay: 'Sunset',
+        weather: 'Rain at end',
+        laps: 5,
+        drivatars: 11,
+        notes: 'Final Master Race Driver Exam at Spa in dynamic changing weather with full grid.'
+      }
     }
   }
 ];

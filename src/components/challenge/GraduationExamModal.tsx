@@ -4,7 +4,10 @@ import { LapAnalysis } from '../../types/telemetry';
 import { evaluateGraduationTest } from '../../engine/physicsEngine';
 import { loadLapHistory } from '../../db/storage';
 import confetti from 'canvas-confetti';
-import { X, Trophy, Award, CheckCircle2, AlertCircle, Play, Sparkles, ArrowRight, Radio, Info } from 'lucide-react';
+import { 
+  X, Trophy, Award, CheckCircle2, AlertCircle, Play, Sparkles, ArrowRight, Radio, Info,
+  Car, MapPin, Flag, Sun, CloudRain, RotateCw
+} from 'lucide-react';
 
 interface GraduationExamModalProps {
   module: Module;
@@ -83,11 +86,90 @@ export const GraduationExamModal: React.FC<GraduationExamModalProps> = ({
             <h3 className="text-xs font-bold font-display uppercase tracking-wider text-white">Exam Overview & Circuit Specifications</h3>
             <p className="text-xs text-slate-300 leading-relaxed">{test.examOverview}</p>
 
-            <div className="grid grid-cols-3 gap-3 pt-2 font-mono text-xs">
-              <div className="bg-[#101018] p-3 rounded-xl border border-[#222234]">
-                <span className="text-[10px] text-slate-400 block">Designated Track</span>
-                <strong className="text-white">{test.trackName}</strong>
+            {/* Recommended Setup Grid */}
+            {test.recommendedSetup && (
+              <div className="pt-2">
+                <div className="text-[11px] font-mono font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
+                  <Flag className="w-3.5 h-3.5" />
+                  <span>Required Event Configuration</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                  <div className="p-2.5 rounded-xl bg-[#0F0F17] border border-[#20202E] flex items-start space-x-2.5">
+                    <div className="p-1.5 rounded-lg bg-red-950/40 text-[#E10600]">
+                      <Car className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[9px] uppercase font-mono text-slate-400 block">Car</span>
+                      <strong className="text-[11px] text-white font-semibold truncate block" title={test.recommendedSetup.car}>
+                        {test.recommendedSetup.car}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-[#0F0F17] border border-[#20202E] flex items-start space-x-2.5">
+                    <div className="p-1.5 rounded-lg bg-cyan-950/40 text-[#00F0FF]">
+                      <MapPin className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[9px] uppercase font-mono text-slate-400 block">Track</span>
+                      <strong className="text-[11px] text-white font-semibold truncate block" title={test.recommendedSetup.track}>
+                        {test.recommendedSetup.track}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-[#0F0F17] border border-[#20202E] flex items-start space-x-2.5">
+                    <div className="p-1.5 rounded-lg bg-purple-950/40 text-purple-400">
+                      <Flag className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[9px] uppercase font-mono text-slate-400 block">Game Type</span>
+                      <strong className="text-[11px] text-white font-semibold block">
+                        {test.recommendedSetup.gameType}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-[#0F0F17] border border-[#20202E] flex items-start space-x-2.5">
+                    <div className="p-1.5 rounded-lg bg-amber-950/40 text-amber-400">
+                      <Sun className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[9px] uppercase font-mono text-slate-400 block">Time</span>
+                      <strong className="text-[11px] text-white font-semibold block">
+                        {test.recommendedSetup.timeOfDay}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-[#0F0F17] border border-[#20202E] flex items-start space-x-2.5">
+                    <div className="p-1.5 rounded-lg bg-blue-950/40 text-blue-400">
+                      <CloudRain className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[9px] uppercase font-mono text-slate-400 block">Weather</span>
+                      <strong className="text-[11px] text-white font-semibold block">
+                        {test.recommendedSetup.weather}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-[#0F0F17] border border-[#20202E] flex items-start space-x-2.5">
+                    <div className="p-1.5 rounded-lg bg-emerald-950/40 text-emerald-400">
+                      <RotateCw className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[9px] uppercase font-mono text-slate-400 block">Laps & Grid</span>
+                      <strong className="text-[11px] text-white font-semibold block">
+                        {test.recommendedSetup.laps} Laps • {test.recommendedSetup.drivatars === 0 ? 'Solo' : `${test.recommendedSetup.drivatars} Drivatars`}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
               </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3 pt-2 font-mono text-xs">
               <div className="bg-[#101018] p-3 rounded-xl border border-[#222234]">
                 <span className="text-[10px] text-slate-400 block">Required Benchmark</span>
                 <strong className="text-amber-300">{test.requiredLaps} Consecutive Laps</strong>

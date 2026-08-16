@@ -22,6 +22,52 @@ export interface SessionChallengeCriteria {
   requiredLaps: number; // e.g. 2 or 3 consecutive laps
 }
 
+export type GameType = 'Circuit Race' | 'Timed Race' | 'Drift' | 'Test Drive';
+
+export type TimeOfDay = 
+  | 'Sunrise' 
+  | 'Morning' 
+  | 'Late Morning' 
+  | 'Noon' 
+  | 'Afternoon' 
+  | 'Late Afternoon' 
+  | 'Evening' 
+  | 'Sunset' 
+  | 'Night' 
+  | 'Midnight';
+
+export type WeatherCondition = 
+  | 'Rain at end'
+  | 'Rain at start'
+  | 'Clear'
+  | 'Mostly Clear'
+  | 'Partly Cloudy'
+  | 'Cloudy'
+  | 'Looming Clouds'
+  | 'Thunder Clouds'
+  | 'Thin Haze'
+  | 'Patchy Fog'
+  | 'Dense Fog'
+  | 'Overcast Dry'
+  | 'Overcast Wet'
+  | 'Drizzle'
+  | 'Light Rain'
+  | 'Moderate Rain'
+  | 'Heavy Rain'
+  | 'Thunderstorm'
+  | 'Rainstorm';
+
+export interface RecommendedEventSetup {
+  car: string;
+  track: string;
+  gameType: GameType;
+  timeOfDay: TimeOfDay;
+  weather: WeatherCondition;
+  laps: number;
+  drivatars: number;
+  notes?: string;
+}
+
 export interface Session {
   id: string;
   moduleId: string;
@@ -34,6 +80,7 @@ export interface Session {
   drillGoal: string;
   targetMetrics: { label: string; value: string; hint: string }[];
   challenge: SessionChallengeCriteria;
+  recommendedSetup: RecommendedEventSetup;
 }
 
 export interface GraduationRequirement {
@@ -54,6 +101,7 @@ export interface ModuleGraduationTest {
   requiredLaps: number;
   passingScorePct: number; // e.g. 80%
   requirements: GraduationRequirement[];
+  recommendedSetup: RecommendedEventSetup;
 }
 
 export interface Module {

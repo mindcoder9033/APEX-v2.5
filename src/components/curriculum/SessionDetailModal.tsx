@@ -11,7 +11,8 @@ import { ActionPlanCard } from '../adjust/ActionPlanCard';
 import confetti from 'canvas-confetti';
 import { 
   X, BookOpen, Play, CheckCircle2, AlertCircle, Trophy, 
-  ArrowRight, Activity, Target, Zap, ShieldCheck, RefreshCw, Radio, Info 
+  ArrowRight, Activity, Target, Zap, ShieldCheck, RefreshCw, Radio, Info,
+  Car, MapPin, Flag, Sun, CloudRain, RotateCw, Users
 } from 'lucide-react';
 
 interface SessionDetailModalProps {
@@ -185,6 +186,108 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
           {/* STAGE 2: PRACTICE */}
           {activeStage === 'practice' && (
             <div className="max-w-4xl mx-auto space-y-6">
+              {/* Recommended Forza Event Setup Briefing */}
+              {session.recommendedSetup && (
+                <div className="p-6 rounded-2xl bg-[#14141E] border border-[#262638] space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-[#00F0FF] text-xs font-mono font-bold uppercase tracking-wider">
+                      <Flag className="w-4 h-4 text-[#00F0FF]" />
+                      <span>Recommended Forza Motorsport Event Setup</span>
+                    </div>
+                    <span className="text-[11px] font-mono text-slate-400 bg-[#1A1A28] px-2 py-0.5 rounded-full border border-[#2A2A3E]">
+                      Free Play / Test Drive Setup
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {/* Car */}
+                    <div className="p-3.5 rounded-xl bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
+                      <div className="p-2 rounded-lg bg-red-950/40 text-[#E10600] border border-red-900/30">
+                        <Car className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] uppercase font-mono text-slate-400 block tracking-wider">Car Model</span>
+                        <strong className="text-xs text-white font-semibold truncate block" title={session.recommendedSetup.car}>
+                          {session.recommendedSetup.car}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Track */}
+                    <div className="p-3.5 rounded-xl bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
+                      <div className="p-2 rounded-lg bg-cyan-950/40 text-[#00F0FF] border border-cyan-900/30">
+                        <MapPin className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] uppercase font-mono text-slate-400 block tracking-wider">Track & Layout</span>
+                        <strong className="text-xs text-white font-semibold truncate block" title={session.recommendedSetup.track}>
+                          {session.recommendedSetup.track}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Game Type */}
+                    <div className="p-3.5 rounded-xl bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
+                      <div className="p-2 rounded-lg bg-purple-950/40 text-purple-400 border border-purple-900/30">
+                        <Flag className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] uppercase font-mono text-slate-400 block tracking-wider">Game Type</span>
+                        <strong className="text-xs text-white font-semibold block">
+                          {session.recommendedSetup.gameType}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Time of Day */}
+                    <div className="p-3.5 rounded-xl bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
+                      <div className="p-2 rounded-lg bg-amber-950/40 text-amber-400 border border-amber-900/30">
+                        <Sun className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] uppercase font-mono text-slate-400 block tracking-wider">Time of Day</span>
+                        <strong className="text-xs text-white font-semibold block">
+                          {session.recommendedSetup.timeOfDay}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Weather */}
+                    <div className="p-3.5 rounded-xl bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
+                      <div className="p-2 rounded-lg bg-blue-950/40 text-blue-400 border border-blue-900/30">
+                        <CloudRain className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] uppercase font-mono text-slate-400 block tracking-wider">Weather</span>
+                        <strong className="text-xs text-white font-semibold block">
+                          {session.recommendedSetup.weather}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Laps & Drivatars */}
+                    <div className="p-3.5 rounded-xl bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
+                      <div className="p-2 rounded-lg bg-emerald-950/40 text-emerald-400 border border-emerald-900/30">
+                        <RotateCw className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] uppercase font-mono text-slate-400 block tracking-wider">Stint Laps & Field</span>
+                        <strong className="text-xs text-white font-semibold block">
+                          {session.recommendedSetup.laps} Laps • {session.recommendedSetup.drivatars === 0 ? 'Solo' : `${session.recommendedSetup.drivatars} Drivatars`}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {session.recommendedSetup.notes && (
+                    <div className="p-3 rounded-xl bg-[#101018] border border-[#222232] text-xs text-slate-300 flex items-start space-x-2">
+                      <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <span>{session.recommendedSetup.notes}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="p-6 rounded-2xl bg-[#14141E] border border-[#262638] space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2 text-[#00FF66] text-xs font-mono font-bold uppercase tracking-wider">
@@ -210,7 +313,7 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
                     <span>Session Practice Directive</span>
                   </h4>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    Focus on executing the technique taught in Stage 1: <strong className="text-white">{session.title}</strong>. Complete consecutive laps with the Skip Barber Formula car to populate live analytical scoring.
+                    Focus on executing the technique taught in Stage 1: <strong className="text-white">{session.title}</strong>. Complete consecutive laps with the recommended car/track to populate live analytical scoring.
                   </p>
                 </div>
               </div>
