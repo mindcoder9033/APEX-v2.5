@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Module, UserProgressState, GraduationResult } from '../../types/curriculum';
 import { LapAnalysis } from '../../types/telemetry';
-import { generateSyntheticLapFrames } from '../../engine/telemetrySimulator';
-import { analyzeLapTelemetry, evaluateGraduationTest } from '../../engine/physicsEngine';
+import { evaluateGraduationTest } from '../../engine/physicsEngine';
+import { loadLapHistory } from '../../db/storage';
 import confetti from 'canvas-confetti';
-import { X, Trophy, Award, CheckCircle2, AlertCircle, Play, Sparkles, ArrowRight } from 'lucide-react';
+import { X, Trophy, Award, CheckCircle2, AlertCircle, Play, Sparkles, ArrowRight, Radio, Info } from 'lucide-react';
 
 interface GraduationExamModalProps {
   module: Module;
@@ -22,26 +22,24 @@ export const GraduationExamModal: React.FC<GraduationExamModalProps> = ({
   onGraduationPassed
 }) => {
   const test = module.graduationTest;
-  const [examLaps, setExamLaps] = useState<LapAnalysis[]>([]);
-  const [isRunningExam, setIsRunningExam] = useState(false);
+  const historyLaps = loadLapHistory();
+  const [examLaps, setExamLaps] = useState<LapAnalysis[]>(historyLaps.slice(0, test.requiredLaps));
+  const [isEvaluating, setIsEvaluating] = useState(false);
   const [gradResult, setGradResult] = useState<GraduationResult | null>(
     progress.graduationResults[test.id] || null
   );
 
   const handleRunExam = () => {
-    setIsRunningExam(true);
-    setTimeout(() => {
-      // Generate required exam laps
-      const laps: LapAnalysis[] = [];
-      for (let i = 1; i <= test.requiredLaps; i++) {
-        const frames = generateSyntheticLapFrames(i, { drivingStyle: 'pro' });
-        laps.push(analyzeLapTelemetry(frames));
-      }
-      setExamLaps(laps);
+    if (historyLaps.length < test.requiredLaps) return;
+    setIsEvaluating(true);
 
-      const result = evaluateGraduationTest(test, laps);
+    setTimeout(() => {
+      const qualifyingLaps = historyLaps.slice(0, test.requiredLaps);
+      setExamLaps(qualifyingLaps);
+
+      const result = evaluateGraduationTest(test, qualifyingLaps);
       setGradResult(result);
-      setIsRunningExam(false);
+      setIsEvaluating(false);
 
       if (result.passed) {
         confetti({
@@ -53,7 +51,7 @@ export const GraduationExamModal: React.FC<GraduationExamModalProps> = ({
         const firstNextSessionId = nextModule?.sessions[0]?.id || null;
         onGraduationPassed(result, nextModule?.id || null, firstNextSessionId);
       }
-    }, 1200);
+    }, 600);
   };
 
   return (
@@ -149,18 +147,32 @@ export const GraduationExamModal: React.FC<GraduationExamModalProps> = ({
 
         {/* Footer Actions */}
         <div className="p-5 border-t border-[#232332] bg-[#12121A] flex items-center justify-between">
-          <button onClick={onClose} className="text-xs text-slate-400 hover:text-white font-medium">
-            Close
-          </button>
+          <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
+            <span>Recorded Laps Available:</span>
+            <strong className={historyLaps.length >= test.requiredLaps ? 'text-emerald-400' : 'text-amber-400'}>
+              {historyLaps.length} / {test.requiredLaps}
+            </strong>
+          </div>
 
-          <button
-            onClick={handleRunExam}
-            disabled={isRunningExam}
-            className="flex items-center space-x-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-[#E10600] hover:from-amber-400 hover:to-[#FF1801] text-white text-xs font-bold shadow-xl shadow-red-950/60 active:scale-95 transition-all"
-          >
-            <Sparkles className="w-4 h-4 text-white" />
-            <span>{isRunningExam ? 'Evaluating 3-Lap Stint...' : 'Execute Graduation Exam Stint'}</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            <button onClick={onClose} className="text-xs text-slate-400 hover:text-white font-medium px-3 py-2">
+              Close
+            </button>
+
+            <button
+              onClick={handleRunExam}
+              disabled={isEvaluating || historyLaps.length < test.requiredLaps}
+              className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                historyLaps.length >= test.requiredLaps
+                  ? 'bg-gradient-to-r from-amber-500 to-[#E10600] hover:from-amber-400 hover:to-[#FF1801] text-white shadow-xl shadow-red-950/60 active:scale-95 cursor-pointer'
+                  : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'
+              }`}
+              title={historyLaps.length >= test.requiredLaps ? 'Evaluate exam' : `Drive ${test.requiredLaps} laps in Forza with UDP enabled`}
+            >
+              <Trophy className="w-4 h-4" />
+              <span>{isEvaluating ? 'Evaluating Exam Telemetry...' : 'Evaluate Real Stint Telemetry'}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

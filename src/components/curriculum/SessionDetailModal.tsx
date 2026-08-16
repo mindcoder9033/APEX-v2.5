@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Module, Session, UserProgressState, ChallengeResult } from '../../types/curriculum';
 import { LapAnalysis, TelemetryFrame } from '../../types/telemetry';
 import { evaluateSessionChallenge } from '../../engine/physicsEngine';
-import { generateSyntheticLapFrames } from '../../engine/telemetrySimulator';
 import { analyzeLapTelemetry } from '../../engine/physicsEngine';
 import { TelemetryTraces } from '../telemetry/TelemetryTraces';
 import { FrictionCirclePlot } from '../telemetry/FrictionCirclePlot';
@@ -12,7 +11,7 @@ import { ActionPlanCard } from '../adjust/ActionPlanCard';
 import confetti from 'canvas-confetti';
 import { 
   X, BookOpen, Play, CheckCircle2, AlertCircle, Trophy, 
-  ArrowRight, Activity, Target, Zap, ShieldCheck, Sparkles, RefreshCw 
+  ArrowRight, Activity, Target, Zap, ShieldCheck, RefreshCw, Radio, Info 
 } from 'lucide-react';
 
 interface SessionDetailModalProps {
@@ -34,31 +33,13 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
 }) => {
   const [activeStage, setActiveStage] = useState<'teach' | 'practice' | 'analyze' | 'adjust' | 'challenge'>('teach');
   const [cursorDist, setCursorDist] = useState<number>(850);
-  const [sessionLaps, setSessionLaps] = useState<LapAnalysis[]>(() => {
-    // Generate initial baseline drill lap
-    const frames = generateSyntheticLapFrames(1, { drivingStyle: 'pro' });
-    return [analyzeLapTelemetry(frames)];
-  });
-  const [isSimulatingRun, setIsSimulatingRun] = useState(false);
+  const [sessionLaps, setSessionLaps] = useState<LapAnalysis[]>([]);
   const [challengeResult, setChallengeResult] = useState<ChallengeResult | null>(
     progress.challengeResults[session.challenge.id] || null
   );
 
-  const currentLap = sessionLaps[sessionLaps.length - 1];
+  const currentLap = sessionLaps.length > 0 ? sessionLaps[sessionLaps.length - 1] : null;
   const closestFrame = currentLap?.frames.find(f => Math.abs(f.distance - cursorDist) < 15) || currentLap?.frames[0] || null;
-
-  const handleRunPracticeSimulation = (style: 'pro' | 'amateur_abrupt_brake' | 'coasting_exit' = 'pro') => {
-    setIsSimulatingRun(true);
-    setTimeout(() => {
-      const newFrames = generateSyntheticLapFrames(sessionLaps.length + 1, { drivingStyle: style });
-      const newLap = analyzeLapTelemetry(newFrames);
-      const updated = [...sessionLaps, newLap];
-      setSessionLaps(updated);
-      onSaveLap(newLap);
-      setIsSimulatingRun(false);
-      setActiveStage('analyze');
-    }, 600);
-  };
 
   const handleEvaluateChallenge = () => {
     const result = evaluateSessionChallenge(session.challenge, sessionLaps);
@@ -207,8 +188,8 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
               <div className="p-6 rounded-2xl bg-[#14141E] border border-[#262638] space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2 text-[#00FF66] text-xs font-mono font-bold uppercase tracking-wider">
-                    <Play className="w-4 h-4" />
-                    <span>Practice Stint & 60Hz Telemetry Ingest</span>
+                    <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+                    <span>Live 60Hz Telemetry Ingest & Stint Practice</span>
                   </div>
                   <span className="text-xs font-mono text-slate-400">Listening on UDP 0.0.0.0:5300</span>
                 </div>
@@ -216,41 +197,21 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
                 <div className="p-5 rounded-xl bg-[#0D0D14] border border-[#1E1E2C] space-y-3">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
-                    <span className="text-sm font-bold text-white">Silent Telemetry Recording Engine Active</span>
+                    <span className="text-sm font-bold text-white">Live Telemetry Ingestion Active</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
                     Start Forza Motorsport on your PC or Xbox with telemetry forwarding enabled to <code className="bg-[#1A1A28] px-1.5 py-0.5 rounded text-[#00F0FF]">127.0.0.1:5300</code>. Drive your practice laps; APEX automatically segments laps and logs 60Hz physics in the background.
                   </p>
                 </div>
 
-                {/* Built-in Practice Simulator Runner */}
-                <div className="p-5 rounded-xl bg-gradient-to-r from-[#1A1A28] to-[#14141E] border border-[#2E2E44] space-y-3">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider font-display flex items-center space-x-2">
-                    <Sparkles className="w-4 h-4 text-amber-400" />
-                    <span>Built-In Drill Simulator (Offline Execution)</span>
+                <div className="p-5 rounded-xl bg-[#101018] border border-[#222232] space-y-3">
+                  <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider font-display flex items-center space-x-2">
+                    <Info className="w-4 h-4 text-amber-400" />
+                    <span>Session Practice Directive</span>
                   </h4>
-                  <p className="text-xs text-slate-400">
-                    Run simulated test laps using mathematical Skip Barber physics to practice the coaching loop right now.
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Focus on executing the technique taught in Stage 1: <strong className="text-white">{session.title}</strong>. Complete consecutive laps with the Skip Barber Formula car to populate live analytical scoring.
                   </p>
-
-                  <div className="flex flex-wrap gap-3 pt-2">
-                    <button
-                      onClick={() => handleRunPracticeSimulation('pro')}
-                      disabled={isSimulatingRun}
-                      className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold shadow-md shadow-red-950"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-white" />
-                      <span>{isSimulatingRun ? 'Simulating...' : 'Simulate Pro Stint (High Grip)'}</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleRunPracticeSimulation('amateur_abrupt_brake')}
-                      disabled={isSimulatingRun}
-                      className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-[#222234] hover:bg-[#2C2C42] text-slate-200 text-xs font-medium border border-[#32324A]"
-                    >
-                      <span>Simulate Amateur Stint (Abrupt Release)</span>
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -259,50 +220,62 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
           {/* STAGE 3: ANALYZE */}
           {activeStage === 'analyze' && (
             <div className="space-y-6">
-              {/* Summary Stats Strip */}
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                <div className="bg-[#14141E] p-3 rounded-xl border border-[#232332]">
-                  <span className="text-[10px] text-slate-400 font-mono block">Lap Time</span>
-                  <strong className="text-base font-mono font-bold text-white">{currentLap.lapTimeSec.toFixed(2)}s</strong>
-                </div>
-                <div className="bg-[#14141E] p-3 rounded-xl border border-[#232332]">
-                  <span className="text-[10px] text-slate-400 font-mono block">Top Speed</span>
-                  <strong className="text-base font-mono font-bold text-[#00F0FF]">{currentLap.maxSpeedKph} km/h</strong>
-                </div>
-                <div className="bg-[#14141E] p-3 rounded-xl border border-[#232332]">
-                  <span className="text-[10px] text-slate-400 font-mono block">Traction Budget</span>
-                  <strong className="text-base font-mono font-bold text-emerald-400">{currentLap.avgTractionBudgetPct}%</strong>
-                </div>
-                <div className="bg-[#14141E] p-3 rounded-xl border border-[#232332]">
-                  <span className="text-[10px] text-slate-400 font-mono block">Peak Lat G</span>
-                  <strong className="text-base font-mono font-bold text-purple-400">{currentLap.peakLatG}G</strong>
-                </div>
-                <div className="bg-[#14141E] p-3 rounded-xl border border-[#232332]">
-                  <span className="text-[10px] text-slate-400 font-mono block">Peak Braking G</span>
-                  <strong className="text-base font-mono font-bold text-[#FF1801]">{currentLap.peakBrakingG}G</strong>
-                </div>
-                <div className="bg-[#14141E] p-3 rounded-xl border border-[#232332]">
-                  <span className="text-[10px] text-slate-400 font-mono block">Overall Lap Grade</span>
-                  <strong className="text-base font-mono font-bold text-amber-400">{currentLap.overallScore}%</strong>
-                </div>
-              </div>
+              {currentLap ? (
+                <>
+                  {/* Summary Stats Strip */}
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                    <div className="bg-[#14141E] p-3 rounded-xl border border-[#232332]">
+                      <span className="text-[10px] text-slate-400 font-mono block">Lap Time</span>
+                      <strong className="text-base font-mono font-bold text-white">{currentLap.lapTimeSec.toFixed(2)}s</strong>
+                    </div>
+                    <div className="bg-[#14141E] p-3 rounded-xl border border-[#232332]">
+                      <span className="text-[10px] text-slate-400 font-mono block">Top Speed</span>
+                      <strong className="text-base font-mono font-bold text-[#00F0FF]">{currentLap.maxSpeedKph} km/h</strong>
+                    </div>
+                    <div className="bg-[#14141E] p-3 rounded-xl border border-[#232332]">
+                      <span className="text-[10px] text-slate-400 font-mono block">Traction Budget</span>
+                      <strong className="text-base font-mono font-bold text-emerald-400">{currentLap.avgTractionBudgetPct}%</strong>
+                    </div>
+                    <div className="bg-[#14141E] p-3 rounded-xl border border-[#232332]">
+                      <span className="text-[10px] text-slate-400 font-mono block">Peak Lat G</span>
+                      <strong className="text-base font-mono font-bold text-purple-400">{currentLap.peakLatG}G</strong>
+                    </div>
+                    <div className="bg-[#14141E] p-3 rounded-xl border border-[#232332]">
+                      <span className="text-[10px] text-slate-400 font-mono block">Peak Braking G</span>
+                      <strong className="text-base font-mono font-bold text-[#FF1801]">{currentLap.peakBrakingG}G</strong>
+                    </div>
+                    <div className="bg-[#14141E] p-3 rounded-xl border border-[#232332]">
+                      <span className="text-[10px] text-slate-400 font-mono block">Overall Lap Grade</span>
+                      <strong className="text-base font-mono font-bold text-amber-400">{currentLap.overallScore}%</strong>
+                    </div>
+                  </div>
 
-              {/* Synchronized Telemetry Traces */}
-              <TelemetryTraces
-                frames={currentLap.frames}
-                cursorDistance={cursorDist}
-                onCursorChange={setCursorDist}
-                height={260}
-              />
+                  {/* Synchronized Telemetry Traces */}
+                  <TelemetryTraces
+                    frames={currentLap.frames}
+                    cursorDistance={cursorDist}
+                    onCursorChange={setCursorDist}
+                    height={260}
+                  />
 
-              {/* G-G Friction Circle & Circuit Map Split */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FrictionCirclePlot frames={currentLap.frames} currentFrame={closestFrame} />
-                <TrackMapViewer frames={currentLap.frames} currentDistance={cursorDist} />
-              </div>
+                  {/* G-G Friction Circle & Circuit Map Split */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FrictionCirclePlot frames={currentLap.frames} currentFrame={closestFrame} />
+                    <TrackMapViewer frames={currentLap.frames} currentDistance={cursorDist} />
+                  </div>
 
-              {/* Turn-by-Turn Scorecard */}
-              <DiagnosticScorecard corners={currentLap.corners} onFocusCorner={setCursorDist} />
+                  {/* Turn-by-Turn Scorecard */}
+                  <DiagnosticScorecard corners={currentLap.corners} onFocusCorner={setCursorDist} />
+                </>
+              ) : (
+                <div className="p-8 rounded-2xl bg-[#14141E] border border-[#232332] text-center space-y-3">
+                  <Radio className="w-8 h-8 text-amber-400 mx-auto animate-pulse" />
+                  <h3 className="text-base font-bold text-white">No Practice Laps Recorded Yet</h3>
+                  <p className="text-xs text-slate-400 max-w-md mx-auto">
+                    Drive a stint in Forza Motorsport with UDP output enabled to generate telemetry traces and turn diagnostics.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -310,7 +283,11 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
           {activeStage === 'adjust' && (
             <div className="max-w-4xl mx-auto space-y-6">
               <ActionPlanCard
-                actionItems={currentLap.actionItems}
+                actionItems={currentLap?.actionItems || [
+                  'Practice progressive brake pressure ramp-up before corner entry.',
+                  'Smoothly trail off brake pressure to prevent front-tire overload at turn-in.',
+                  'Synchronize steering unwinding with throttle application out of corner exit.'
+                ]}
                 onStartNewStint={() => setActiveStage('practice')}
               />
             </div>
@@ -363,7 +340,12 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
 
                   <button
                     onClick={handleEvaluateChallenge}
-                    className="flex items-center space-x-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-[#E10600] hover:from-amber-400 hover:to-[#FF1801] text-white text-xs font-bold shadow-xl shadow-red-950/60 active:scale-95 transition-all"
+                    disabled={sessionLaps.length === 0}
+                    className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      sessionLaps.length > 0
+                        ? 'bg-gradient-to-r from-amber-500 to-[#E10600] hover:from-amber-400 hover:to-[#FF1801] text-white shadow-xl shadow-red-950/60 active:scale-95 cursor-pointer'
+                        : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'
+                    }`}
                   >
                     <Trophy className="w-4 h-4" />
                     <span>Evaluate Challenge from Stint Telemetry</span>

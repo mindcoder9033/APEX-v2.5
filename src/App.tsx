@@ -14,7 +14,6 @@ import {
 } from './db/storage';
 import { Module, Session, UserProgressState, ChallengeResult, GraduationResult } from './types/curriculum';
 import { LapAnalysis, TelemetryFrame } from './types/telemetry';
-import { generateSyntheticLapFrames } from './engine/telemetrySimulator';
 import { analyzeLapTelemetry } from './engine/physicsEngine';
 import { parseForzaBuffer, convertPacketToTelemetryFrame } from './engine/forzaParser';
 
@@ -28,21 +27,23 @@ export function App() {
   const [graduatingModule, setGraduatingModule] = useState<Module | null>(null);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
-  // Latest active lap analysis
-  const [currentLap, setCurrentLap] = useState<LapAnalysis>(() => {
+  // Latest active lap analysis (null if no laps recorded yet)
+  const [currentLap, setCurrentLap] = useState<LapAnalysis | null>(() => {
     const initialLaps = loadLapHistory();
-    if (initialLaps.length > 0) return initialLaps[0];
-    const frames = generateSyntheticLapFrames(1, { drivingStyle: 'pro' });
-    return analyzeLapTelemetry(frames);
+    return initialLaps.length > 0 ? initialLaps[0] : null;
   });
 
   // UDP Live Telemetry state
   const [isUdpConnected, setIsUdpConnected] = useState(false);
-  const [isSimulating, setIsSimulating] = useState(false);
+  const [liveFrame, setLiveFrame] = useState<TelemetryFrame | null>(null);
+  const [liveFramesBuffer, setLiveFramesBuffer] = useState<TelemetryFrame[]>([]);
 
   // Connect to local Node.js UDP WebSocket bridge if active
   useEffect(() => {
     let ws: WebSocket | null = null;
+    let lapBuffer: TelemetryFrame[] = [];
+    let currentLapNum: number | null = null;
+
     try {
       ws = new WebSocket('ws://localhost:5301');
       ws.binaryType = 'arraybuffer';
@@ -56,20 +57,39 @@ export function App() {
         if (event.data instanceof ArrayBuffer) {
           const packet = parseForzaBuffer(event.data);
           if (packet && packet.isRaceOn) {
-            // Live packet received
+            const distance = packet.distanceTraveledMeters > 0 
+              ? packet.distanceTraveledMeters % 3500 
+              : 0;
+            const frame = convertPacketToTelemetryFrame(packet, distance);
+            
+            setLiveFrame(frame);
+            setLiveFramesBuffer(prev => [...prev.slice(-300), frame]);
+
+            // Automatic lap segmentation when lapNumber advances
+            if (currentLapNum !== null && packet.lapNumber > currentLapNum && lapBuffer.length > 50) {
+              const completedLap = analyzeLapTelemetry(lapBuffer);
+              handleSaveLap(completedLap);
+              lapBuffer = [frame];
+            } else {
+              lapBuffer.push(frame);
+            }
+            currentLapNum = packet.lapNumber;
           }
         }
       };
 
       ws.onclose = () => {
         setIsUdpConnected(false);
+        setLiveFrame(null);
       };
 
       ws.onerror = () => {
         setIsUdpConnected(false);
+        setLiveFrame(null);
       };
     } catch (e) {
       setIsUdpConnected(false);
+      setLiveFrame(null);
     }
 
     return () => {
@@ -79,9 +99,11 @@ export function App() {
 
   const handleSaveLap = (lap: LapAnalysis) => {
     setCurrentLap(lap);
-    const updated = [lap, ...savedLaps];
-    setSavedLaps(updated);
-    saveLapHistory(updated);
+    setSavedLaps(prev => {
+      const updated = [lap, ...prev];
+      saveLapHistory(updated);
+      return updated;
+    });
   };
 
   const handleChallengePassed = (result: ChallengeResult, nextSessionId: string | null) => {
@@ -111,15 +133,6 @@ export function App() {
     setProgress(updated);
   };
 
-  const handleQuickSimulateDrill = () => {
-    setIsSimulating(true);
-    const frames = generateSyntheticLapFrames(savedLaps.length + 1, { drivingStyle: 'pro' });
-    const lap = analyzeLapTelemetry(frames);
-    handleSaveLap(lap);
-    setCurrentView('debrief');
-    setIsSimulating(false);
-  };
-
   return (
     <div className="h-screen w-screen flex flex-col bg-[#0A0A0E] text-slate-100 overflow-hidden select-none font-sans">
       {/* Top Application Header */}
@@ -127,10 +140,9 @@ export function App() {
         currentView={currentView}
         setCurrentView={setCurrentView}
         isUdpConnected={isUdpConnected}
-        isSimulating={isSimulating}
-        onOpenSimulator={handleQuickSimulateDrill}
         onExportPdf={() => setIsPdfModalOpen(true)}
         totalMasteredModules={progress.graduatedModuleIds.length}
+        hasActiveLap={currentLap !== null}
       />
 
       {/* Main View Container */}
@@ -147,6 +159,8 @@ export function App() {
         {currentView === 'practice' && (
           <LivePracticeView
             isUdpConnected={isUdpConnected}
+            liveFrame={liveFrame}
+            liveFramesBuffer={liveFramesBuffer}
             onFinishStint={(lap) => {
               handleSaveLap(lap);
               setCurrentView('debrief');
@@ -202,7 +216,7 @@ export function App() {
       )}
 
       {/* Race Engineer PDF Export Modal */}
-      {isPdfModalOpen && (
+      {isPdfModalOpen && currentLap && (
         <PdfReportModal
           lap={currentLap}
           module={activeSessionSelection?.module}
