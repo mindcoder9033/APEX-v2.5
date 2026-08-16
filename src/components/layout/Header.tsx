@@ -106,7 +106,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className={`w-2 h-2 rounded-full ${
             isUdpConnected ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'
           }`} />
-          <span>{isUdpConnected ? 'Forza 60Hz Live' : 'UDP Disconnected (127.0.0.1:5300)'}</span>
+          <span>{isUdpConnected ? 'Forza 60Hz Live' : 'UDP Disconnected (Port 5300)'}</span>
         </div>
 
         {/* PDF Export Button */}

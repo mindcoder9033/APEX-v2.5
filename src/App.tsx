@@ -38,62 +38,82 @@ export function App() {
   const [liveFrame, setLiveFrame] = useState<TelemetryFrame | null>(null);
   const [liveFramesBuffer, setLiveFramesBuffer] = useState<TelemetryFrame[]>([]);
 
-  // Connect to local Node.js UDP WebSocket bridge if active
+  // Connect to local Node.js UDP WebSocket bridge with resilient auto-reconnect
   useEffect(() => {
     let ws: WebSocket | null = null;
     let lapBuffer: TelemetryFrame[] = [];
     let currentLapNum: number | null = null;
+    let reconnectTimer: any = null;
+    let isMounted = true;
 
-    try {
-      ws = new WebSocket('ws://localhost:5301');
-      ws.binaryType = 'arraybuffer';
+    const connectBridge = () => {
+      if (!isMounted) return;
+      try {
+        const host = window.location.hostname || 'localhost';
+        ws = new WebSocket(`ws://${host}:5301`);
+        ws.binaryType = 'arraybuffer';
 
-      ws.onopen = () => {
-        setIsUdpConnected(true);
-        console.log('[APEX] Connected to live Forza UDP stream bridge.');
-      };
+        ws.onopen = () => {
+          if (!isMounted) return;
+          setIsUdpConnected(true);
+          console.log('[APEX] Connected to live Forza UDP stream bridge.');
+        };
 
-      ws.onmessage = (event) => {
-        if (event.data instanceof ArrayBuffer) {
-          const packet = parseForzaBuffer(event.data);
-          if (packet && packet.isRaceOn) {
-            const distance = packet.distanceTraveledMeters > 0 
-              ? packet.distanceTraveledMeters % 3500 
-              : 0;
-            const frame = convertPacketToTelemetryFrame(packet, distance);
-            
-            setLiveFrame(frame);
-            setLiveFramesBuffer(prev => [...prev.slice(-300), frame]);
+        ws.onmessage = (event) => {
+          if (!isMounted) return;
+          if (event.data instanceof ArrayBuffer) {
+            const packet = parseForzaBuffer(event.data);
+            if (packet && packet.isRaceOn) {
+              const distance = packet.distanceTraveledMeters > 0 
+                ? packet.distanceTraveledMeters % 3500 
+                : 0;
+              const frame = convertPacketToTelemetryFrame(packet, distance);
+              
+              setLiveFrame(frame);
+              setLiveFramesBuffer(prev => [...prev.slice(-300), frame]);
 
-            // Automatic lap segmentation when lapNumber advances
-            if (currentLapNum !== null && packet.lapNumber > currentLapNum && lapBuffer.length > 50) {
-              const completedLap = analyzeLapTelemetry(lapBuffer);
-              handleSaveLap(completedLap);
-              lapBuffer = [frame];
-            } else {
-              lapBuffer.push(frame);
+              // Automatic lap segmentation when lapNumber advances
+              if (currentLapNum !== null && packet.lapNumber > currentLapNum && lapBuffer.length > 50) {
+                const completedLap = analyzeLapTelemetry(lapBuffer);
+                handleSaveLap(completedLap);
+                lapBuffer = [frame];
+              } else {
+                lapBuffer.push(frame);
+              }
+              currentLapNum = packet.lapNumber;
             }
-            currentLapNum = packet.lapNumber;
           }
-        }
-      };
+        };
 
-      ws.onclose = () => {
+        ws.onclose = () => {
+          if (!isMounted) return;
+          setIsUdpConnected(false);
+          setLiveFrame(null);
+          reconnectTimer = setTimeout(connectBridge, 2000);
+        };
+
+        ws.onerror = () => {
+          if (!isMounted) return;
+          setIsUdpConnected(false);
+          setLiveFrame(null);
+          try { ws?.close(); } catch (_) {}
+        };
+      } catch (e) {
+        if (!isMounted) return;
         setIsUdpConnected(false);
         setLiveFrame(null);
-      };
+        reconnectTimer = setTimeout(connectBridge, 2000);
+      }
+    };
 
-      ws.onerror = () => {
-        setIsUdpConnected(false);
-        setLiveFrame(null);
-      };
-    } catch (e) {
-      setIsUdpConnected(false);
-      setLiveFrame(null);
-    }
+    connectBridge();
 
     return () => {
-      if (ws) ws.close();
+      isMounted = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws) {
+        try { ws.close(); } catch (_) {}
+      }
     };
   }, []);
 

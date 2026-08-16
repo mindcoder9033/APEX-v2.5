@@ -58,7 +58,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
             <p className="text-xs text-[#8E8E9F]">
               {hasLiveData 
                 ? 'Recording real-time Forza physics • Auto-segmented laps on completion'
-                : 'UDP socket listening on 127.0.0.1:5300 (Bridge on ws://localhost:5301)'}
+                : 'UDP socket listening on 0.0.0.0:5300 (Bridge ws://localhost:5301)'}
             </p>
           </div>
         </div>
@@ -90,25 +90,26 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
             </h3>
           </div>
           <p className="text-xs text-slate-300 leading-relaxed max-w-3xl">
-            APEX strictly runs on live 60Hz vehicle telemetry from your simulator. Synthetic simulation is disabled. To start recording, configure Forza Motorsport:
+            APEX runs on live 60Hz vehicle telemetry from Forza Motorsport / Forza Horizon. To start streaming, go to <strong>Settings &gt; Gameplay / HUD &gt; Data Out</strong> in Forza:
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs font-mono">
             <div className="bg-[#0C0C12] p-3.5 rounded-xl border border-[#202030]">
               <span className="text-slate-500 block text-[10px] uppercase">Data Out</span>
-              <strong className="text-emerald-400">ON</strong>
+              <strong className="text-emerald-400 text-sm">ON</strong>
             </div>
             <div className="bg-[#0C0C12] p-3.5 rounded-xl border border-[#202030]">
-              <span className="text-slate-500 block text-[10px] uppercase">IP Address</span>
-              <strong className="text-[#00F0FF]">127.0.0.1</strong>
+              <span className="text-slate-500 block text-[10px] uppercase">Data Out IP Address</span>
+              <strong className="text-[#00F0FF] text-sm block">192.168.1.41</strong>
+              <span className="text-[9px] text-slate-400">(or 127.0.0.1 for local PC)</span>
             </div>
             <div className="bg-[#0C0C12] p-3.5 rounded-xl border border-[#202030]">
               <span className="text-slate-500 block text-[10px] uppercase">UDP Port</span>
-              <strong className="text-amber-300">5300</strong>
+              <strong className="text-amber-300 text-sm block">5300</strong>
             </div>
             <div className="bg-[#0C0C12] p-3.5 rounded-xl border border-[#202030]">
               <span className="text-slate-500 block text-[10px] uppercase">Packet Format</span>
-              <strong className="text-purple-300">CarDash</strong>
+              <strong className="text-purple-300 text-sm block">CarDash</strong>
             </div>
           </div>
         </div>

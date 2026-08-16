@@ -41,7 +41,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
           <div className="p-4 rounded-2xl bg-[#0D0D14] border border-[#1E1E2C] text-left text-xs font-mono space-y-2">
             <div className="flex justify-between items-center text-slate-300">
               <span className="text-slate-500">UDP Broadcast Target:</span>
-              <span className="text-emerald-400 font-bold">127.0.0.1:5300</span>
+              <span className="text-emerald-400 font-bold">192.168.1.41:5300 (or 127.0.0.1:5300)</span>
             </div>
             <div className="flex justify-between items-center text-slate-300">
               <span className="text-slate-500">WebSocket Local Bridge:</span>

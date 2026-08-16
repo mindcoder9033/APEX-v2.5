@@ -303,7 +303,7 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
                     <span className="text-sm font-bold text-white">Live Telemetry Ingestion Active</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    Start Forza Motorsport on your PC or Xbox with telemetry forwarding enabled to <code className="bg-[#1A1A28] px-1.5 py-0.5 rounded text-[#00F0FF]">127.0.0.1:5300</code>. Drive your practice laps; APEX automatically segments laps and logs 60Hz physics in the background.
+                    Start Forza Motorsport on your PC or Xbox with telemetry forwarding enabled to <code className="bg-[#1A1A28] px-1.5 py-0.5 rounded text-[#00F0FF]">192.168.1.41:5300</code> (or <code className="bg-[#1A1A28] px-1.5 py-0.5 rounded text-[#00F0FF]">127.0.0.1:5300</code> on local PC). Drive your practice laps; APEX automatically segments laps and logs 60Hz physics in the background.
                   </p>
                 </div>
 
