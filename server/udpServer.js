@@ -46,22 +46,19 @@ server.listen(WS_PORT, '0.0.0.0', () => {
   console.log(`====================================================`);
 });
 
-// Create UDP Socket for Forza telemetry ingestion
+// Create UDP Socket for Forza telemetry ingestion (Port 5300 + Broadcast support)
 const udpSocket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+const altUdpSocket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
 
 let packetCount = 0;
 let lastLogTime = Date.now();
 let hasReceivedFirstPacket = false;
 
-udpSocket.on('error', (err) => {
-  console.error(`[APEX UDP] Socket error:\n${err.stack}`);
-});
-
-udpSocket.on('message', (msg, rinfo) => {
+function handlePacket(msg, rinfo) {
   packetCount++;
   if (!hasReceivedFirstPacket) {
     hasReceivedFirstPacket = true;
-    console.log(`\n🎉 [APEX UDP Ingest] SUCCESS! First Forza telemetry packet received from ${rinfo.address}:${rinfo.port} (${msg.length} bytes)!`);
+    console.log(`\n🎉 [APEX UDP Ingest] SUCCESS! Live Forza telemetry packet received from ${rinfo.address}:${rinfo.port} (${msg.length} bytes)!`);
   }
 
   const now = Date.now();
@@ -78,23 +75,45 @@ udpSocket.on('message', (msg, rinfo) => {
       client.send(msg);
     }
   }
+}
+
+udpSocket.on('error', (err) => {
+  console.error(`[APEX UDP] Primary Socket (5300) error:\n${err.stack}`);
 });
 
+udpSocket.on('message', handlePacket);
+
 udpSocket.on('listening', () => {
+  try {
+    udpSocket.setBroadcast(true);
+  } catch (e) {
+    console.warn(`[APEX UDP] Could not enable broadcast: ${e.message}`);
+  }
   const address = udpSocket.address();
   const localIps = getLocalIpAddresses();
-  console.log(`🎮 UDP Ingest Socket listening on 0.0.0.0:${address.port}`);
+  console.log(`🎮 UDP Ingest Socket listening on 0.0.0.0:${address.port} (Broadcast Enabled)`);
   console.log(`📌 Configure Forza Motorsport / Forza Horizon HUD Settings:`);
   console.log(`   - Data Out: ON`);
   console.log(`   - Data Out IP Address:`);
   localIps.forEach(ip => {
-    console.log(`       * ${ip} (LAN / Xbox / Network / PC)`);
+    console.log(`       * ${ip} (Direct PC IP)`);
   });
-  console.log(`       * 127.0.0.1 (Localhost / Steam)`);
+  console.log(`       * 192.168.1.255 (Subnet Broadcast - Recommended for Xbox)`);
+  console.log(`       * 255.255.255.255 (Global Broadcast)`);
   console.log(`   - Data Out IP Port: ${address.port}`);
   console.log(`   - Data Out Packet Format: CarDash`);
   console.log(`====================================================`);
 });
 
+altUdpSocket.on('error', () => {});
+altUdpSocket.on('message', handlePacket);
+altUdpSocket.on('listening', () => {
+  try { altUdpSocket.setBroadcast(true); } catch (_) {}
+  console.log(`🎮 Secondary UDP Ingest Socket listening on 0.0.0.0:20777`);
+});
+
 udpSocket.bind(UDP_PORT, '0.0.0.0');
+try {
+  altUdpSocket.bind(20777, '0.0.0.0');
+} catch (_) {}
 
