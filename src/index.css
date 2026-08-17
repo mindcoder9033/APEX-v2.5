@@ -1,4 +1,34 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Michroma&family=Orbitron:wght@500;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-racing: 'Michroma', 'Eurostile', 'Microgramma', sans-serif;
+  --font-hud: 'Orbitron', 'Rajdhani', sans-serif;
+  --font-hud-clean: 'Rajdhani', 'Orbitron', sans-serif;
+  --font-tech: 'Barlow Condensed', 'DIN 1451', 'FF DIN', sans-serif;
+  --font-condensed: 'Barlow Condensed', sans-serif;
+  --font-barlow: 'Barlow', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Roboto Mono', ui-monospace, monospace;
+  --font-display: 'Michroma', 'Outfit', sans-serif;
+
+  --color-f1-red: #E10600;
+  --color-f1-darkred: #9B0400;
+  --color-f1-lightred: #FF3B30;
+  --color-f1-carbon: #0D0D11;
+  --color-f1-card: #14141B;
+  --color-f1-cardHover: #1B1B24;
+  --color-f1-border: #232330;
+  --color-f1-textMuted: #8E8E9F;
+
+  --color-telemetry-speed: #00F0FF;
+  --color-telemetry-throttle: #00FF66;
+  --color-telemetry-brake: #FF1801;
+  --color-telemetry-steer: #FFAA00;
+  --color-telemetry-latG: #D946EF;
+  --color-telemetry-lonG: #3B82F6;
+  --color-telemetry-slip: #F59E0B;
+}
 
 :root {
   --f1-red: #E10600;
@@ -11,10 +41,45 @@
 
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: #0A0A0E;
   color: #F3F4F6;
 }
+
+/* Explicit Typography Class Definitions */
+.font-racing {
+  font-family: 'Michroma', 'Eurostile', 'Microgramma', sans-serif !important;
+}
+
+.font-hud {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
+}
+
+.font-hud-clean {
+  font-family: 'Rajdhani', 'Orbitron', sans-serif !important;
+}
+
+.font-tech,
+.font-condensed {
+  font-family: 'Barlow Condensed', 'DIN 1451', 'FF DIN', sans-serif !important;
+}
+
+.font-barlow {
+  font-family: 'Barlow', sans-serif !important;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', 'Roboto Mono', ui-monospace, monospace !important;
+}
+
+.font-display {
+  font-family: 'Michroma', 'Outfit', sans-serif !important;
+}
+
+.font-sans {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
 
 /* Custom Telemetry Scrollbar */
 ::-webkit-scrollbar {
