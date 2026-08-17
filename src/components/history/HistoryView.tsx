@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { UserProgressState, Module } from '../../types/curriculum';
-import { LapAnalysis } from '../../types/telemetry';
+import { LapAnalysis, StintSession } from '../../types/telemetry';
 import { 
   Trophy, Award, Activity, Clock, CheckCircle2, Flame, 
-  Shield, Target, Zap, Gauge, Lock, Sparkles, Star, ChevronRight
+  Shield, Target, Zap, Gauge, Lock, Sparkles, Star, ChevronRight,
+  Layers, MapPin, Car
 } from 'lucide-react';
 
 interface HistoryViewProps {
   progress: UserProgressState;
   modules: Module[];
   savedLaps: LapAnalysis[];
-  onSelectLapForDebrief: (lap: LapAnalysis) => void;
+  savedStints?: StintSession[];
+  onSelectLapForDebrief?: (lap: LapAnalysis) => void;
+  onSelectStintForDebrief?: (stint: StintSession) => void;
 }
 
 interface MilestoneBadge {
@@ -28,7 +31,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   progress,
   modules,
   savedLaps,
-  onSelectLapForDebrief
+  savedStints = [],
+  onSelectLapForDebrief,
+  onSelectStintForDebrief
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'stints' | 'achievements'>('stints');
 
@@ -227,14 +232,94 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-racing font-bold uppercase tracking-wider text-white flex items-center space-x-2">
               <Clock className="w-4 h-4 text-[#00F0FF]" />
-              <span>Historical Stints & Lap Records</span>
+              <span>Historical Stints & Telemetry Records</span>
             </h3>
             <span className="text-xs text-[#8E8E9F] font-tech">
-              Showing {savedLaps.length} recorded telemetry {savedLaps.length === 1 ? 'stint' : 'stints'}
+              Showing {(savedStints && savedStints.length > 0) ? savedStints.length : savedLaps.length} recorded telemetry {(savedStints && savedStints.length > 0) ? (savedStints.length === 1 ? 'stint' : 'stints') : (savedLaps.length === 1 ? 'stint' : 'stints')}
             </span>
           </div>
 
-          {savedLaps.length === 0 ? (
+          {(savedStints && savedStints.length > 0) ? (
+            <div className="space-y-2.5">
+              {savedStints.map((stint, idx) => {
+                const lapCount = stint.laps ? stint.laps.length : stint.totalLaps || 1;
+                const formatTime = (sec?: number) => {
+                  if (!sec || isNaN(sec)) return '--:--.---';
+                  const mins = Math.floor(sec / 60);
+                  const rem = (sec % 60).toFixed(2);
+                  return `${mins}:${rem.padStart(5, '0')}`;
+                };
+
+                return (
+                  <div
+                    key={stint.stintId || idx}
+                    className="p-4 bg-[#12121A] border border-[#20202E] hover:border-[#E10600] transition-all flex flex-wrap items-center justify-between gap-4 hud-bracket group"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-[#E10600]/20 text-[#FF4D4D] font-mono font-bold flex items-center justify-center text-xs border border-[#E10600]/40 tabular-nums">
+                        #{stint.stintNumber || savedStints.length - idx}
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-2 flex-wrap">
+                          <h4 className="text-xs font-bold text-white font-racing">
+                            {stint.title || `Stint #${stint.stintNumber || idx + 1}`}
+                          </h4>
+                          <span className={`text-[9px] px-1.5 py-0.2 font-mono uppercase font-bold ${
+                            stint.source === 'academy' ? 'bg-amber-950/60 text-amber-400 border border-amber-500/40' : 'bg-emerald-950/60 text-emerald-400 border border-emerald-500/40'
+                          }`}>
+                            {stint.source === 'academy' ? 'Academy' : 'Practice'}
+                          </span>
+                          <span className="text-[9px] px-1.5 py-0.2 font-mono uppercase font-bold bg-[#00F0FF]/15 text-[#00F0FF] border border-[#00F0FF]/30 flex items-center space-x-1">
+                            <Layers className="w-2.5 h-2.5" />
+                            <span>{lapCount} {lapCount === 1 ? 'Lap' : 'Laps'}</span>
+                          </span>
+                        </div>
+                        <div className="text-[10px] font-tech uppercase tracking-wider text-[#8E8E9F] flex items-center space-x-2 mt-1">
+                          <span className="flex items-center space-x-1">
+                            <MapPin className="w-2.5 h-2.5 text-[#E10600]" />
+                            <span>{stint.trackName || 'Lime Rock Park'}</span>
+                          </span>
+                          <span>•</span>
+                          <span className="flex items-center space-x-1">
+                            <Car className="w-2.5 h-2.5 text-slate-500" />
+                            <span>{stint.carName || 'Formula 2000'}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-6 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-500 block font-tech uppercase tracking-wider">Best Lap</span>
+                        <strong className="text-emerald-400 font-mono font-bold text-sm tabular-nums">
+                          {formatTime(stint.bestLapTimeSec)}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block font-tech uppercase tracking-wider">Avg Grade</span>
+                        <strong className="text-amber-400 font-hud-clean font-bold text-sm tabular-nums">
+                          {Math.round(stint.avgScore || 0)}%
+                        </strong>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (onSelectStintForDebrief) {
+                            onSelectStintForDebrief(stint);
+                          } else if (onSelectLapForDebrief && stint.laps?.[0]) {
+                            onSelectLapForDebrief(stint.laps[0]);
+                          }
+                        }}
+                        className="chamfer-btn-sm px-4 py-2 bg-[#1F1F2C] group-hover:bg-[#E10600] text-slate-200 group-hover:text-white text-xs font-racing font-bold tracking-wide border border-[#2D2D3E] transition-all flex items-center space-x-1.5 cursor-pointer"
+                      >
+                        <span>Open Debrief</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : savedLaps.length === 0 ? (
             <div className="p-12 bg-[#12121A] border border-[#20202E] text-center space-y-3 hud-bracket">
               <Activity className="w-8 h-8 text-slate-600 mx-auto animate-pulse" />
               <h4 className="text-sm font-racing font-bold text-slate-300">No telemetry stints recorded yet</h4>
@@ -280,8 +365,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       <strong className="text-amber-400 font-hud-clean font-bold text-sm tabular-nums">{lap.overallScore}%</strong>
                     </div>
                     <button
-                      onClick={() => onSelectLapForDebrief(lap)}
-                      className="chamfer-btn-sm px-4 py-2 bg-[#1F1F2C] group-hover:bg-[#E10600] text-slate-200 group-hover:text-white text-xs font-racing font-bold tracking-wide border border-[#2D2D3E] transition-all flex items-center space-x-1.5"
+                      onClick={() => onSelectLapForDebrief && onSelectLapForDebrief(lap)}
+                      className="chamfer-btn-sm px-4 py-2 bg-[#1F1F2C] group-hover:bg-[#E10600] text-slate-200 group-hover:text-white text-xs font-racing font-bold tracking-wide border border-[#2D2D3E] transition-all flex items-center space-x-1.5 cursor-pointer"
                     >
                       <span>Open Debrief</span>
                       <ChevronRight className="w-3.5 h-3.5" />

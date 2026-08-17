@@ -1,86 +1,140 @@
 import React from 'react';
-import { TelemetryFrame, LapAnalysis } from '../../types/telemetry';
-import { analyzeLapTelemetry } from '../../engine/physicsEngine';
+import { TelemetryFrame } from '../../types/telemetry';
 import { FrictionCirclePlot } from '../telemetry/FrictionCirclePlot';
 import { TrackMapViewer } from '../telemetry/TrackMapViewer';
-import { Radio, Square, WifiOff } from 'lucide-react';
+import { Radio, Square, WifiOff, Play, RotateCcw, CircleDot, Timer, Award } from 'lucide-react';
 
 interface LivePracticeViewProps {
   isUdpConnected: boolean;
   liveFrame: TelemetryFrame | null;
   liveFramesBuffer: TelemetryFrame[];
-  onFinishStint: (lap: LapAnalysis) => void;
+  isRecording: boolean;
+  recordingDurationSec: number;
+  recordedLapsCount: number;
+  activeLapBufferLength: number;
+  onStartRecording: () => void;
+  onRequestStopRecording: () => void;
+  onResetRecording: () => void;
 }
 
 export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
   isUdpConnected,
   liveFrame,
   liveFramesBuffer,
-  onFinishStint
+  isRecording,
+  recordingDurationSec,
+  recordedLapsCount,
+  activeLapBufferLength,
+  onStartRecording,
+  onRequestStopRecording,
+  onResetRecording
 }) => {
-  const handleEndStint = () => {
-    if (liveFramesBuffer.length < 20) return;
-    const baseLap = analyzeLapTelemetry(liveFramesBuffer);
-    const lapAnalysis: LapAnalysis = {
-      ...baseLap,
-      source: 'practice',
-      recordedAt: new Date().toISOString()
-    };
-    onFinishStint(lapAnalysis);
-  };
-
   const hasLiveData = isUdpConnected && liveFrame !== null;
+
+  const formatTimer = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = Math.floor(totalSec % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="flex-1 overflow-y-auto p-8 bg-[#0A0A0E] space-y-6">
       {/* Top Banner Status Strip */}
-      <div className="p-5 bg-[#12121A] border border-[#232332] flex items-center justify-between shadow-xl hud-bracket">
+      <div className="p-5 bg-[#12121A] border border-[#232332] flex flex-wrap items-center justify-between gap-4 shadow-xl hud-bracket">
         <div className="flex items-center space-x-3">
-          <div className={`w-10 h-10 flex items-center justify-center border ${
-            hasLiveData 
+          <div className={`w-11 h-11 flex items-center justify-center border transition-colors ${
+            isRecording
+              ? 'bg-red-950/80 border-[#E10600]/80 shadow-[0_0_15px_rgba(225,6,0,0.3)]'
+              : hasLiveData 
               ? 'bg-emerald-950/60 border-emerald-500/40' 
               : 'bg-[#181824] border-[#2E2E40]'
           }`}>
-            {hasLiveData ? (
+            {isRecording ? (
+              <CircleDot className="w-5 h-5 text-[#FF1801] animate-pulse" />
+            ) : hasLiveData ? (
               <Radio className="w-5 h-5 text-emerald-400 animate-pulse" />
             ) : (
               <WifiOff className="w-5 h-5 text-slate-500" />
             )}
           </div>
           <div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2.5">
               <h2 className="text-sm font-racing font-bold text-white uppercase tracking-wider">
                 Live Telemetry Ingest & Stint Recorder
               </h2>
-              <span className={`chamfer-badge text-[10px] font-mono font-bold px-2.5 py-0.5 border ${
-                hasLiveData
-                  ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
-                  : 'bg-[#181822] text-slate-400 border-[#2A2A3C]'
-              }`}>
-                {hasLiveData ? '60Hz Ingest Active' : 'Waiting for Telemetry Packets'}
-              </span>
+              {isRecording ? (
+                <span className="chamfer-badge text-[10px] font-mono font-bold px-2.5 py-0.5 border bg-red-950/90 text-red-300 border-[#E10600]/60 flex items-center space-x-1.5 shadow-[0_0_10px_rgba(225,6,0,0.25)] animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#E10600]" />
+                  <span>RECORDING STINT</span>
+                </span>
+              ) : (
+                <span className={`chamfer-badge text-[10px] font-mono font-bold px-2.5 py-0.5 border ${
+                  hasLiveData
+                    ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                    : 'bg-[#181822] text-slate-400 border-[#2A2A3C]'
+                }`}>
+                  {hasLiveData ? '60Hz Ingest Active' : 'Waiting for Telemetry Packets'}
+                </span>
+              )}
             </div>
-            <p className="text-xs text-[#8E8E9F] font-sans">
-              {hasLiveData 
-                ? 'Recording real-time Forza physics • Auto-segmented laps on completion'
+            <p className="text-xs text-[#8E8E9F] font-sans mt-0.5">
+              {isRecording 
+                ? `Recording active • Current Lap: #${recordedLapsCount + 1} (${activeLapBufferLength} frames) • Elapsed: ${formatTimer(recordingDurationSec)}`
+                : hasLiveData 
+                ? 'UDP 60Hz stream ready • Click Start Recording when ready to begin stint'
                 : 'UDP socket listening on 0.0.0.0:5300 (Bridge ws://localhost:5301)'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        {/* Action Controls: Start Recording / Stop Recording / Reset */}
+        <div className="flex items-center space-x-2.5">
+          {isRecording && (
+            <div className="hidden sm:flex items-center space-x-3 px-3 py-1.5 bg-[#0D0D14] border border-[#262638] mr-1">
+              <div className="flex items-center space-x-1 text-slate-300 text-xs font-mono">
+                <Timer className="w-3.5 h-3.5 text-amber-400" />
+                <span>{formatTimer(recordingDurationSec)}</span>
+              </div>
+              <div className="h-3 w-px bg-[#262638]" />
+              <div className="flex items-center space-x-1 text-slate-300 text-xs font-mono">
+                <Award className="w-3.5 h-3.5 text-[#00F0FF]" />
+                <span>{recordedLapsCount} {recordedLapsCount === 1 ? 'lap' : 'laps'}</span>
+              </div>
+            </div>
+          )}
+
+          {!isRecording ? (
+            <button
+              onClick={onStartRecording}
+              className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 text-xs font-racing font-bold tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/60 active:scale-95 transition-all cursor-pointer border border-emerald-400/40"
+              title="Begin recording multi-lap stint"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Start Recording</span>
+            </button>
+          ) : (
+            <button
+              onClick={onRequestStopRecording}
+              className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 text-xs font-racing font-bold tracking-wider bg-[#E10600] hover:bg-[#FF1801] text-white shadow-lg shadow-red-950/60 active:scale-95 transition-all cursor-pointer border border-red-500/50"
+              title="Finish stint, enter session details, and open Debrief"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" />
+              <span>Stop Recording & Debrief</span>
+            </button>
+          )}
+
           <button
-            onClick={handleEndStint}
-            disabled={liveFramesBuffer.length < 20}
-            className={`chamfer-btn flex items-center space-x-2 px-5 py-2.5 text-xs font-racing font-bold tracking-wide transition-all shadow-lg ${
-              liveFramesBuffer.length >= 20
-                ? 'bg-[#E10600] hover:bg-[#FF1801] text-white shadow-red-950/60 active:scale-95 cursor-pointer'
-                : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'
+            onClick={onResetRecording}
+            disabled={!isRecording && activeLapBufferLength === 0 && recordedLapsCount === 0}
+            className={`chamfer-btn flex items-center space-x-1.5 px-3.5 py-2.5 text-xs font-racing font-semibold tracking-wide transition-all border ${
+              isRecording || activeLapBufferLength > 0 || recordedLapsCount > 0
+                ? 'bg-[#181824] hover:bg-[#222234] text-slate-300 hover:text-white border-[#2E2E42] cursor-pointer'
+                : 'bg-[#12121A] text-slate-600 border-[#1E1E2A] cursor-not-allowed opacity-50'
             }`}
-            title={liveFramesBuffer.length >= 20 ? 'Analyze and finish stint' : 'No recorded stint frames yet'}
+            title="Discard current recording buffer without saving"
           >
-            <Square className="w-3.5 h-3.5 fill-current" />
-            <span>Complete Stint & Open Debrief ({liveFramesBuffer.length} frames)</span>
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset</span>
           </button>
         </div>
       </div>

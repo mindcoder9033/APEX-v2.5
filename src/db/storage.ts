@@ -1,8 +1,9 @@
 import { UserProgressState, ChallengeResult, GraduationResult } from '../types/curriculum';
-import { LapAnalysis } from '../types/telemetry';
+import { LapAnalysis, StintSession } from '../types/telemetry';
 
 const STORAGE_KEY_PROGRESS = 'apex_user_progress_v2_5';
 const STORAGE_KEY_SESSIONS = 'apex_saved_sessions_v2_5';
+const STORAGE_KEY_STINTS = 'apex_saved_stints_v2_5';
 
 export const INITIAL_PROGRESS_STATE: UserProgressState = {
   unlockedModuleIds: ['mod-1'],
@@ -33,6 +34,58 @@ export function saveUserProgress(state: UserProgressState): void {
     localStorage.setItem(STORAGE_KEY_PROGRESS, JSON.stringify(state));
   } catch (e) {
     console.error('Error saving progress state:', e);
+  }
+}
+
+export function saveStintHistory(stints: StintSession[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_STINTS, JSON.stringify(stints.slice(0, 100)));
+    // Also update flattened lap history for any components that reference it
+    const flattenedLaps = stints.flatMap(s => s.laps);
+    localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(flattenedLaps.slice(0, 200)));
+  } catch (e) {
+    console.error('Error saving stint history:', e);
+  }
+}
+
+export function loadStintHistory(): StintSession[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_STINTS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+    
+    // Migration: If no stints exist yet, check legacy single lap history and convert
+    const legacyLaps = loadLapHistory();
+    if (legacyLaps.length > 0) {
+      const migratedStints: StintSession[] = legacyLaps.map((lap, idx) => ({
+        stintId: lap.stintId || `stint-legacy-${lap.lapId}`,
+        stintNumber: legacyLaps.length - idx,
+        title: lap.sessionTitle || (lap.source === 'academy' ? `Academy Session #${lap.moduleNumber || 1}` : `Practice Run #${legacyLaps.length - idx}`),
+        carName: 'Formula Skip Barber 2000',
+        trackName: 'Lime Rock Park - Full Circuit',
+        source: lap.source || 'practice',
+        recordedAt: lap.recordedAt || new Date().toISOString(),
+        durationSec: lap.lapTimeSec || 60,
+        totalLaps: 1,
+        bestLapTimeSec: lap.lapTimeSec || 0,
+        avgScore: lap.overallScore || 75,
+        laps: [lap],
+        moduleNumber: lap.moduleNumber,
+        moduleTitle: lap.moduleTitle,
+        sessionId: lap.sessionId,
+        sessionTitle: lap.sessionTitle
+      }));
+      saveStintHistory(migratedStints);
+      return migratedStints;
+    }
+    return [];
+  } catch (e) {
+    console.error('Error loading stint history:', e);
+    return [];
   }
 }
 

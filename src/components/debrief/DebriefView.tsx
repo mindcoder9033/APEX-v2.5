@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LapAnalysis } from '../../types/telemetry';
+import { LapAnalysis, StintSession } from '../../types/telemetry';
 import { Module, Session } from '../../types/curriculum';
 import { TelemetryTraces } from '../telemetry/TelemetryTraces';
 import { FrictionCirclePlot } from '../telemetry/FrictionCirclePlot';
@@ -9,13 +9,19 @@ import { ActionPlanCard } from '../adjust/ActionPlanCard';
 import { generateOfficialPdf } from '../../utils/pdfGenerator';
 import { 
   Activity, FileDown, Radio, Award, Trash2, Clock, 
-  Calendar, CheckCircle2, AlertCircle, ArrowRight, BookOpen, Play, Loader2
+  Calendar, CheckCircle2, AlertCircle, ArrowRight, BookOpen, Play, Loader2,
+  Car, MapPin, Star, Layers
 } from 'lucide-react';
 
 interface DebriefViewProps {
-  savedLaps: LapAnalysis[];
-  currentLap: LapAnalysis | null;
-  onSelectLap: (lap: LapAnalysis) => void;
+  savedStints: StintSession[];
+  currentStint: StintSession | null;
+  onSelectStint: (stint: StintSession) => void;
+  onDeleteStint?: (stintId: string) => void;
+  // Legacy / fallback props
+  savedLaps?: LapAnalysis[];
+  currentLap?: LapAnalysis | null;
+  onSelectLap?: (lap: LapAnalysis) => void;
   onDeleteLap?: (lapId: string) => void;
   module?: Module;
   session?: Session;
@@ -25,8 +31,12 @@ interface DebriefViewProps {
 }
 
 export const DebriefView: React.FC<DebriefViewProps> = ({
-  savedLaps,
-  currentLap,
+  savedStints,
+  currentStint,
+  onSelectStint,
+  onDeleteStint,
+  savedLaps = [],
+  currentLap = null,
   onSelectLap,
   onDeleteLap,
   module,
@@ -36,37 +46,54 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
   onNavigateToPractice
 }) => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [selectedLapIndex, setSelectedLapIndex] = useState<number>(0);
 
   // Category tab state: 'academy' vs 'practice'
   const [activeCategory, setActiveCategory] = useState<'academy' | 'practice'>(() => {
-    if (currentLap?.source === 'academy') return 'academy';
-    const hasAcademy = savedLaps.some(l => l.source === 'academy');
+    if (currentStint?.source === 'academy') return 'academy';
+    const hasAcademy = savedStints.some(s => s.source === 'academy');
     return hasAcademy ? 'academy' : 'practice';
   });
 
   const [cursorDist, setCursorDist] = useState<number>(850);
 
-  // Filter laps by category
-  const academyLaps = savedLaps.filter(l => l.source === 'academy');
-  const practiceLaps = savedLaps.filter(l => l.source === 'practice' || !l.source);
+  // Filter stints by category
+  const academyStints = savedStints.filter(s => s.source === 'academy');
+  const practiceStints = savedStints.filter(s => s.source === 'practice' || !s.source);
+  const displayedStints = activeCategory === 'academy' ? academyStints : practiceStints;
 
-  const displayedLaps = activeCategory === 'academy' ? academyLaps : practiceLaps;
-
-  // Selected lap in the active view (null if active category has 0 stints)
-  const selectedLap = currentLap && displayedLaps.some(l => l.lapId === currentLap.lapId)
-    ? currentLap
-    : displayedLaps.length > 0 
-    ? displayedLaps[0] 
+  // Selected stint in the active view
+  const activeSelectedStint = currentStint && displayedStints.some(s => s.stintId === currentStint.stintId)
+    ? currentStint
+    : displayedStints.length > 0
+    ? displayedStints[0]
     : null;
+
+  // Find the index of the fastest / best lap in activeSelectedStint
+  const bestLapIndex = activeSelectedStint?.laps ? activeSelectedStint.laps.reduce((bestIdx, curLap, idx, arr) => {
+    return curLap.lapTimeSec < arr[bestIdx].lapTimeSec ? idx : bestIdx;
+  }, 0) : 0;
+
+  // Reset selectedLapIndex when activeSelectedStint changes
+  useEffect(() => {
+    if (activeSelectedStint?.laps && activeSelectedStint.laps.length > 0) {
+      setSelectedLapIndex(bestLapIndex);
+    } else {
+      setSelectedLapIndex(0);
+    }
+  }, [activeSelectedStint?.stintId]);
+
+  // Selected lap inside the active stint
+  const selectedLap: LapAnalysis | null = activeSelectedStint?.laps?.[selectedLapIndex] || activeSelectedStint?.laps?.[0] || currentLap || null;
 
   // Sync cursor when selectedLap changes
   useEffect(() => {
     if (selectedLap?.frames && selectedLap.frames.length > 0) {
       setCursorDist(selectedLap.frames[Math.floor(selectedLap.frames.length / 2)]?.distance || 850);
     }
-  }, [selectedLap?.lapId]);
+  }, [selectedLap?.lapId, selectedLapIndex]);
 
-  const closestFrame = selectedLap?.frames.find(f => Math.abs(f.distance - cursorDist) < 15) || selectedLap?.frames[0] || null;
+  const closestFrame = selectedLap?.frames?.find(f => Math.abs(f.distance - cursorDist) < 15) || selectedLap?.frames?.[0] || null;
 
   const formatDate = (isoString?: string) => {
     if (!isoString) return 'Recent Stint';
@@ -76,6 +103,13 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
     } catch {
       return 'Recent Stint';
     }
+  };
+
+  const formatLapTime = (sec?: number) => {
+    if (!sec || isNaN(sec)) return '--:--.---';
+    const mins = Math.floor(sec / 60);
+    const remainder = (sec % 60).toFixed(3);
+    return `${mins}:${remainder.padStart(6, '0')}`;
   };
 
   return (
@@ -91,7 +125,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
               Telemetry & Debrief Workspace
             </h1>
             <p className="text-[11px] text-[#8E8E9F] font-sans">
-              Recorded vehicle stint telemetry, friction circles, and Skip Barber corner diagnostics
+              Recorded multi-lap vehicle stints, telemetry traces, friction circles, and Skip Barber corner diagnostics
             </p>
           </div>
         </div>
@@ -101,7 +135,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
           <button
             onClick={() => {
               setActiveCategory('academy');
-              if (academyLaps.length > 0) onSelectLap(academyLaps[0]);
+              if (academyStints.length > 0) onSelectStint(academyStints[0]);
             }}
             className={`flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold transition-all ${
               activeCategory === 'academy'
@@ -114,14 +148,14 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
             <span className={`text-[10px] font-mono px-1.5 py-0.5 font-bold ${
               activeCategory === 'academy' ? 'bg-white/20 text-white' : 'bg-[#202030] text-slate-400'
             }`}>
-              {academyLaps.length}
+              {academyStints.length}
             </span>
           </button>
 
           <button
             onClick={() => {
               setActiveCategory('practice');
-              if (practiceLaps.length > 0) onSelectLap(practiceLaps[0]);
+              if (practiceStints.length > 0) onSelectStint(practiceStints[0]);
             }}
             className={`flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold transition-all ${
               activeCategory === 'practice'
@@ -134,7 +168,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
             <span className={`text-[10px] font-mono px-1.5 py-0.5 font-bold ${
               activeCategory === 'practice' ? 'bg-white/20 text-white' : 'bg-[#202030] text-slate-400'
             }`}>
-              {practiceLaps.length}
+              {practiceStints.length}
             </span>
           </button>
         </div>
@@ -159,12 +193,12 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
               )}
             </h2>
             <span className="text-[11px] font-mono text-slate-400">
-              {displayedLaps.length} {displayedLaps.length === 1 ? 'Stint' : 'Stints'}
+              {displayedStints.length} {displayedStints.length === 1 ? 'Stint' : 'Stints'}
             </span>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {displayedLaps.length === 0 ? (
+            {displayedStints.length === 0 ? (
               <div className="p-6 text-center space-y-3 mt-8">
                 <div className="w-12 h-12 mx-auto bg-[#161622] border border-[#262638] flex items-center justify-center text-slate-500">
                   {activeCategory === 'academy' ? <Award className="w-6 h-6" /> : <Radio className="w-6 h-6" />}
@@ -175,7 +209,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                 <p className="text-[11px] text-slate-500 leading-relaxed max-w-[200px] mx-auto">
                   {activeCategory === 'academy'
                     ? 'Start a session in Curriculum Academy and complete a stint in Step 2 to view debrief telemetry.'
-                    : 'Connect Forza Motorsport and complete a stint in the Live Ingest & Practice tab.'}
+                    : 'Connect Forza Motorsport, start recording, and complete a stint in the Live Ingest & Practice tab.'}
                 </p>
                 {activeCategory === 'academy' && onNavigateToAcademy && (
                   <button
@@ -195,13 +229,14 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                 )}
               </div>
             ) : (
-              displayedLaps.map((lap, idx) => {
-                const isSelected = selectedLap?.lapId === lap.lapId;
+              displayedStints.map((stint, idx) => {
+                const isSelected = activeSelectedStint?.stintId === stint.stintId;
+                const lapCount = stint.laps ? stint.laps.length : stint.totalLaps || 1;
 
                 return (
                   <div
-                    key={lap.lapId || idx}
-                    onClick={() => onSelectLap(lap)}
+                    key={stint.stintId || idx}
+                    onClick={() => onSelectStint(stint)}
                     className={`w-full text-left p-3.5 border transition-all relative overflow-hidden cursor-pointer group ${
                       isSelected
                         ? 'bg-[#181824] border-[#E10600] shadow-lg shadow-red-950/20'
@@ -213,48 +248,63 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                     )}
 
                     <div className="flex items-start justify-between">
-                      <div className="space-y-1 min-w-0 pr-2">
-                        {/* Stint Title / Module info */}
+                      <div className="space-y-1.5 min-w-0 pr-2">
+                        {/* Stint Title / Module info + Lap Count Badge */}
                         <div className="flex items-center space-x-1.5 flex-wrap">
-                          {lap.source === 'academy' && lap.moduleNumber ? (
+                          {stint.source === 'academy' && stint.moduleNumber ? (
                             <span className="text-[10px] font-mono font-bold text-[#FF4D4D] bg-[#E10600]/10 px-1.5 py-0.5 border border-[#E10600]/30">
-                              Mod {lap.moduleNumber}
+                              Mod {stint.moduleNumber}
                             </span>
                           ) : (
                             <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/40 px-1.5 py-0.5 border border-emerald-500/30">
                               Practice
                             </span>
                           )}
-                          <span className="text-xs font-bold text-white truncate max-w-[140px] block" title={lap.sessionTitle || `Stint #${lap.lapNumber}`}>
-                            {lap.sessionTitle || `Stint #${lap.lapNumber}`}
+                          <span className="text-[10px] font-mono font-bold text-[#00F0FF] bg-[#00F0FF]/10 px-1.5 py-0.5 border border-[#00F0FF]/30 flex items-center space-x-1">
+                            <Layers className="w-2.5 h-2.5" />
+                            <span>{lapCount} {lapCount === 1 ? 'Lap' : 'Laps'}</span>
+                          </span>
+                          <span className="text-xs font-bold text-white truncate max-w-[140px] block" title={stint.title || `Stint #${stint.stintNumber}`}>
+                            {stint.title || `Stint #${stint.stintNumber}`}
+                          </span>
+                        </div>
+
+                        {/* Car & Track Details */}
+                        <div className="text-[10px] text-slate-400 flex items-center space-x-2 truncate">
+                          <span className="flex items-center space-x-1">
+                            <MapPin className="w-2.5 h-2.5 text-[#E10600]" />
+                            <span className="truncate max-w-[100px]">{stint.trackName || 'Lime Rock Park'}</span>
+                          </span>
+                          <span>•</span>
+                          <span className="flex items-center space-x-1">
+                            <Car className="w-2.5 h-2.5 text-slate-500" />
+                            <span className="truncate max-w-[90px]">{stint.carName || 'Formula 2000'}</span>
                           </span>
                         </div>
 
                         {/* Stats Row */}
-                        <div className="flex items-center space-x-3 pt-1 text-[11px] font-mono">
-                          <span className="text-white font-bold">{lap.lapTimeSec.toFixed(2)}s</span>
+                        <div className="flex items-center space-x-2.5 pt-0.5 text-[11px] font-mono">
+                          <span className="text-emerald-400 font-bold">Best: {formatLapTime(stint.bestLapTimeSec)}</span>
                           <span className="text-slate-500">•</span>
-                          <span className="text-amber-400 font-bold">{lap.overallScore}% Grade</span>
-                          <span className="text-slate-500">•</span>
-                          <span className="text-[#00F0FF]">{lap.maxSpeedKph} km/h</span>
+                          <span className="text-amber-400 font-bold">{Math.round(stint.avgScore || 0)}% Score</span>
                         </div>
 
                         {/* Timestamp */}
                         <div className="text-[10px] text-slate-500 flex items-center space-x-1 pt-0.5">
                           <Calendar className="w-3 h-3" />
-                          <span>{formatDate(lap.recordedAt)}</span>
+                          <span>{formatDate(stint.recordedAt)}</span>
                         </div>
                       </div>
 
                       {/* Right Delete Action */}
                       <div className="flex flex-col items-end space-y-2 shrink-0">
-                        {onDeleteLap && (
+                        {onDeleteStint && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              onDeleteLap(lap.lapId);
+                              onDeleteStint(stint.stintId);
                             }}
-                            className="p-1 text-slate-500 hover:text-red-400 hover:bg-[#201518] transition-colors"
+                            className="p-1 text-slate-500 hover:text-red-400 hover:bg-[#201518] transition-colors cursor-pointer"
                             title="Delete stint from history"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -271,25 +321,38 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
 
         {/* Right Column: Debrief Workspace for Selected Stint */}
         <div className="flex-1 overflow-y-auto p-6 lg:p-8 bg-[#0A0A0E] space-y-6">
-          {selectedLap ? (
+          {activeSelectedStint && selectedLap ? (
             <>
               {/* Debrief Header Banner */}
-              <div className="p-6 bg-[#12121A] border border-[#232332] flex items-center justify-between shadow-xl hud-bracket">
+              <div className="p-6 bg-[#12121A] border border-[#232332] flex flex-wrap items-center justify-between gap-4 shadow-xl hud-bracket">
                 <div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                     <span className="bg-[#E10600] text-white text-[11px] font-mono font-bold px-2.5 py-0.5 uppercase tracking-wider tabular-nums">
-                      {selectedLap.source === 'academy' ? 'Academy Stint Analysis' : 'Live Practice Stint'}
+                      {activeSelectedStint.source === 'academy' ? 'Academy Stint Analysis' : 'Live Practice Stint'}
                     </span>
                     <span className="text-xs text-[#8E8E9F] font-tech uppercase tracking-wider font-semibold">
-                      {selectedLap.moduleNumber ? `Module ${selectedLap.moduleNumber}: ${selectedLap.moduleTitle}` : 'Full Telemetry Debrief'}
+                      {activeSelectedStint.moduleNumber ? `Module ${activeSelectedStint.moduleNumber}: ${activeSelectedStint.moduleTitle}` : 'Multi-Lap Telemetry Debrief'}
+                    </span>
+                    <span className="text-xs font-mono text-[#00F0FF] bg-[#00F0FF]/10 px-2 py-0.5 border border-[#00F0FF]/30">
+                      {activeSelectedStint.laps.length} {activeSelectedStint.laps.length === 1 ? 'Lap Driven' : 'Laps Driven'}
                     </span>
                   </div>
                   <h2 className="text-xl font-racing font-bold text-white mt-1">
-                    {selectedLap.sessionTitle ? selectedLap.sessionTitle : 'Skip Barber Telemetric Debrief & Corner Diagnosis'}
+                    {activeSelectedStint.title || 'Skip Barber Telemetric Debrief & Corner Diagnosis'}
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5 font-sans">
-                    Recorded on {formatDate(selectedLap.recordedAt)} • Evaluating traction budget, trail-braking smoothness, and apex throttle synchronization.
-                  </p>
+                  <div className="flex items-center space-x-3 text-xs text-slate-400 mt-1 font-sans flex-wrap">
+                    <span className="flex items-center space-x-1">
+                      <MapPin className="w-3 h-3 text-[#E10600]" />
+                      <span className="text-slate-300 font-medium">{activeSelectedStint.trackName}</span>
+                    </span>
+                    <span>•</span>
+                    <span className="flex items-center space-x-1">
+                      <Car className="w-3 h-3 text-[#00F0FF]" />
+                      <span className="text-slate-300 font-medium">{activeSelectedStint.carName}</span>
+                    </span>
+                    <span>•</span>
+                    <span>{formatDate(activeSelectedStint.recordedAt)}</span>
+                  </div>
                 </div>
 
                 <div className="flex items-center space-x-3">
@@ -318,11 +381,55 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                 </div>
               </div>
 
-              {/* Summary KPI Strip */}
+              {/* Multi-Lap Switcher Pill Bar (Visible when Stint has 1 or more laps) */}
+              <div className="p-3 bg-[#12121A] border border-[#232332] flex items-center justify-between flex-wrap gap-2 shadow-lg">
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-tech font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5 pl-1">
+                    <Layers className="w-3.5 h-3.5 text-[#00F0FF]" />
+                    <span>Select Lap to Inspect:</span>
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-2 flex-wrap gap-y-1.5">
+                  {activeSelectedStint.laps.map((lap, idx) => {
+                    const isSelected = selectedLapIndex === idx;
+                    const isBest = idx === bestLapIndex;
+
+                    return (
+                      <button
+                        key={lap.lapId || idx}
+                        onClick={() => setSelectedLapIndex(idx)}
+                        className={`chamfer-tab flex items-center space-x-2 px-3.5 py-1.5 text-xs font-racing font-bold tracking-wider transition-all cursor-pointer border ${
+                          isSelected
+                            ? 'bg-[#E10600] text-white border-red-500 shadow-md shadow-red-950/50'
+                            : 'bg-[#181824] text-slate-300 hover:text-white hover:bg-[#222234] border-[#2A2A3E]'
+                        }`}
+                      >
+                        {isBest && (
+                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        )}
+                        <span>Lap {lap.lapNumber || idx + 1}</span>
+                        <span className={`text-[11px] font-mono px-1.5 py-0.2 rounded ${
+                          isSelected ? 'bg-black/30 text-white' : 'bg-black/20 text-slate-400'
+                        }`}>
+                          {formatLapTime(lap.lapTimeSec)}
+                        </span>
+                        {isBest && (
+                          <span className="text-[10px] font-sans uppercase font-bold text-amber-300">
+                            (Best)
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Summary KPI Strip for Current Selected Lap */}
               <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                 <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                   <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Lap Time</span>
-                  <strong className="text-base font-mono font-bold text-white tabular-nums">{selectedLap.lapTimeSec.toFixed(2)}s</strong>
+                  <strong className="text-base font-mono font-bold text-white tabular-nums">{formatLapTime(selectedLap.lapTimeSec)}</strong>
                 </div>
                 <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                   <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Peak Velocity</span>
@@ -376,7 +483,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                 <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
                   {activeCategory === 'academy'
                     ? 'Start a session in Curriculum Academy and record a stint in Step 2 to view Skip Barber telemetric debriefing.'
-                    : 'Connect Forza Motorsport and complete a live practice stint to view real-time vehicle telemetry analytics.'}
+                    : 'Connect Forza Motorsport, start recording, and complete a live practice stint to view real-time vehicle telemetry analytics.'}
                 </p>
                 <div className="pt-2 flex items-center justify-center space-x-3">
                   {activeCategory === 'academy' && onNavigateToAcademy && (

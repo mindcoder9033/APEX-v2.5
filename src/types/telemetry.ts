@@ -133,6 +133,7 @@ export interface CornerTelemetryAnalysis {
 
 export interface LapAnalysis {
   lapId: string;
+  stintId?: string;
   lapNumber: number;
   lapTimeSec: number;
   isClean: boolean;
@@ -151,5 +152,24 @@ export interface LapAnalysis {
   sessionId?: string;
   sessionTitle?: string;
   recordedAt?: string;
+}
+
+export interface StintSession {
+  stintId: string;
+  stintNumber: number;
+  title: string;
+  carName: string;
+  trackName: string;
+  source: 'academy' | 'practice';
+  recordedAt: string;
+  durationSec: number;
+  totalLaps: number;
+  bestLapTimeSec: number;
+  avgScore: number;
+  laps: LapAnalysis[];
+  moduleNumber?: number;
+  moduleTitle?: string;
+  sessionId?: string;
+  sessionTitle?: string;
 }
 

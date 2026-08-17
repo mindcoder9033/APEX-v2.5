@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Header, AppView } from './components/layout/Header';
 import { CurriculumTree } from './components/curriculum/CurriculumTree';
 import { SessionStepperView } from './components/curriculum/SessionStepperView';
@@ -6,27 +6,39 @@ import { GraduationExamView } from './components/challenge/GraduationExamView';
 import { LivePracticeView } from './components/practice/LivePracticeView';
 import { DebriefView } from './components/debrief/DebriefView';
 import { HistoryView } from './components/history/HistoryView';
+import { StintMetadataModal, StintMetadataInput } from './components/practice/StintMetadataModal';
 import { SKIP_BARBER_MODULES } from './data/skipBarberCurriculum';
 import { 
-  loadUserProgress, saveUserProgress, loadLapHistory, saveLapHistory, 
+  loadUserProgress, saveUserProgress, loadLapHistory, saveLapHistory,
+  loadStintHistory, saveStintHistory,
   recordChallengeCompletion, recordGraduationCompletion 
 } from './db/storage';
 import { Module, Session, UserProgressState, ChallengeResult, GraduationResult } from './types/curriculum';
-import { LapAnalysis, TelemetryFrame } from './types/telemetry';
+import { LapAnalysis, StintSession, TelemetryFrame } from './types/telemetry';
 import { analyzeLapTelemetry } from './engine/physicsEngine';
 import { parseForzaBuffer, convertPacketToTelemetryFrame } from './engine/forzaParser';
 
 export function App() {
   const [currentView, setCurrentView] = useState<AppView>('curriculum');
   const [progress, setProgress] = useState<UserProgressState>(loadUserProgress);
+  const [stintHistory, setStintHistory] = useState<StintSession[]>(loadStintHistory);
   const [savedLaps, setSavedLaps] = useState<LapAnalysis[]>(loadLapHistory);
 
   // Active session and graduation state for Curriculum Academy
   const [activeSessionSelection, setActiveSessionSelection] = useState<{ module: Module; session: Session } | null>(null);
   const [graduatingModule, setGraduatingModule] = useState<Module | null>(null);
 
-  // Latest active lap analysis (null if no laps recorded yet)
+  // Current active Stint & Lap for Debrief
+  const [currentStint, setCurrentStint] = useState<StintSession | null>(() => {
+    const initialStints = loadStintHistory();
+    return initialStints.length > 0 ? initialStints[0] : null;
+  });
+
   const [currentLap, setCurrentLap] = useState<LapAnalysis | null>(() => {
+    const initialStints = loadStintHistory();
+    if (initialStints.length > 0 && initialStints[0].laps.length > 0) {
+      return initialStints[0].laps[0];
+    }
     const initialLaps = loadLapHistory();
     return initialLaps.length > 0 ? initialLaps[0] : null;
   });
@@ -37,11 +49,47 @@ export function App() {
   const [liveFrame, setLiveFrame] = useState<TelemetryFrame | null>(null);
   const [liveFramesBuffer, setLiveFramesBuffer] = useState<TelemetryFrame[]>([]);
 
+  // Multi-Lap Stint Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
+  const [recordingDurationSec, setRecordingDurationSec] = useState<number>(0);
+  const [activeStintLaps, setActiveStintLaps] = useState<LapAnalysis[]>([]);
+  const [activeLapBufferLength, setActiveLapBufferLength] = useState<number>(0);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+
+  // Synchronous refs for the high-frequency 60Hz WebSocket callback
+  const isRecordingRef = useRef(false);
+  const currentLapBufferRef = useRef<TelemetryFrame[]>([]);
+  const activeStintLapsRef = useRef<LapAnalysis[]>([]);
+  const currentLapNumRef = useRef<number | null>(null);
+
+  // Keep refs synced with state
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
+
+  useEffect(() => {
+    activeStintLapsRef.current = activeStintLaps;
+  }, [activeStintLaps]);
+
+  // Live recording timer ticker
+  useEffect(() => {
+    let timer: any = null;
+    if (isRecording && recordingStartTime) {
+      timer = setInterval(() => {
+        setRecordingDurationSec(Math.max(0, Math.floor((Date.now() - recordingStartTime) / 1000)));
+      }, 500);
+    } else {
+      setRecordingDurationSec(0);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isRecording, recordingStartTime]);
+
   // Connect to local Node.js UDP WebSocket bridge with resilient auto-reconnect
   useEffect(() => {
     let ws: WebSocket | null = null;
-    let lapBuffer: TelemetryFrame[] = [];
-    let currentLapNum: number | null = null;
     let reconnectTimer: any = null;
     let packetWatchdogTimer: any = null;
     let isMounted = true;
@@ -81,15 +129,33 @@ export function App() {
                 setLiveFrame(frame);
                 setLiveFramesBuffer(prev => [...prev.slice(-300), frame]);
 
-                // Automatic lap segmentation when lapNumber advances
-                if (currentLapNum !== null && packet.lapNumber > currentLapNum && lapBuffer.length > 50) {
-                  const completedLap = analyzeLapTelemetry(lapBuffer);
-                  handleSaveLap(completedLap);
-                  lapBuffer = [frame];
-                } else if (packet.isRaceOn) {
-                  lapBuffer.push(frame);
+                // Active Stint Recording Logic
+                if (isRecordingRef.current) {
+                  currentLapBufferRef.current.push(frame);
+                  setActiveLapBufferLength(currentLapBufferRef.current.length);
+
+                  // Automatic lap segmentation when lapNumber advances
+                  if (
+                    currentLapNumRef.current !== null && 
+                    packet.lapNumber > currentLapNumRef.current && 
+                    currentLapBufferRef.current.length >= 30
+                  ) {
+                    const completedLap = analyzeLapTelemetry(currentLapBufferRef.current);
+                    const lapNumber = activeStintLapsRef.current.length + 1;
+                    const analyzedLap: LapAnalysis = {
+                      ...completedLap,
+                      lapNumber,
+                      source: 'practice',
+                      recordedAt: new Date().toISOString()
+                    };
+                    
+                    activeStintLapsRef.current = [...activeStintLapsRef.current, analyzedLap];
+                    setActiveStintLaps(activeStintLapsRef.current);
+                    currentLapBufferRef.current = [frame];
+                    setActiveLapBufferLength(1);
+                  }
+                  currentLapNumRef.current = packet.lapNumber;
                 }
-                currentLapNum = packet.lapNumber;
               }
             }
           }
@@ -131,26 +197,168 @@ export function App() {
     };
   }, []);
 
+  // --- Stint Recording Handlers ---
+  const handleStartRecording = () => {
+    setIsRecording(true);
+    isRecordingRef.current = true;
+    setRecordingStartTime(Date.now());
+    setActiveStintLaps([]);
+    activeStintLapsRef.current = [];
+    currentLapBufferRef.current = [];
+    setActiveLapBufferLength(0);
+    currentLapNumRef.current = null;
+  };
+
+  const handleRequestStopRecording = () => {
+    setIsSaveModalOpen(true);
+  };
+
+  const handleConfirmSaveStint = (metadata: StintMetadataInput) => {
+    const finalLaps: LapAnalysis[] = [...activeStintLapsRef.current];
+    const trailingBuffer = currentLapBufferRef.current;
+
+    // If there is a trailing in-progress lap with sufficient frames (>= 30) or if 0 laps completed so far
+    if (trailingBuffer.length >= 30 || (finalLaps.length === 0 && trailingBuffer.length >= 15)) {
+      const trailingLap = analyzeLapTelemetry(trailingBuffer);
+      finalLaps.push({
+        ...trailingLap,
+        lapNumber: finalLaps.length + 1,
+        source: 'practice',
+        recordedAt: new Date().toISOString()
+      });
+    } else if (finalLaps.length === 0) {
+      // Fallback if stopped with minimal data
+      const fallbackFrames = liveFramesBuffer.length >= 20 ? liveFramesBuffer : [];
+      const fallbackLap = analyzeLapTelemetry(fallbackFrames);
+      finalLaps.push({
+        ...fallbackLap,
+        lapNumber: 1,
+        source: 'practice',
+        recordedAt: new Date().toISOString()
+      });
+    }
+
+    const durationSec = recordingStartTime 
+      ? Math.max(1, Math.round((Date.now() - recordingStartTime) / 1000))
+      : finalLaps.reduce((acc, l) => acc + l.lapTimeSec, 0);
+
+    const bestLapTimeSec = finalLaps.reduce((best, l) => 
+      (best === 0 || l.lapTimeSec < best) ? l.lapTimeSec : best
+    , 0);
+
+    const avgScore = finalLaps.length > 0 
+      ? finalLaps.reduce((sum, l) => sum + (l.overallScore || 0), 0) / finalLaps.length 
+      : 75;
+
+    const stintId = `stint-${Date.now()}`;
+    const stintNumber = stintHistory.length + 1;
+
+    const newStint: StintSession = {
+      stintId,
+      stintNumber,
+      title: metadata.title || `Practice Stint #${stintNumber}`,
+      carName: metadata.carName || 'Formula Skip Barber 2000',
+      trackName: metadata.trackName || 'Lime Rock Park - Full Circuit',
+      source: 'practice',
+      recordedAt: new Date().toISOString(),
+      durationSec,
+      totalLaps: finalLaps.length,
+      bestLapTimeSec,
+      avgScore,
+      laps: finalLaps.map(l => ({ ...l, stintId }))
+    };
+
+    const updatedStints = [newStint, ...stintHistory.filter(s => s.stintId !== stintId)];
+    setStintHistory(updatedStints);
+    saveStintHistory(updatedStints);
+
+    setCurrentStint(newStint);
+    if (newStint.laps.length > 0) {
+      setCurrentLap(newStint.laps[0]);
+    }
+
+    // Reset recording state
+    setIsRecording(false);
+    isRecordingRef.current = false;
+    setRecordingStartTime(null);
+    setActiveStintLaps([]);
+    activeStintLapsRef.current = [];
+    currentLapBufferRef.current = [];
+    setActiveLapBufferLength(0);
+    setIsSaveModalOpen(false);
+
+    // Smoothly transition to debrief
+    setCurrentView('debrief');
+  };
+
+  const handleSkipAndSaveStint = () => {
+    const nextStintNum = stintHistory.length + 1;
+    handleConfirmSaveStint({
+      title: `Practice Stint #${nextStintNum}`,
+      carName: 'Formula Skip Barber 2000',
+      trackName: 'Lime Rock Park - Full Circuit'
+    });
+  };
+
+  const handleResetRecording = () => {
+    setIsRecording(false);
+    isRecordingRef.current = false;
+    setRecordingStartTime(null);
+    setActiveStintLaps([]);
+    activeStintLapsRef.current = [];
+    currentLapBufferRef.current = [];
+    setActiveLapBufferLength(0);
+    setIsSaveModalOpen(false);
+  };
+
+  const handleDeleteStint = (stintId: string) => {
+    const updated = stintHistory.filter(s => s.stintId !== stintId);
+    setStintHistory(updated);
+    saveStintHistory(updated);
+    if (currentStint?.stintId === stintId) {
+      setCurrentStint(updated.length > 0 ? updated[0] : null);
+      setCurrentLap(updated.length > 0 && updated[0].laps.length > 0 ? updated[0].laps[0] : null);
+    }
+  };
+
+  // --- Academy Lap Handlers ---
   const handleSaveLap = (lap: LapAnalysis) => {
     setCurrentLap(lap);
     setSavedLaps(prev => {
-      // Avoid duplicate by lapId if already exists
       const filtered = prev.filter(l => l.lapId !== lap.lapId);
       const updated = [lap, ...filtered];
       saveLapHistory(updated);
       return updated;
     });
-  };
 
-  const handleDeleteLap = (lapId: string) => {
-    setSavedLaps(prev => {
-      const updated = prev.filter(l => l.lapId !== lapId);
-      saveLapHistory(updated);
-      if (currentLap?.lapId === lapId) {
-        setCurrentLap(updated.length > 0 ? updated[0] : null);
-      }
+    // Also wrap in a StintSession for Academy debrief
+    const acadStintId = `stint-acad-${lap.lapId}`;
+    const acadStint: StintSession = {
+      stintId: acadStintId,
+      stintNumber: stintHistory.length + 1,
+      title: lap.sessionTitle || `Module ${lap.moduleNumber || 1} Academy Session`,
+      carName: 'Formula Skip Barber 2000',
+      trackName: 'Lime Rock Park - Full Circuit',
+      source: 'academy',
+      recordedAt: lap.recordedAt || new Date().toISOString(),
+      durationSec: lap.lapTimeSec || 60,
+      totalLaps: 1,
+      bestLapTimeSec: lap.lapTimeSec,
+      avgScore: lap.overallScore,
+      laps: [{ ...lap, stintId: acadStintId }],
+      moduleNumber: lap.moduleNumber,
+      moduleTitle: lap.moduleTitle,
+      sessionId: lap.sessionId,
+      sessionTitle: lap.sessionTitle
+    };
+
+    setStintHistory(prev => {
+      const filtered = prev.filter(s => s.stintId !== acadStintId);
+      const updated = [acadStint, ...filtered];
+      saveStintHistory(updated);
       return updated;
     });
+    setCurrentStint(acadStint);
   };
 
   const handleChallengePassed = (result: ChallengeResult, nextSessionId: string | null) => {
@@ -187,7 +395,6 @@ export function App() {
         currentView={currentView}
         setCurrentView={(view) => {
           setCurrentView(view);
-          // If navigating explicitly to another main view tab, keep or reset subselection smoothly
         }}
         isUdpConnected={isUdpConnected}
         isBridgeConnected={isBridgeConnected}
@@ -240,19 +447,30 @@ export function App() {
             isUdpConnected={isUdpConnected}
             liveFrame={liveFrame}
             liveFramesBuffer={liveFramesBuffer}
-            onFinishStint={(lap) => {
-              handleSaveLap(lap);
-              setCurrentView('debrief');
-            }}
+            isRecording={isRecording}
+            recordingDurationSec={recordingDurationSec}
+            recordedLapsCount={activeStintLaps.length}
+            activeLapBufferLength={activeLapBufferLength}
+            onStartRecording={handleStartRecording}
+            onRequestStopRecording={handleRequestStopRecording}
+            onResetRecording={handleResetRecording}
           />
         )}
 
         {currentView === 'debrief' && (
           <DebriefView
+            savedStints={stintHistory}
+            currentStint={currentStint}
+            onSelectStint={(stint) => {
+              setCurrentStint(stint);
+              if (stint.laps.length > 0) {
+                setCurrentLap(stint.laps[0]);
+              }
+            }}
+            onDeleteStint={handleDeleteStint}
             savedLaps={savedLaps}
             currentLap={currentLap}
             onSelectLap={setCurrentLap}
-            onDeleteLap={handleDeleteLap}
             module={activeSessionSelection?.module}
             session={activeSessionSelection?.session}
             onNavigateToAcademy={() => setCurrentView('curriculum')}
@@ -265,13 +483,35 @@ export function App() {
             progress={progress}
             modules={SKIP_BARBER_MODULES}
             savedLaps={savedLaps}
+            savedStints={stintHistory}
             onSelectLapForDebrief={(lap) => {
               setCurrentLap(lap);
+              setCurrentView('debrief');
+            }}
+            onSelectStintForDebrief={(stint) => {
+              setCurrentStint(stint);
+              if (stint.laps.length > 0) {
+                setCurrentLap(stint.laps[0]);
+              }
               setCurrentView('debrief');
             }}
           />
         )}
       </main>
+
+      {/* Save Stint Metadata Modal */}
+      <StintMetadataModal
+        isOpen={isSaveModalOpen}
+        stintNumber={stintHistory.length + 1}
+        durationSec={recordingDurationSec}
+        laps={
+          activeStintLaps.length > 0
+            ? activeStintLaps
+            : [analyzeLapTelemetry(currentLapBufferRef.current.length >= 20 ? currentLapBufferRef.current : liveFramesBuffer)]
+        }
+        onSave={handleConfirmSaveStint}
+        onSkip={handleSkipAndSaveStint}
+      />
     </div>
   );
 }
