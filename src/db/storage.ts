@@ -38,9 +38,7 @@ export function saveUserProgress(state: UserProgressState): void {
 
 export function saveLapHistory(laps: LapAnalysis[]): void {
   try {
-    const existing = loadLapHistory();
-    const combined = [...laps, ...existing].slice(0, 100); // keep last 100 laps
-    localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(combined));
+    localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(laps.slice(0, 100)));
   } catch (e) {
     console.error('Error saving lap history:', e);
   }

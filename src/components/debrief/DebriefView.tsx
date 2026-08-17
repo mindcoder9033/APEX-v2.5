@@ -49,12 +49,12 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
 
   const displayedLaps = activeCategory === 'academy' ? academyLaps : practiceLaps;
 
-  // Selected lap in the active view
+  // Selected lap in the active view (null if active category has 0 stints)
   const selectedLap = currentLap && displayedLaps.some(l => l.lapId === currentLap.lapId)
     ? currentLap
     : displayedLaps.length > 0 
     ? displayedLaps[0] 
-    : currentLap;
+    : null;
 
   // Sync cursor when selectedLap changes
   useEffect(() => {
@@ -349,14 +349,36 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
               <ActionPlanCard actionItems={selectedLap.actionItems} />
             </>
           ) : (
-            <div className="p-12 rounded-3xl bg-[#14141E] border border-[#232332] text-center space-y-4 shadow-2xl max-w-2xl mx-auto my-12">
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-[#1A1A28] border border-[#2D2D44] flex items-center justify-center">
-                <Radio className="w-8 h-8 text-amber-400 animate-pulse" />
+            <div className="flex-1 flex items-center justify-center min-h-[450px]">
+              <div className="p-10 rounded-3xl bg-[#12121A] border border-[#232332] text-center space-y-4 shadow-2xl max-w-lg mx-auto">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-[#181826] border border-[#2A2A3E] flex items-center justify-center">
+                  <Radio className="w-8 h-8 text-slate-500 animate-pulse" />
+                </div>
+                <h3 className="text-lg font-bold text-white">No Stint Selected or Recorded</h3>
+                <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                  {activeCategory === 'academy'
+                    ? 'Start a session in Curriculum Academy and record a stint in Step 2 to view Skip Barber telemetric debriefing.'
+                    : 'Connect Forza Motorsport and complete a live practice stint to view real-time vehicle telemetry analytics.'}
+                </p>
+                <div className="pt-2 flex items-center justify-center space-x-3">
+                  {activeCategory === 'academy' && onNavigateToAcademy && (
+                    <button
+                      onClick={onNavigateToAcademy}
+                      className="px-4 py-2 rounded-xl bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold shadow-lg shadow-red-950/50 cursor-pointer transition-all"
+                    >
+                      Go to Curriculum Academy
+                    </button>
+                  )}
+                  {activeCategory === 'practice' && onNavigateToPractice && (
+                    <button
+                      onClick={onNavigateToPractice}
+                      className="px-4 py-2 rounded-xl bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold shadow-lg shadow-red-950/50 cursor-pointer transition-all"
+                    >
+                      Go to Live Practice
+                    </button>
+                  )}
+                </div>
               </div>
-              <h2 className="text-xl font-bold text-white">No Stint Selected</h2>
-              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                Select a stint from the left column or run a practice stint in Curriculum Academy or Live Ingest to generate full telemetric traces.
-              </p>
             </div>
           )}
         </div>
