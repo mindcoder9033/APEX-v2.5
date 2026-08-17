@@ -3,7 +3,7 @@ import { TelemetryFrame, LapAnalysis } from '../../types/telemetry';
 import { analyzeLapTelemetry } from '../../engine/physicsEngine';
 import { FrictionCirclePlot } from '../telemetry/FrictionCirclePlot';
 import { TrackMapViewer } from '../telemetry/TrackMapViewer';
-import { Radio, Square, WifiOff, CheckCircle2, Info } from 'lucide-react';
+import { Radio, Square, WifiOff } from 'lucide-react';
 
 interface LivePracticeViewProps {
   isUdpConnected: boolean;
@@ -20,7 +20,12 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
 }) => {
   const handleEndStint = () => {
     if (liveFramesBuffer.length < 20) return;
-    const lapAnalysis = analyzeLapTelemetry(liveFramesBuffer);
+    const baseLap = analyzeLapTelemetry(liveFramesBuffer);
+    const lapAnalysis: LapAnalysis = {
+      ...baseLap,
+      source: 'practice',
+      recordedAt: new Date().toISOString()
+    };
     onFinishStint(lapAnalysis);
   };
 
@@ -79,41 +84,6 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Disconnected UDP Setup Card */}
-      {!hasLiveData && (
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-[#141420] via-[#101018] to-[#141420] border border-amber-500/30 shadow-lg space-y-4">
-          <div className="flex items-center space-x-2.5 text-amber-400">
-            <Info className="w-5 h-5" />
-            <h3 className="text-sm font-racing font-bold uppercase tracking-wider">
-              Connect Forza Motorsport Telemetry to Begin Live Practice
-            </h3>
-          </div>
-          <p className="text-xs text-slate-300 leading-relaxed max-w-3xl font-sans">
-            APEX runs on live 60Hz vehicle telemetry from Forza Motorsport / Forza Horizon. To start streaming, go to <strong>Settings &gt; Gameplay / HUD &gt; Data Out</strong> in Forza:
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-            <div className="bg-[#0C0C12] p-3.5 rounded-xl border border-[#202030]">
-              <span className="text-slate-500 block text-[10px] font-tech uppercase tracking-wider font-semibold">Data Out</span>
-              <strong className="text-emerald-400 text-sm font-hud font-bold">ON</strong>
-            </div>
-            <div className="bg-[#0C0C12] p-3.5 rounded-xl border border-[#202030]">
-              <span className="text-slate-500 block text-[10px] font-tech uppercase tracking-wider font-semibold">Data Out IP Address</span>
-              <strong className="text-[#00F0FF] text-sm font-mono block">192.168.1.41</strong>
-              <span className="text-[9px] text-slate-400 font-sans">(or 127.0.0.1 for local PC)</span>
-            </div>
-            <div className="bg-[#0C0C12] p-3.5 rounded-xl border border-[#202030]">
-              <span className="text-slate-500 block text-[10px] font-tech uppercase tracking-wider font-semibold">UDP Port</span>
-              <strong className="text-amber-300 text-sm font-mono block">5300</strong>
-            </div>
-            <div className="bg-[#0C0C12] p-3.5 rounded-xl border border-[#202030]">
-              <span className="text-slate-500 block text-[10px] font-tech uppercase tracking-wider font-semibold">Packet Format</span>
-              <strong className="text-purple-300 text-sm font-hud-clean font-bold block">CarDash</strong>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Primary Gauge Cluster */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

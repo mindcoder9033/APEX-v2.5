@@ -91,7 +91,16 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
       : [];
 
     if (framesToAnalyze.length >= 20) {
-      const analyzedLap = analyzeLapTelemetry(framesToAnalyze);
+      const baseLap = analyzeLapTelemetry(framesToAnalyze);
+      const analyzedLap: LapAnalysis = {
+        ...baseLap,
+        source: 'academy',
+        moduleNumber: module.moduleNumber,
+        moduleTitle: module.title,
+        sessionId: session.id,
+        sessionTitle: session.title,
+        recordedAt: new Date().toISOString()
+      };
       setSessionLaps(prev => [...prev, analyzedLap]);
       setLastSavedStintLap(analyzedLap);
       onSaveLap(analyzedLap);

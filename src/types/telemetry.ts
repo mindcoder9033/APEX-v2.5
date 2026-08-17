@@ -145,4 +145,11 @@ export interface LapAnalysis {
   corners: CornerTelemetryAnalysis[];
   frames: TelemetryFrame[];
   actionItems: string[];
+  source?: 'academy' | 'practice';
+  moduleNumber?: number;
+  moduleTitle?: string;
+  sessionId?: string;
+  sessionTitle?: string;
+  recordedAt?: string;
 }
+

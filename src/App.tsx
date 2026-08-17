@@ -136,8 +136,21 @@ export function App() {
   const handleSaveLap = (lap: LapAnalysis) => {
     setCurrentLap(lap);
     setSavedLaps(prev => {
-      const updated = [lap, ...prev];
+      // Avoid duplicate by lapId if already exists
+      const filtered = prev.filter(l => l.lapId !== lap.lapId);
+      const updated = [lap, ...filtered];
       saveLapHistory(updated);
+      return updated;
+    });
+  };
+
+  const handleDeleteLap = (lapId: string) => {
+    setSavedLaps(prev => {
+      const updated = prev.filter(l => l.lapId !== lapId);
+      saveLapHistory(updated);
+      if (currentLap?.lapId === lapId) {
+        setCurrentLap(updated.length > 0 ? updated[0] : null);
+      }
       return updated;
     });
   };
@@ -238,10 +251,15 @@ export function App() {
 
         {currentView === 'debrief' && (
           <DebriefView
-            lap={currentLap}
+            savedLaps={savedLaps}
+            currentLap={currentLap}
+            onSelectLap={setCurrentLap}
+            onDeleteLap={handleDeleteLap}
             module={activeSessionSelection?.module}
             session={activeSessionSelection?.session}
             onOpenPdfModal={() => setIsPdfModalOpen(true)}
+            onNavigateToAcademy={() => setCurrentView('curriculum')}
+            onNavigateToPractice={() => setCurrentView('practice')}
           />
         )}
 
