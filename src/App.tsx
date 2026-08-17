@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Header, AppView } from './components/layout/Header';
 import { CurriculumTree } from './components/curriculum/CurriculumTree';
-import { SessionDetailModal } from './components/curriculum/SessionDetailModal';
-import { GraduationExamModal } from './components/challenge/GraduationExamModal';
+import { SessionStepperView } from './components/curriculum/SessionStepperView';
+import { GraduationExamView } from './components/challenge/GraduationExamView';
 import { LivePracticeView } from './components/practice/LivePracticeView';
 import { DebriefView } from './components/debrief/DebriefView';
 import { HistoryView } from './components/history/HistoryView';
@@ -22,7 +22,7 @@ export function App() {
   const [progress, setProgress] = useState<UserProgressState>(loadUserProgress);
   const [savedLaps, setSavedLaps] = useState<LapAnalysis[]>(loadLapHistory);
 
-  // Active session and graduation modals
+  // Active session and graduation state for Curriculum Academy
   const [activeSessionSelection, setActiveSessionSelection] = useState<{ module: Module; session: Session } | null>(null);
   const [graduatingModule, setGraduatingModule] = useState<Module | null>(null);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
@@ -174,23 +174,54 @@ export function App() {
       {/* Top Application Header */}
       <Header
         currentView={currentView}
-        setCurrentView={setCurrentView}
+        setCurrentView={(view) => {
+          setCurrentView(view);
+          // If navigating explicitly to another main view tab, keep or reset subselection smoothly
+        }}
         isUdpConnected={isUdpConnected}
         isBridgeConnected={isBridgeConnected}
-        onExportPdf={() => setIsPdfModalOpen(true)}
         totalMasteredModules={progress.graduatedModuleIds.length}
-        hasActiveLap={currentLap !== null}
       />
 
       {/* Main View Container */}
       <main className="flex-1 flex overflow-hidden">
         {currentView === 'curriculum' && (
-          <CurriculumTree
-            modules={SKIP_BARBER_MODULES}
-            progress={progress}
-            onSelectSession={(module, session) => setActiveSessionSelection({ module, session })}
-            onStartGraduationTest={(module) => setGraduatingModule(module)}
-          />
+          activeSessionSelection ? (
+            <SessionStepperView
+              module={activeSessionSelection.module}
+              session={activeSessionSelection.session}
+              progress={progress}
+              isUdpConnected={isUdpConnected}
+              liveFrame={liveFrame}
+              liveFramesBuffer={liveFramesBuffer}
+              onBack={() => setActiveSessionSelection(null)}
+              onChallengePassed={handleChallengePassed}
+              onSaveLap={handleSaveLap}
+            />
+          ) : graduatingModule ? (
+            <GraduationExamView
+              module={graduatingModule}
+              nextModule={
+                SKIP_BARBER_MODULES.find(m => m.moduleNumber === graduatingModule.moduleNumber + 1) || null
+              }
+              progress={progress}
+              onBack={() => setGraduatingModule(null)}
+              onGraduationPassed={handleGraduationPassed}
+            />
+          ) : (
+            <CurriculumTree
+              modules={SKIP_BARBER_MODULES}
+              progress={progress}
+              onSelectSession={(module, session) => {
+                setGraduatingModule(null);
+                setActiveSessionSelection({ module, session });
+              }}
+              onStartGraduationTest={(module) => {
+                setActiveSessionSelection(null);
+                setGraduatingModule(module);
+              }}
+            />
+          )
         )}
 
         {currentView === 'practice' && (
@@ -227,32 +258,7 @@ export function App() {
         )}
       </main>
 
-      {/* 5-Stage Coaching Loop Session Detail Modal */}
-      {activeSessionSelection && (
-        <SessionDetailModal
-          module={activeSessionSelection.module}
-          session={activeSessionSelection.session}
-          progress={progress}
-          onClose={() => setActiveSessionSelection(null)}
-          onChallengePassed={handleChallengePassed}
-          onSaveLap={handleSaveLap}
-        />
-      )}
-
-      {/* Module Graduation Exam Modal */}
-      {graduatingModule && (
-        <GraduationExamModal
-          module={graduatingModule}
-          nextModule={
-            SKIP_BARBER_MODULES.find(m => m.moduleNumber === graduatingModule.moduleNumber + 1) || null
-          }
-          progress={progress}
-          onClose={() => setGraduatingModule(null)}
-          onGraduationPassed={handleGraduationPassed}
-        />
-      )}
-
-      {/* Race Engineer PDF Export Modal */}
+      {/* Race Engineer PDF Export Modal (triggered directly from Debrief view) */}
       {isPdfModalOpen && currentLap && (
         <PdfReportModal
           lap={currentLap}
@@ -266,3 +272,4 @@ export function App() {
 }
 
 export default App;
+

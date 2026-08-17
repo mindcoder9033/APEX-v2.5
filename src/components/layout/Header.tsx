@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Award, BarChart3, FileDown, Radio } from 'lucide-react';
+import { Activity, Award, BarChart3, Radio } from 'lucide-react';
 
 export type AppView = 'curriculum' | 'practice' | 'debrief' | 'history';
 
@@ -8,9 +8,7 @@ interface HeaderProps {
   setCurrentView: (view: AppView) => void;
   isUdpConnected: boolean;
   isBridgeConnected?: boolean;
-  onExportPdf: () => void;
   totalMasteredModules: number;
-  hasActiveLap?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,9 +16,7 @@ export const Header: React.FC<HeaderProps> = ({
   setCurrentView,
   isUdpConnected,
   isBridgeConnected = false,
-  onExportPdf,
-  totalMasteredModules,
-  hasActiveLap = false
+  totalMasteredModules
 }) => {
   return (
     <header className="h-16 bg-[#0E0E14] border-b border-[#232332] px-6 flex items-center justify-between select-none z-30 shrink-0">
@@ -97,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
       </nav>
 
-      {/* Right Controls: Ingest Status, PDF Export */}
+      {/* Right Controls: Ingest Status */}
       <div className="flex items-center space-x-3">
         {/* UDP Connection Status Pill */}
         <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg border text-xs font-mono font-medium ${
@@ -122,22 +118,8 @@ export const Header: React.FC<HeaderProps> = ({
               : 'Bridge Offline (Port 5300)'}
           </span>
         </div>
-
-        {/* PDF Export Button */}
-        <button
-          onClick={onExportPdf}
-          disabled={!hasActiveLap}
-          className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-            hasActiveLap
-              ? 'bg-gradient-to-r from-[#E10600] to-[#B30500] hover:from-[#FF1801] hover:to-[#CC0600] text-white shadow-md shadow-red-950/60 border border-red-400/30 active:scale-95'
-              : 'bg-[#181822] text-slate-500 border border-[#242436] cursor-not-allowed'
-          }`}
-          title={hasActiveLap ? 'Export Official PDF Report' : 'Complete at least one lap to export PDF'}
-        >
-          <FileDown className="w-3.5 h-3.5" />
-          <span>Export Debrief PDF</span>
-        </button>
       </div>
     </header>
   );
 };
+
