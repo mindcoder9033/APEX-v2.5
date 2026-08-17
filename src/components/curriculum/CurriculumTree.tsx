@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Module, Session, UserProgressState } from '../../types/curriculum';
 import { 
   Lock, CheckCircle2, ChevronRight, Award, Trophy, Play, 
@@ -19,20 +19,6 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
   onStartGraduationTest
 }) => {
   const [selectedModuleId, setSelectedModuleId] = useState<string>(modules[0]?.id || 'mod-1');
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
-    return typeof document !== 'undefined' ? Boolean(document.fullscreenElement) : false;
-  });
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
-  }, []);
 
   const activeModule = modules.find(m => m.id === selectedModuleId) || modules[0];
   const isModuleUnlocked = (modId: string) => progress.unlockedModuleIds.includes(modId);
@@ -135,29 +121,36 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
       </div>
 
       {/* Main Module Detail & Sessions Progression View */}
-      <div className="flex-1 overflow-y-auto p-5 sm:p-6 flex flex-col space-y-4">
-        {/* Module Header Banner - Only visible when APEX is in fullscreen mode */}
-        {isFullscreen && (
-          <div className="p-4 sm:p-5 bg-gradient-to-r from-[#161622] to-[#12121A] border border-[#2A2A3E] relative overflow-hidden shadow-xl hud-bracket transition-all">
-            <div className="absolute right-0 top-0 bottom-0 w-80 bg-gradient-to-l from-[#E10600]/10 to-transparent pointer-events-none" />
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 flex flex-col space-y-3.5">
+        {/* Module Header Banner */}
+        <div className="p-3.5 sm:p-4 bg-gradient-to-r from-[#161622] to-[#12121A] border border-[#2A2A3E] relative overflow-hidden shadow-xl hud-bracket shrink-0">
+          <div className="absolute right-0 top-0 bottom-0 w-80 bg-gradient-to-l from-[#E10600]/10 to-transparent pointer-events-none" />
 
-            <div className="flex flex-wrap items-center gap-2.5 mb-1.5">
-              <span className="bg-[#E10600] text-white text-[11px] font-mono font-bold px-2.5 py-0.5 uppercase tracking-wider">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center space-x-3">
+              <span className="bg-[#E10600] text-white text-[11px] font-mono font-bold px-2 py-0.5 uppercase tracking-wider shrink-0">
                 Module {activeModule.moduleNumber}
               </span>
-              <span className="text-xs text-[#FF4D4D] font-medium">• {activeModule.tagline}</span>
-              {isModuleGraduated(activeModule.id) && (
-                <span className="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 border border-emerald-500/40 flex items-center space-x-1 ml-auto">
-                  <Trophy className="w-3 h-3 text-amber-400" />
-                  <span>GRADUATED & CERTIFIED</span>
-                </span>
-              )}
+              <h1 className="text-base sm:text-lg font-display font-black text-white tracking-wide">
+                {activeModule.title}
+              </h1>
             </div>
 
-            <h1 className="text-xl font-display font-black text-white tracking-wide">{activeModule.title}</h1>
-            <p className="text-xs text-[#A0A0B5] mt-1 max-w-3xl leading-relaxed">{activeModule.description}</p>
+            {isModuleGraduated(activeModule.id) && (
+              <span className="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2 py-0.5 border border-emerald-500/40 flex items-center space-x-1 shrink-0">
+                <Trophy className="w-3 h-3 text-amber-400" />
+                <span>GRADUATED & CERTIFIED</span>
+              </span>
+            )}
           </div>
-        )}
+
+          <p className="text-xs text-[#FF4D4D] font-medium mt-1">
+            {activeModule.tagline}
+          </p>
+          <p className="text-[11px] text-[#A0A0B5] mt-1 max-w-3xl leading-relaxed">
+            {activeModule.description}
+          </p>
+        </div>
 
         {/* Structured Sessions Progression List */}
         <div>
