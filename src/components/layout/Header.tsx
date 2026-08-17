@@ -1,5 +1,5 @@
-import React from 'react';
-import { Activity, Award, BarChart3, Radio } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Activity, Award, BarChart3, Radio, Maximize2, Minimize2 } from 'lucide-react';
 
 export type AppView = 'curriculum' | 'practice' | 'debrief' | 'history';
 
@@ -18,6 +18,33 @@ export const Header: React.FC<HeaderProps> = ({
   isBridgeConnected = false,
   totalMasteredModules
 }) => {
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
+    return typeof document !== 'undefined' ? Boolean(document.fullscreenElement) : false;
+  });
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.warn('Fullscreen request failed or was blocked by browser permissions:', err);
+    }
+  };
+
   return (
     <header className="h-16 bg-[#0E0E14] border-b border-[#232332] px-6 flex items-center justify-between select-none z-30 shrink-0">
       {/* Brand Logo */}
@@ -93,8 +120,8 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
       </nav>
 
-      {/* Right Controls: Ingest Status */}
-      <div className="flex items-center space-x-3">
+      {/* Right Controls: Ingest Status & Actions */}
+      <div className="flex items-center space-x-2.5">
         {/* UDP Connection Status Pill */}
         <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg border text-xs font-mono font-medium ${
           isUdpConnected
@@ -118,6 +145,24 @@ export const Header: React.FC<HeaderProps> = ({
               : 'Bridge Offline (Port 5300)'}
           </span>
         </div>
+
+        {/* Fullscreen Toggle Button */}
+        <button
+          onClick={toggleFullscreen}
+          title={isFullscreen ? 'Exit Fullscreen (Esc)' : 'Enter Fullscreen (F11)'}
+          aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+          className={`p-2 rounded-lg border text-xs transition-all flex items-center justify-center ${
+            isFullscreen
+              ? 'bg-[#E10600]/15 border-[#E10600]/40 text-[#FF5C5C] hover:bg-[#E10600]/25 shadow-sm shadow-red-950/40'
+              : 'bg-[#14141E] border-[#232332] text-slate-400 hover:text-white hover:bg-[#1C1C28] hover:border-slate-600'
+          }`}
+        >
+          {isFullscreen ? (
+            <Minimize2 className="w-4 h-4 transition-transform active:scale-95" />
+          ) : (
+            <Maximize2 className="w-4 h-4 transition-transform active:scale-95" />
+          )}
+        </button>
       </div>
     </header>
   );
