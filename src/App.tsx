@@ -63,6 +63,11 @@ export function App() {
   const activeStintLapsRef = useRef<LapAnalysis[]>([]);
   const currentLapNumRef = useRef<number | null>(null);
 
+  // High-frequency live buffer and frame refs for throttled UI dispatching
+  const latestLiveFrameRef = useRef<TelemetryFrame | null>(null);
+  const liveFramesWindowRef = useRef<TelemetryFrame[]>([]);
+  const hasNewDataRef = useRef(false);
+
   // Keep refs synced with state
   useEffect(() => {
     isRecordingRef.current = isRecording;
@@ -71,6 +76,34 @@ export function App() {
   useEffect(() => {
     activeStintLapsRef.current = activeStintLaps;
   }, [activeStintLaps]);
+
+  // Throttled UI State Dispatcher: Caps React state re-renders to ~20Hz (50ms)
+  // while preserving full 60Hz raw stream fidelity in memory refs for physics analysis.
+  useEffect(() => {
+    let animId: number;
+    let lastFlushTime = 0;
+    const FLUSH_INTERVAL_MS = 50; // ~20Hz UI refresh rate
+
+    const flushLoop = (time: number) => {
+      if (time - lastFlushTime >= FLUSH_INTERVAL_MS) {
+        if (hasNewDataRef.current) {
+          if (latestLiveFrameRef.current) {
+            setLiveFrame(latestLiveFrameRef.current);
+          }
+          setLiveFramesBuffer([...liveFramesWindowRef.current]);
+          if (isRecordingRef.current) {
+            setActiveLapBufferLength(currentLapBufferRef.current.length);
+          }
+          hasNewDataRef.current = false;
+        }
+        lastFlushTime = time;
+      }
+      animId = requestAnimationFrame(flushLoop);
+    };
+
+    animId = requestAnimationFrame(flushLoop);
+    return () => cancelAnimationFrame(animId);
+  }, []);
 
   // Live recording timer ticker
   useEffect(() => {
@@ -126,13 +159,18 @@ export function App() {
                   : 0;
                 const frame = convertPacketToTelemetryFrame(packet, distance);
                 
-                setLiveFrame(frame);
-                setLiveFramesBuffer(prev => [...prev.slice(-300), frame]);
+                // Store in high-frequency refs without triggering synchronous React re-renders
+                latestLiveFrameRef.current = frame;
+                const windowBuf = liveFramesWindowRef.current;
+                windowBuf.push(frame);
+                if (windowBuf.length > 250) {
+                  windowBuf.splice(0, windowBuf.length - 250);
+                }
+                hasNewDataRef.current = true;
 
-                // Active Stint Recording Logic
+                // Active Stint Recording Logic: full 60Hz precision
                 if (isRecordingRef.current) {
                   currentLapBufferRef.current.push(frame);
-                  setActiveLapBufferLength(currentLapBufferRef.current.length);
 
                   // Automatic lap segmentation when lapNumber advances
                   if (
@@ -152,7 +190,6 @@ export function App() {
                     activeStintLapsRef.current = [...activeStintLapsRef.current, analyzedLap];
                     setActiveStintLaps(activeStintLapsRef.current);
                     currentLapBufferRef.current = [frame];
-                    setActiveLapBufferLength(1);
                   }
                   currentLapNumRef.current = packet.lapNumber;
                 }
@@ -166,6 +203,8 @@ export function App() {
           setIsBridgeConnected(false);
           setIsUdpConnected(false);
           setLiveFrame(null);
+          latestLiveFrameRef.current = null;
+          liveFramesWindowRef.current = [];
           reconnectTimer = setTimeout(connectBridge, 2000);
         };
 
@@ -174,6 +213,8 @@ export function App() {
           setIsBridgeConnected(false);
           setIsUdpConnected(false);
           setLiveFrame(null);
+          latestLiveFrameRef.current = null;
+          liveFramesWindowRef.current = [];
           try { ws?.close(); } catch (_) {}
         };
       } catch (e) {
@@ -181,6 +222,8 @@ export function App() {
         setIsBridgeConnected(false);
         setIsUdpConnected(false);
         setLiveFrame(null);
+        latestLiveFrameRef.current = null;
+        liveFramesWindowRef.current = [];
         reconnectTimer = setTimeout(connectBridge, 2000);
       }
     };

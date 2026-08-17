@@ -228,9 +228,51 @@ export function analyzeLapTelemetry(frames: TelemetryFrame[], trackLengthMeters:
     peakBrakingG: Number(peakBrakingG.toFixed(2)),
     overallScore,
     corners,
-    frames,
+    frames: adaptiveDownsampleFrames(frames),
     actionItems
   };
+}
+
+/**
+ * Adaptively downsamples telemetry frames to reduce memory and storage footprint by ~75%
+ * while strictly preserving critical dynamics extrema (peak braking, apex speed, peak lateral G, start/finish).
+ */
+export function adaptiveDownsampleFrames(frames: TelemetryFrame[], maxTargetFrames: number = 1000): TelemetryFrame[] {
+  if (!frames || frames.length <= maxTargetFrames) return frames || [];
+
+  const step = Math.ceil(frames.length / maxTargetFrames);
+  const criticalIndices = new Set<number>();
+
+  criticalIndices.add(0);
+  criticalIndices.add(frames.length - 1);
+
+  for (let i = 1; i < frames.length - 1; i++) {
+    const prev = frames[i - 1];
+    const curr = frames[i];
+    const next = frames[i + 1];
+
+    // Local peak in braking pressure
+    if (curr.brake > 0.3 && curr.brake >= prev.brake && curr.brake >= next.brake) {
+      criticalIndices.add(i);
+    }
+    // Local minimum in speed during lateral load (corner apex)
+    if (curr.speedKph < prev.speedKph && curr.speedKph <= next.speedKph && Math.abs(curr.latG) > 0.5) {
+      criticalIndices.add(i);
+    }
+    // Local peak in lateral grip
+    if (Math.abs(curr.latG) > 1.0 && Math.abs(curr.latG) >= Math.abs(prev.latG) && Math.abs(curr.latG) >= Math.abs(next.latG)) {
+      criticalIndices.add(i);
+    }
+  }
+
+  const result: TelemetryFrame[] = [];
+  for (let i = 0; i < frames.length; i++) {
+    if (i % step === 0 || criticalIndices.has(i)) {
+      result.push(frames[i]);
+    }
+  }
+
+  return result;
 }
 
 function createDummyCornerAnalysis(cDef: PredefinedCornerDef): CornerTelemetryAnalysis {

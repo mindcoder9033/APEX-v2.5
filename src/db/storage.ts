@@ -1,5 +1,6 @@
 import { UserProgressState, ChallengeResult, GraduationResult } from '../types/curriculum';
 import { LapAnalysis, StintSession } from '../types/telemetry';
+import { adaptiveDownsampleFrames } from '../engine/physicsEngine';
 
 const STORAGE_KEY_PROGRESS = 'apex_user_progress_v2_5';
 const STORAGE_KEY_SESSIONS = 'apex_saved_sessions_v2_5';
@@ -37,14 +38,41 @@ export function saveUserProgress(state: UserProgressState): void {
   }
 }
 
+/**
+ * Sanitizes a StintSession by downsampling frames and stripping heavyweight data for older history
+ */
+function sanitizeStintSession(stint: StintSession, isHistorical: boolean = false): StintSession {
+  return {
+    ...stint,
+    laps: stint.laps.map(lap => ({
+      ...lap,
+      // For older history (> 5 stints back), preserve only summary corner metrics and compact frames
+      frames: isHistorical 
+        ? adaptiveDownsampleFrames(lap.frames, 300)
+        : adaptiveDownsampleFrames(lap.frames, 800)
+    }))
+  };
+}
+
 export function saveStintHistory(stints: StintSession[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY_STINTS, JSON.stringify(stints.slice(0, 100)));
-    // Also update flattened lap history for any components that reference it
-    const flattenedLaps = stints.flatMap(s => s.laps);
-    localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(flattenedLaps.slice(0, 200)));
+    const sanitized = stints.slice(0, 50).map((s, idx) => sanitizeStintSession(s, idx >= 5));
+    localStorage.setItem(STORAGE_KEY_STINTS, JSON.stringify(sanitized));
+
+    // Update flattened lap summary
+    const flattenedLaps = sanitized.flatMap(s => s.laps).slice(0, 100);
+    localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(flattenedLaps));
   } catch (e) {
-    console.error('Error saving stint history:', e);
+    console.warn('Storage quota warning when saving stint history, attempting FIFO purge:', e);
+    try {
+      // Graceful fallback: keep top 10 most recent stints with reduced frame count
+      const compact = stints.slice(0, 10).map(s => sanitizeStintSession(s, true));
+      localStorage.setItem(STORAGE_KEY_STINTS, JSON.stringify(compact));
+      const compactLaps = compact.flatMap(s => s.laps).slice(0, 30);
+      localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(compactLaps));
+    } catch (fallbackError) {
+      console.error('Failed to save stint history even after purge:', fallbackError);
+    }
   }
 }
 
@@ -54,7 +82,7 @@ export function loadStintHistory(): StintSession[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return parsed.map((s, idx) => sanitizeStintSession(s, idx >= 5));
       }
     }
     
@@ -91,9 +119,22 @@ export function loadStintHistory(): StintSession[] {
 
 export function saveLapHistory(laps: LapAnalysis[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(laps.slice(0, 100)));
+    const sanitized = laps.slice(0, 50).map(lap => ({
+      ...lap,
+      frames: adaptiveDownsampleFrames(lap.frames, 500)
+    }));
+    localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(sanitized));
   } catch (e) {
-    console.error('Error saving lap history:', e);
+    console.warn('Storage quota warning when saving lap history, attempting compact save:', e);
+    try {
+      const compact = laps.slice(0, 15).map(lap => ({
+        ...lap,
+        frames: adaptiveDownsampleFrames(lap.frames, 200)
+      }));
+      localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(compact));
+    } catch (err) {
+      console.error('Failed to save lap history:', err);
+    }
   }
 }
 

@@ -14,95 +14,125 @@ export const FrictionCirclePlot: React.FC<FrictionCirclePlotProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  const sizeRef = useRef<{ width: number; height: number; dpr: number }>({ width: 240, height: 240, dpr: 1 });
+
+  // Handle canvas sizing only on mount & container resize to prevent GPU buffer recreation
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const size = Math.min(canvas.clientWidth, canvas.clientHeight) || 240;
+      sizeRef.current = { width: size, height: size, dpr };
+      canvas.width = size * dpr;
+      canvas.height = size * dpr;
+    };
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    return () => window.removeEventListener('resize', resizeCanvas);
+  }, []);
+
+  // Optimized draw loop using requestAnimationFrame
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    const size = Math.min(canvas.clientWidth, canvas.clientHeight) || 240;
-    canvas.width = size * dpr;
-    canvas.height = size * dpr;
-    ctx.scale(dpr, dpr);
+    let animId: number;
 
-    const center = size / 2;
-    const radius = size * 0.42;
+    const draw = () => {
+      const { width: size, dpr } = sizeRef.current;
+      ctx.save();
+      ctx.scale(dpr, dpr);
 
-    // Background
-    ctx.fillStyle = '#0E0E16';
-    ctx.fillRect(0, 0, size, size);
+      const center = size / 2;
+      const radius = size * 0.42;
 
-    // Coordinate grid circles (0.5G, 1.0G, 1.5G)
-    const gSteps = [0.5, 1.0, 1.4];
-    ctx.lineWidth = 1;
+      // Background
+      ctx.fillStyle = '#0E0E16';
+      ctx.fillRect(0, 0, size, size);
 
-    gSteps.forEach((g) => {
-      const r = (g / maxG) * radius;
-      ctx.strokeStyle = g === 1.4 ? 'rgba(225, 6, 0, 0.5)' : 'rgba(255, 255, 255, 0.08)';
+      // Coordinate grid circles (0.5G, 1.0G, 1.4G)
+      const gSteps = [0.5, 1.0, 1.4];
+      ctx.lineWidth = 1;
+
+      gSteps.forEach((g) => {
+        const r = (g / maxG) * radius;
+        ctx.strokeStyle = g === 1.4 ? 'rgba(225, 6, 0, 0.5)' : 'rgba(255, 255, 255, 0.08)';
+        ctx.beginPath();
+        ctx.arc(center, center, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = g === 1.4 ? '#FF4D4D' : '#6E6E82';
+        ctx.font = '8px "JetBrains Mono", monospace';
+        ctx.fillText(`${g.toFixed(1)}G`, center + 3, center - r + 9);
+      });
+
+      // Cross axes
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
       ctx.beginPath();
-      ctx.arc(center, center, r, 0, Math.PI * 2);
+      ctx.moveTo(center, 10);
+      ctx.lineTo(center, size - 10);
+      ctx.moveTo(10, center);
+      ctx.lineTo(size - 10, center);
       ctx.stroke();
 
-      ctx.fillStyle = g === 1.4 ? '#FF4D4D' : '#6E6E82';
-      ctx.font = '8px "JetBrains Mono", monospace';
-      ctx.fillText(`${g.toFixed(1)}G`, center + 3, center - r + 9);
-    });
+      // Axis Labels
+      ctx.fillStyle = '#8E8E9F';
+      ctx.font = '8px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('ACCEL (+Y)', center, 14);
+      ctx.fillText('BRAKING (-Y)', center, size - 4);
+      ctx.fillText('LEFT', 20, center - 4);
+      ctx.fillText('RIGHT', size - 20, center - 4);
 
-    // Cross axes
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.beginPath();
-    ctx.moveTo(center, 10);
-    ctx.lineTo(center, size - 10);
-    ctx.moveTo(10, center);
-    ctx.lineTo(size - 10, center);
-    ctx.stroke();
+      // Plot frame points in G-G space
+      if (frames.length > 0) {
+        // Subsample for canvas if frames array is very large
+        const step = frames.length > 300 ? Math.ceil(frames.length / 300) : 1;
+        for (let i = 0; i < frames.length; i += step) {
+          const f = frames[i];
+          const px = center + (f.latG / maxG) * radius;
+          const py = center - (f.lonG / maxG) * radius;
 
-    // Axis Labels
-    ctx.fillStyle = '#8E8E9F';
-    ctx.font = '8px "Outfit", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('ACCEL (+Y)', center, 14);
-    ctx.fillText('BRAKING (-Y)', center, size - 4);
-    ctx.fillText('LEFT', 20, center - 4);
-    ctx.fillText('RIGHT', size - 20, center - 4);
+          const util = f.tractionBudgetPct;
+          if (util > 95) {
+            ctx.fillStyle = 'rgba(225, 6, 0, 0.5)'; // Peak Red
+          } else if (util > 75) {
+            ctx.fillStyle = 'rgba(0, 255, 102, 0.35)'; // High Green
+          } else {
+            ctx.fillStyle = 'rgba(0, 240, 255, 0.18)'; // Low Cyan
+          }
 
-    // Plot all frame points in G-G space
-    if (frames.length > 0) {
-      frames.forEach((f) => {
-        // In G-G: X = Lateral G, Y = Longitudinal G (- for braking, + for accel)
-        const px = center + (f.latG / maxG) * radius;
-        const py = center - (f.lonG / maxG) * radius;
-
-        const util = f.tractionBudgetPct;
-        if (util > 95) {
-          ctx.fillStyle = 'rgba(225, 6, 0, 0.5)'; // Peak Red
-        } else if (util > 75) {
-          ctx.fillStyle = 'rgba(0, 255, 102, 0.35)'; // High Green
-        } else {
-          ctx.fillStyle = 'rgba(0, 240, 255, 0.18)'; // Low Cyan
+          ctx.fillRect(px - 1, py - 1, 2, 2);
         }
+      }
 
-        ctx.fillRect(px - 1, py - 1, 2, 2);
-      });
-    }
+      // Highlight current cursor frame
+      if (currentFrame) {
+        const cx = center + (currentFrame.latG / maxG) * radius;
+        const cy = center - (currentFrame.lonG / maxG) * radius;
 
-    // Highlight current cursor frame
-    if (currentFrame) {
-      const cx = center + (currentFrame.latG / maxG) * radius;
-      const cy = center - (currentFrame.lonG / maxG) * radius;
+        // Glow pulse
+        ctx.fillStyle = 'rgba(225, 6, 0, 0.4)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+        ctx.fill();
 
-      // Glow pulse
-      ctx.fillStyle = 'rgba(225, 6, 0, 0.4)';
-      ctx.beginPath();
-      ctx.arc(cx, cy, 8, 0, Math.PI * 2);
-      ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
+      ctx.restore();
+    };
+
+    animId = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(animId);
   }, [frames, currentFrame, maxG]);
 
   return (
