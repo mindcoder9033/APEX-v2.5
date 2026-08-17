@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Module, Session, UserProgressState } from '../../types/curriculum';
 import { 
   Lock, CheckCircle2, ChevronRight, Award, Trophy, Play, 
@@ -19,6 +19,20 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
   onStartGraduationTest
 }) => {
   const [selectedModuleId, setSelectedModuleId] = useState<string>(modules[0]?.id || 'mod-1');
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
+    return typeof document !== 'undefined' ? Boolean(document.fullscreenElement) : false;
+  });
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   const activeModule = modules.find(m => m.id === selectedModuleId) || modules[0];
   const isModuleUnlocked = (modId: string) => progress.unlockedModuleIds.includes(modId);
@@ -36,8 +50,8 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
         <div className="p-4 border-b border-[#232332]">
           <div className="flex items-center justify-between">
             <h2 className="font-display font-bold text-sm tracking-wide text-white uppercase flex items-center space-x-2">
-              <BookOpen className="w-4 h-4 text-[#E10600]" />
-              <span>Skip Barber Chapters</span>
+              <Award className="w-4 h-4 text-[#E10600]" />
+              <span>Curriculum Modules</span>
             </h2>
             <span className="text-[11px] font-mono font-bold text-slate-400 bg-[#161622] px-2 py-0.5 border border-[#262638]">
               {progress.graduatedModuleIds.length}/{modules.length} Passed
@@ -86,7 +100,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
                       }`}>
                         {m.title}
                       </h3>
-                      <p className="text-[10px] text-[#7E7E92] truncate max-w-[160px]">{m.bookChapter}</p>
+                      <p className="text-[10px] text-[#7E7E92] truncate max-w-[160px]">{m.tagline}</p>
                     </div>
                   </div>
 
@@ -121,28 +135,29 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
       </div>
 
       {/* Main Module Detail & Sessions Progression View */}
-      <div className="flex-1 overflow-y-auto p-8 flex flex-col space-y-6">
-        {/* Module Header Banner */}
-        <div className="p-6 bg-gradient-to-r from-[#161622] to-[#12121A] border border-[#2A2A3E] relative overflow-hidden shadow-xl hud-bracket">
-          <div className="absolute right-0 top-0 bottom-0 w-80 bg-gradient-to-l from-[#E10600]/10 to-transparent pointer-events-none" />
+      <div className="flex-1 overflow-y-auto p-5 sm:p-6 flex flex-col space-y-4">
+        {/* Module Header Banner - Only visible when APEX is in fullscreen mode */}
+        {isFullscreen && (
+          <div className="p-4 sm:p-5 bg-gradient-to-r from-[#161622] to-[#12121A] border border-[#2A2A3E] relative overflow-hidden shadow-xl hud-bracket transition-all">
+            <div className="absolute right-0 top-0 bottom-0 w-80 bg-gradient-to-l from-[#E10600]/10 to-transparent pointer-events-none" />
 
-          <div className="flex items-center space-x-3 mb-2">
-            <span className="bg-[#E10600] text-white text-[11px] font-mono font-bold px-2.5 py-0.5 uppercase tracking-wider">
-              Module {activeModule.moduleNumber}
-            </span>
-            <span className="text-xs text-[#8E8E9F] font-mono">{activeModule.bookChapter}</span>
-            {isModuleGraduated(activeModule.id) && (
-              <span className="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 border border-emerald-500/40 flex items-center space-x-1">
-                <Trophy className="w-3 h-3 text-amber-400" />
-                <span>GRADUATED & CERTIFIED</span>
+            <div className="flex flex-wrap items-center gap-2.5 mb-1.5">
+              <span className="bg-[#E10600] text-white text-[11px] font-mono font-bold px-2.5 py-0.5 uppercase tracking-wider">
+                Module {activeModule.moduleNumber}
               </span>
-            )}
-          </div>
+              <span className="text-xs text-[#FF4D4D] font-medium">• {activeModule.tagline}</span>
+              {isModuleGraduated(activeModule.id) && (
+                <span className="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 border border-emerald-500/40 flex items-center space-x-1 ml-auto">
+                  <Trophy className="w-3 h-3 text-amber-400" />
+                  <span>GRADUATED & CERTIFIED</span>
+                </span>
+              )}
+            </div>
 
-          <h1 className="text-2xl font-display font-black text-white tracking-wide">{activeModule.title}</h1>
-          <p className="text-sm text-[#FF4D4D] font-medium mt-0.5">{activeModule.tagline}</p>
-          <p className="text-xs text-[#A0A0B5] mt-3 max-w-3xl leading-relaxed">{activeModule.description}</p>
-        </div>
+            <h1 className="text-xl font-display font-black text-white tracking-wide">{activeModule.title}</h1>
+            <p className="text-xs text-[#A0A0B5] mt-1 max-w-3xl leading-relaxed">{activeModule.description}</p>
+          </div>
+        )}
 
         {/* Structured Sessions Progression List */}
         <div>
@@ -190,12 +205,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
                       </div>
 
                       <div className="space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="text-sm font-bold text-white">{session.title}</h3>
-                          <span className="text-[10px] font-mono text-[#8E8E9F] bg-[#1E1E2C] px-2 py-0.5 border border-[#2A2A3C]">
-                            {session.bookReference}
-                          </span>
-                        </div>
+                        <h3 className="text-sm font-bold text-white">{session.title}</h3>
                         <p className="text-xs text-slate-400">{session.subtitle}</p>
 
                         {/* Drill Goal & Challenge Preview */}

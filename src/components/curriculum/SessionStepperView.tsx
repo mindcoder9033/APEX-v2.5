@@ -164,8 +164,6 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                 <span className="text-[11px] font-mono font-bold text-[#E10600] uppercase tracking-wider">
                   Module {module.moduleNumber}: {module.title}
                 </span>
-                <span className="text-slate-500">•</span>
-                <span className="text-[11px] text-[#8E8E9F] font-mono">{session.bookReference}</span>
               </div>
               <h1 className="text-sm font-bold text-white tracking-wide">{session.title}</h1>
             </div>
