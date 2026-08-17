@@ -6,7 +6,6 @@ import { GraduationExamView } from './components/challenge/GraduationExamView';
 import { LivePracticeView } from './components/practice/LivePracticeView';
 import { DebriefView } from './components/debrief/DebriefView';
 import { HistoryView } from './components/history/HistoryView';
-import { PdfReportModal } from './components/export/PdfReportModal';
 import { SKIP_BARBER_MODULES } from './data/skipBarberCurriculum';
 import { 
   loadUserProgress, saveUserProgress, loadLapHistory, saveLapHistory, 
@@ -25,7 +24,6 @@ export function App() {
   // Active session and graduation state for Curriculum Academy
   const [activeSessionSelection, setActiveSessionSelection] = useState<{ module: Module; session: Session } | null>(null);
   const [graduatingModule, setGraduatingModule] = useState<Module | null>(null);
-  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
   // Latest active lap analysis (null if no laps recorded yet)
   const [currentLap, setCurrentLap] = useState<LapAnalysis | null>(() => {
@@ -257,7 +255,6 @@ export function App() {
             onDeleteLap={handleDeleteLap}
             module={activeSessionSelection?.module}
             session={activeSessionSelection?.session}
-            onOpenPdfModal={() => setIsPdfModalOpen(true)}
             onNavigateToAcademy={() => setCurrentView('curriculum')}
             onNavigateToPractice={() => setCurrentView('practice')}
           />
@@ -275,16 +272,6 @@ export function App() {
           />
         )}
       </main>
-
-      {/* Race Engineer PDF Export Modal (triggered directly from Debrief view) */}
-      {isPdfModalOpen && currentLap && (
-        <PdfReportModal
-          lap={currentLap}
-          module={activeSessionSelection?.module}
-          session={activeSessionSelection?.session}
-          onClose={() => setIsPdfModalOpen(false)}
-        />
-      )}
     </div>
   );
 }

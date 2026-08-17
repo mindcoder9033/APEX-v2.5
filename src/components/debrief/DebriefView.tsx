@@ -6,9 +6,10 @@ import { FrictionCirclePlot } from '../telemetry/FrictionCirclePlot';
 import { TrackMapViewer } from '../telemetry/TrackMapViewer';
 import { DiagnosticScorecard } from './DiagnosticScorecard';
 import { ActionPlanCard } from '../adjust/ActionPlanCard';
+import { generateOfficialPdf } from '../../utils/pdfGenerator';
 import { 
   Activity, FileDown, Radio, Award, Trash2, Clock, 
-  Calendar, CheckCircle2, AlertCircle, ArrowRight, BookOpen, Play
+  Calendar, CheckCircle2, AlertCircle, ArrowRight, BookOpen, Play, Loader2
 } from 'lucide-react';
 
 interface DebriefViewProps {
@@ -18,7 +19,7 @@ interface DebriefViewProps {
   onDeleteLap?: (lapId: string) => void;
   module?: Module;
   session?: Session;
-  onOpenPdfModal: () => void;
+  onOpenPdfModal?: () => void;
   onNavigateToAcademy?: () => void;
   onNavigateToPractice?: () => void;
 }
@@ -34,6 +35,8 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
   onNavigateToAcademy,
   onNavigateToPractice
 }) => {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
   // Category tab state: 'academy' vs 'practice'
   const [activeCategory, setActiveCategory] = useState<'academy' | 'practice'>(() => {
     if (currentLap?.source === 'academy') return 'academy';
@@ -291,11 +294,26 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
 
                 <div className="flex items-center space-x-3">
                   <button
-                    onClick={onOpenPdfModal}
-                    className="chamfer-btn flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] text-white text-xs font-racing font-bold tracking-wide shadow-lg shadow-red-950/60 active:scale-95 transition-all cursor-pointer"
+                    onClick={async () => {
+                      if (!selectedLap || isGeneratingPdf) return;
+                      setIsGeneratingPdf(true);
+                      try {
+                        await generateOfficialPdf(selectedLap, module, session);
+                      } catch (err) {
+                        console.error('Failed to generate PDF:', err);
+                      } finally {
+                        setIsGeneratingPdf(false);
+                      }
+                    }}
+                    disabled={isGeneratingPdf}
+                    className="chamfer-btn flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] disabled:opacity-80 disabled:cursor-wait text-white text-xs font-racing font-bold tracking-wide shadow-lg shadow-red-950/60 active:scale-95 transition-all cursor-pointer"
                   >
-                    <FileDown className="w-4 h-4" />
-                    <span>Generate Official PDF</span>
+                    {isGeneratingPdf ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    ) : (
+                      <FileDown className="w-4 h-4" />
+                    )}
+                    <span>{isGeneratingPdf ? 'Generating PDF...' : 'Generate Official PDF'}</span>
                   </button>
                 </div>
               </div>
