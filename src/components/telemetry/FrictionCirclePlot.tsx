@@ -108,20 +108,20 @@ export const FrictionCirclePlot: React.FC<FrictionCirclePlotProps> = ({
   return (
     <div className="bg-[#0E0E16] rounded-2xl border border-[#232332] p-4 flex flex-col items-center shadow-lg">
       <div className="w-full flex items-center justify-between mb-2">
-        <h4 className="text-xs font-bold text-white uppercase tracking-wider font-display flex items-center space-x-1.5">
+        <h4 className="text-xs font-bold text-white uppercase tracking-wider font-racing flex items-center space-x-1.5">
           <span className="w-2 h-2 rounded-full bg-[#E10600]" />
           <span>Skip Barber G-G Friction Circle</span>
         </h4>
-        <span className="text-[10px] font-mono text-[#8E8E9F]">Traction Budget</span>
+        <span className="text-[10px] font-tech font-bold uppercase tracking-wider text-[#8E8E9F]">Traction Budget</span>
       </div>
 
       <div className="relative w-48 h-48 flex items-center justify-center">
         <canvas ref={canvasRef} className="w-full h-full rounded-xl" />
       </div>
 
-      <div className="w-full mt-3 pt-2 border-t border-[#20202E] flex items-center justify-between text-[11px] font-mono">
-        <span className="text-slate-400">Grip Util:</span>
-        <strong className="text-emerald-400 font-bold">
+      <div className="w-full mt-3 pt-2 border-t border-[#20202E] flex items-center justify-between text-[11px]">
+        <span className="text-slate-400 font-tech uppercase tracking-wider">Grip Util:</span>
+        <strong className="text-emerald-400 font-hud-clean font-bold text-xs tabular-nums">
           {currentFrame ? `${currentFrame.tractionBudgetPct.toFixed(0)}%` : '85% (Avg)'}
         </strong>
       </div>

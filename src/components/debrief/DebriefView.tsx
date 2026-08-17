@@ -69,17 +69,17 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
       <div className="p-6 rounded-2xl bg-[#12121A] border border-[#232332] flex items-center justify-between shadow-xl">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="bg-[#E10600] text-white text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="bg-[#E10600] text-white text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider tabular-nums">
               Debrief Session #{lap.lapNumber}
             </span>
-            <span className="text-xs text-[#8E8E9F] font-mono">
+            <span className="text-xs text-[#8E8E9F] font-tech uppercase tracking-wider font-semibold">
               {module ? `Module ${module.moduleNumber}: ${module.title}` : 'Full Lap Analytical Report'}
             </span>
           </div>
-          <h1 className="text-xl font-display font-black text-white mt-1">
+          <h1 className="text-xl font-racing font-bold text-white mt-1">
             Skip Barber Telemetric Debrief & Corner Diagnosis
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-400 mt-0.5 font-sans">
             Automated analysis evaluating traction budget, trail-braking smoothness, and apex throttle synchronization.
           </p>
         </div>
@@ -87,7 +87,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
         <div className="flex items-center space-x-3">
           <button
             onClick={onOpenPdfModal}
-            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] text-white text-xs font-bold shadow-lg shadow-red-950/60 active:scale-95 transition-all"
+            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] text-white text-xs font-racing font-bold tracking-wide shadow-lg shadow-red-950/60 active:scale-95 transition-all"
           >
             <FileDown className="w-4 h-4" />
             <span>Generate Official PDF</span>
@@ -98,28 +98,28 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
       {/* Summary KPI Strip */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
-          <span className="text-[10px] text-slate-400 font-mono block">Lap Time</span>
-          <strong className="text-base font-mono font-bold text-white">{lap.lapTimeSec.toFixed(2)}s</strong>
+          <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Lap Time</span>
+          <strong className="text-base font-mono font-bold text-white tabular-nums">{lap.lapTimeSec.toFixed(2)}s</strong>
         </div>
         <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
-          <span className="text-[10px] text-slate-400 font-mono block">Peak Velocity</span>
-          <strong className="text-base font-mono font-bold text-[#00F0FF]">{lap.maxSpeedKph} km/h</strong>
+          <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Peak Velocity</span>
+          <strong className="text-base font-hud-clean font-bold text-[#00F0FF] tabular-nums">{lap.maxSpeedKph} <span className="text-xs font-tech">km/h</span></strong>
         </div>
         <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
-          <span className="text-[10px] text-slate-400 font-mono block">Traction Budget %</span>
-          <strong className="text-base font-mono font-bold text-emerald-400">{lap.avgTractionBudgetPct}%</strong>
+          <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Traction Budget %</span>
+          <strong className="text-base font-hud-clean font-bold text-emerald-400 tabular-nums">{lap.avgTractionBudgetPct}%</strong>
         </div>
         <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
-          <span className="text-[10px] text-slate-400 font-mono block">Max Lateral G</span>
-          <strong className="text-base font-mono font-bold text-purple-400">{lap.peakLatG}G</strong>
+          <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Max Lateral G</span>
+          <strong className="text-base font-mono font-bold text-purple-400 tabular-nums">{lap.peakLatG}G</strong>
         </div>
         <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
-          <span className="text-[10px] text-slate-400 font-mono block">Max Braking G</span>
-          <strong className="text-base font-mono font-bold text-[#FF1801]">{lap.peakBrakingG}G</strong>
+          <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Max Braking G</span>
+          <strong className="text-base font-mono font-bold text-[#FF1801] tabular-nums">{lap.peakBrakingG}G</strong>
         </div>
         <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
-          <span className="text-[10px] text-slate-400 font-mono block">Mastery Grade</span>
-          <strong className="text-base font-mono font-bold text-amber-400">{lap.overallScore}%</strong>
+          <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Mastery Grade</span>
+          <strong className="text-base font-hud-clean font-bold text-amber-400 tabular-nums">{lap.overallScore}%</strong>
         </div>
       </div>
 

@@ -28,9 +28,15 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
-        display: ['Outfit', 'sans-serif']
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        racing: ['Michroma', 'Eurostile', 'Microgramma', 'sans-serif'],
+        hud: ['Orbitron', 'Rajdhani', 'sans-serif'],
+        'hud-clean': ['Rajdhani', 'Orbitron', 'sans-serif'],
+        tech: ['"Barlow Condensed"', '"DIN 1451"', '"FF DIN"', 'sans-serif'],
+        condensed: ['"Barlow Condensed"', 'sans-serif'],
+        barlow: ['Barlow', 'sans-serif'],
+        mono: ['"JetBrains Mono"', '"Roboto Mono"', 'ui-monospace', 'monospace'],
+        display: ['Michroma', 'Outfit', 'sans-serif']
       }
     },
   },

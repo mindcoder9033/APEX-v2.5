@@ -132,18 +132,18 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
   return (
     <div className="bg-[#0E0E16] rounded-2xl border border-[#232332] p-4 flex flex-col items-center shadow-lg">
       <div className="w-full flex items-center justify-between mb-2">
-        <h4 className="text-xs font-bold text-white uppercase tracking-wider font-display flex items-center space-x-1.5">
+        <h4 className="text-xs font-bold text-white uppercase tracking-wider font-racing flex items-center space-x-1.5">
           <span className="w-2 h-2 rounded-full bg-[#00FF66]" />
           <span>Circuit GPS Map</span>
         </h4>
-        <span className="text-[10px] font-mono text-slate-400">Watkins Glen GP</span>
+        <span className="text-[10px] font-tech font-bold uppercase tracking-wider text-slate-400">Watkins Glen GP</span>
       </div>
 
       <div className="relative w-48 h-48 flex items-center justify-center">
         <canvas ref={canvasRef} className="w-full h-full rounded-xl" />
       </div>
 
-      <div className="w-full mt-3 pt-2 border-t border-[#20202E] flex items-center justify-around text-[10px] font-mono">
+      <div className="w-full mt-3 pt-2 border-t border-[#20202E] flex items-center justify-around text-[11px] font-tech font-semibold tracking-wide">
         <span className="flex items-center space-x-1">
           <span className="w-2 h-2 rounded-full bg-[#FF1801]" />
           <span className="text-slate-400">Braking</span>

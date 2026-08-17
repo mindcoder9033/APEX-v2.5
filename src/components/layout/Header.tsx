@@ -27,14 +27,14 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Brand Logo */}
       <div className="flex items-center space-x-3">
         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#E10600] to-[#880400] flex items-center justify-center shadow-lg shadow-red-950/50 border border-red-500/40">
-          <span className="font-display font-black text-xl text-white tracking-wider">A</span>
+          <span className="font-racing font-bold text-xl text-white tracking-wider">A</span>
         </div>
         <div>
           <div className="flex items-center space-x-2">
-            <span className="font-display font-black text-xl tracking-wider text-white">APEX</span>
+            <span className="font-racing font-bold text-xl tracking-wider text-white">APEX</span>
             <span className="bg-[#E10600]/20 text-[#FF4D4D] text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border border-[#E10600]/40">v2.5</span>
           </div>
-          <p className="text-[11px] text-[#8E8E9F] font-medium tracking-tight">Analytical Simracing Coach • Skip Barber Curriculum</p>
+          <p className="text-[11px] text-[#8E8E9F] font-medium tracking-tight font-sans">Analytical Simracing Coach • Skip Barber Curriculum</p>
         </div>
       </div>
 

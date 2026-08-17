@@ -208,17 +208,17 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
   return (
     <div className="bg-[#0E0E16] rounded-2xl border border-[#232332] p-4 flex flex-col space-y-2 relative shadow-lg">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3 text-xs font-mono">
-          <span className="font-bold text-white uppercase tracking-wider">Synchronized Lap Telemetry</span>
-          <span className="text-slate-500">•</span>
-          <span className="text-[#00F0FF]">Speed: {hoverFrame?.speedKph.toFixed(0) || '0'} km/h</span>
-          <span className="text-[#00FF66]">Thr: {((hoverFrame?.throttle || 0) * 100).toFixed(0)}%</span>
-          <span className="text-[#FF1801]">Brk: {((hoverFrame?.brake || 0) * 100).toFixed(0)}%</span>
-          <span className="text-[#FFAA00]">Steer: {((hoverFrame?.steering || 0) * 100).toFixed(0)}%</span>
-          <span className="text-purple-400">LatG: {hoverFrame?.latG.toFixed(2) || '0.00'}G</span>
+        <div className="flex items-center space-x-3 text-xs">
+          <span className="font-racing font-bold text-white uppercase tracking-wider text-xs">Synchronized Lap Telemetry</span>
+          <span className="text-slate-600">•</span>
+          <span className="font-mono text-[11px] text-[#00F0FF] tabular-nums font-semibold">Speed: {hoverFrame?.speedKph.toFixed(0) || '0'} km/h</span>
+          <span className="font-mono text-[11px] text-[#00FF66] tabular-nums font-semibold">Thr: {((hoverFrame?.throttle || 0) * 100).toFixed(0)}%</span>
+          <span className="font-mono text-[11px] text-[#FF1801] tabular-nums font-semibold">Brk: {((hoverFrame?.brake || 0) * 100).toFixed(0)}%</span>
+          <span className="font-mono text-[11px] text-[#FFAA00] tabular-nums font-semibold">Steer: {((hoverFrame?.steering || 0) * 100).toFixed(0)}%</span>
+          <span className="font-mono text-[11px] text-purple-400 tabular-nums font-semibold">LatG: {hoverFrame?.latG.toFixed(2) || '0.00'}G</span>
         </div>
-        <div className="text-[11px] font-mono text-[#8E8E9F]">
-          Dist: <strong className="text-white">{cursorDistance.toFixed(0)}m</strong>
+        <div className="text-[11px] font-mono text-[#8E8E9F] tabular-nums">
+          Dist: <strong className="text-white font-mono">{cursorDistance.toFixed(0)}m</strong>
         </div>
       </div>
 
