@@ -39,7 +39,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
               <BookOpen className="w-4 h-4 text-[#E10600]" />
               <span>Skip Barber Chapters</span>
             </h2>
-            <span className="text-[11px] font-mono font-bold text-slate-400 bg-[#161622] px-2 py-0.5 rounded border border-[#262638]">
+            <span className="text-[11px] font-mono font-bold text-slate-400 bg-[#161622] px-2 py-0.5 border border-[#262638]">
               {progress.graduatedModuleIds.length}/{modules.length} Passed
             </span>
           </div>
@@ -57,7 +57,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
               <button
                 key={m.id}
                 onClick={() => setSelectedModuleId(m.id)}
-                className={`w-full text-left p-3 rounded-xl border transition-all relative overflow-hidden ${
+                className={`w-full text-left p-3 border transition-all relative overflow-hidden ${
                   isSelected
                     ? 'bg-[#181824] border-[#E10600] shadow-lg shadow-red-950/20'
                     : unlocked
@@ -71,7 +71,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
 
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-2.5">
-                    <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-mono font-bold ${
+                    <div className={`w-6 h-6 flex items-center justify-center text-xs font-mono font-bold ${
                       graduated
                         ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40'
                         : unlocked
@@ -105,7 +105,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
 
                 {/* Progress bar inside module card */}
                 {unlocked && (
-                  <div className="mt-2.5 w-full bg-[#1F1F2E] h-1 rounded-full overflow-hidden">
+                  <div className="mt-2.5 w-full bg-[#1F1F2E] h-1.5 border border-[#252535] overflow-hidden">
                     <div
                       className={`h-full transition-all duration-500 ${
                         graduated ? 'bg-emerald-400' : 'bg-[#E10600]'
@@ -123,16 +123,16 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
       {/* Main Module Detail & Sessions Progression View */}
       <div className="flex-1 overflow-y-auto p-8 flex flex-col space-y-6">
         {/* Module Header Banner */}
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-[#161622] to-[#12121A] border border-[#2A2A3E] relative overflow-hidden shadow-xl">
+        <div className="p-6 bg-gradient-to-r from-[#161622] to-[#12121A] border border-[#2A2A3E] relative overflow-hidden shadow-xl hud-bracket">
           <div className="absolute right-0 top-0 bottom-0 w-80 bg-gradient-to-l from-[#E10600]/10 to-transparent pointer-events-none" />
 
           <div className="flex items-center space-x-3 mb-2">
-            <span className="bg-[#E10600] text-white text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="bg-[#E10600] text-white text-[11px] font-mono font-bold px-2.5 py-0.5 uppercase tracking-wider">
               Module {activeModule.moduleNumber}
             </span>
             <span className="text-xs text-[#8E8E9F] font-mono">{activeModule.bookChapter}</span>
             {isModuleGraduated(activeModule.id) && (
-              <span className="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/40 flex items-center space-x-1">
+              <span className="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 border border-emerald-500/40 flex items-center space-x-1">
                 <Trophy className="w-3 h-3 text-amber-400" />
                 <span>GRADUATED & CERTIFIED</span>
               </span>
@@ -153,7 +153,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
               </h2>
               <p className="text-xs text-[#8E8E9F]">Pass each session challenge to unlock subsequent sessions</p>
             </div>
-            <div className="text-xs font-mono text-[#E10600] bg-[#E10600]/10 px-3 py-1 rounded-lg border border-[#E10600]/30 font-semibold">
+            <div className="text-xs font-mono text-[#E10600] bg-[#E10600]/10 px-3 py-1 border border-[#E10600]/30 font-semibold">
               5-Stage Loop: Teach → Practice → Analyze → Adjust → Challenge
             </div>
           </div>
@@ -168,7 +168,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
               return (
                 <div
                   key={session.id}
-                  className={`p-5 rounded-2xl border transition-all ${
+                  className={`p-5 border transition-all hud-bracket ${
                     completed
                       ? 'bg-[#12121C] border-emerald-900/40 hover:border-emerald-500/40'
                       : unlocked
@@ -179,7 +179,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-4">
                       {/* Step Number Badge */}
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-display font-bold text-sm shrink-0 ${
+                      <div className={`w-10 h-10 flex items-center justify-center font-display font-bold text-sm shrink-0 ${
                         completed
                           ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/50'
                           : unlocked
@@ -192,7 +192,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2">
                           <h3 className="text-sm font-bold text-white">{session.title}</h3>
-                          <span className="text-[10px] font-mono text-[#8E8E9F] bg-[#1E1E2C] px-2 py-0.5 rounded">
+                          <span className="text-[10px] font-mono text-[#8E8E9F] bg-[#1E1E2C] px-2 py-0.5 border border-[#2A2A3C]">
                             {session.bookReference}
                           </span>
                         </div>
@@ -200,13 +200,13 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
 
                         {/* Drill Goal & Challenge Preview */}
                         <div className="pt-2 flex flex-wrap gap-2 items-center">
-                          <div className="flex items-center space-x-1.5 bg-[#1C1C2C] px-2.5 py-1 rounded-md text-[11px] text-slate-300 border border-[#2D2D42]">
+                          <div className="flex items-center space-x-1.5 bg-[#1C1C2C] px-2.5 py-1 text-[11px] text-slate-300 border border-[#2D2D42]">
                             <Target className="w-3.5 h-3.5 text-[#E10600]" />
                             <span className="font-medium text-white">Drill:</span>
                             <span className="text-slate-300">{session.drillGoal}</span>
                           </div>
 
-                          <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-[11px] border font-mono ${
+                          <div className={`flex items-center space-x-1.5 px-2.5 py-1 text-[11px] border font-mono ${
                             challengeResult?.passed
                               ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
                               : 'bg-amber-950/30 border-amber-500/30 text-amber-300'
@@ -231,13 +231,13 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
                       {unlocked ? (
                         <button
                           onClick={() => onSelectSession(activeModule, session)}
-                          className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold shadow-lg shadow-red-950/60 border border-red-400/30 transition-all active:scale-95"
+                          className="chamfer-btn flex items-center space-x-2 px-4 py-2 bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-racing font-bold tracking-wide shadow-lg shadow-red-950/60 border border-red-400/30 transition-all active:scale-95 cursor-pointer"
                         >
                           <Play className="w-3.5 h-3.5 fill-white" />
                           <span>{completed ? 'Re-Enter Coaching Loop' : 'Start Session'}</span>
                         </button>
                       ) : (
-                        <div className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-[#14141E] text-slate-500 text-xs font-mono border border-[#232332]">
+                        <div className="flex items-center space-x-1.5 px-3 py-2 bg-[#14141E] text-slate-500 text-xs font-mono border border-[#232332]">
                           <Lock className="w-3.5 h-3.5" />
                           <span>Locked</span>
                         </div>
@@ -251,7 +251,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
         </div>
 
         {/* Module Graduation Exam Card */}
-        <div className={`p-6 rounded-2xl border transition-all ${
+        <div className={`p-6 border transition-all hud-bracket ${
           isModuleGraduated(activeModule.id)
             ? 'bg-gradient-to-r from-emerald-950/30 via-[#12121C] to-[#12121C] border-emerald-500/40'
             : allSessionsInModuleCompleted
@@ -260,7 +260,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
         }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-start space-x-4">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+              <div className={`w-12 h-12 flex items-center justify-center shrink-0 ${
                 isModuleGraduated(activeModule.id)
                   ? 'bg-amber-400 text-black shadow-lg shadow-amber-500/30'
                   : allSessionsInModuleCompleted
@@ -272,7 +272,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
 
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 border border-amber-400/30">
                     Graduation Test
                   </span>
                   <h3 className="text-base font-display font-bold text-white">{activeModule.graduationTest.title}</h3>
@@ -290,7 +290,7 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
               {isModuleGraduated(activeModule.id) ? (
                 <button
                   onClick={() => onStartGraduationTest(activeModule)}
-                  className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-emerald-300 text-xs font-bold border border-emerald-500/50"
+                  className="chamfer-btn flex items-center space-x-2 px-4 py-2.5 bg-emerald-950 hover:bg-emerald-900 text-emerald-300 text-xs font-racing font-bold border border-emerald-500/50 cursor-pointer"
                 >
                   <Trophy className="w-4 h-4 text-amber-400" />
                   <span>Retake Graduation Exam</span>
@@ -298,14 +298,14 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
               ) : allSessionsInModuleCompleted ? (
                 <button
                   onClick={() => onStartGraduationTest(activeModule)}
-                  className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] text-white text-xs font-bold shadow-xl shadow-red-900/60 border border-red-400/40 active:scale-95"
+                  className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] text-white text-xs font-racing font-bold tracking-wide shadow-xl shadow-red-900/60 border border-red-400/40 active:scale-95 cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4 text-amber-300" />
                   <span>Take Graduation Exam</span>
                 </button>
               ) : (
                 <div className="text-right">
-                  <div className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-[#14141E] text-slate-500 text-xs font-mono border border-[#232332]">
+                  <div className="flex items-center space-x-1.5 px-3 py-2 bg-[#14141E] text-slate-500 text-xs font-mono border border-[#232332]">
                     <Lock className="w-3.5 h-3.5" />
                     <span>Complete All Sessions First</span>
                   </div>

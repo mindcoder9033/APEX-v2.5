@@ -206,7 +206,7 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
   };
 
   return (
-    <div className="bg-[#0E0E16] rounded-2xl border border-[#232332] p-4 flex flex-col space-y-2 relative shadow-lg">
+    <div className="bg-[#0E0E16] border border-[#232332] p-4 flex flex-col space-y-2 relative shadow-lg hud-bracket">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3 text-xs">
           <span className="font-racing font-bold text-white uppercase tracking-wider text-xs">Synchronized Lap Telemetry</span>
@@ -226,7 +226,7 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
         <canvas
           ref={canvasRef}
           onMouseMove={handleMouseMove}
-          className="w-full rounded-xl border border-[#1F1F2C]"
+          className="w-full border border-[#1F1F2C]"
           style={{ height: `${height}px` }}
         />
       </div>

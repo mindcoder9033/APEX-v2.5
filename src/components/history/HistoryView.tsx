@@ -23,8 +23,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     <div className="flex-1 overflow-y-auto p-8 bg-[#0A0A0E] space-y-8">
       {/* Top Banner Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-[#12121A] border border-[#232332] flex items-center space-x-4 shadow-lg">
-          <div className="w-12 h-12 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
+        <div className="p-5 bg-[#12121A] border border-[#232332] flex items-center space-x-4 shadow-lg hud-bracket">
+          <div className="w-12 h-12 bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
             <Trophy className="w-6 h-6" />
           </div>
           <div>
@@ -33,8 +33,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#12121A] border border-[#232332] flex items-center space-x-4 shadow-lg">
-          <div className="w-12 h-12 rounded-xl bg-emerald-400/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400">
+        <div className="p-5 bg-[#12121A] border border-[#232332] flex items-center space-x-4 shadow-lg hud-bracket">
+          <div className="w-12 h-12 bg-emerald-400/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
@@ -43,8 +43,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#12121A] border border-[#232332] flex items-center space-x-4 shadow-lg">
-          <div className="w-12 h-12 rounded-xl bg-[#E10600]/20 border border-[#E10600]/40 flex items-center justify-center text-[#FF4D4D]">
+        <div className="p-5 bg-[#12121A] border border-[#232332] flex items-center space-x-4 shadow-lg hud-bracket">
+          <div className="w-12 h-12 bg-[#E10600]/20 border border-[#E10600]/40 flex items-center justify-center text-[#FF4D4D]">
             <Activity className="w-6 h-6" />
           </div>
           <div>
@@ -53,8 +53,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#12121A] border border-[#232332] flex items-center space-x-4 shadow-lg">
-          <div className="w-12 h-12 rounded-xl bg-purple-400/20 border border-purple-400/40 flex items-center justify-center text-purple-400">
+        <div className="p-5 bg-[#12121A] border border-[#232332] flex items-center space-x-4 shadow-lg hud-bracket">
+          <div className="w-12 h-12 bg-purple-400/20 border border-purple-400/40 flex items-center justify-center text-purple-400">
             <Target className="w-6 h-6" />
           </div>
           <div>
@@ -80,13 +80,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             return (
               <div
                 key={m.id}
-                className={`p-4 rounded-xl border flex items-center space-x-3 transition-all ${
+                className={`p-4 border flex items-center space-x-3 transition-all ${
                   isGrad
                     ? 'bg-gradient-to-br from-amber-950/20 to-[#14141E] border-amber-500/40 shadow-lg'
                     : 'bg-[#0E0E14] border-[#1C1C28] opacity-50'
                 }`}
               >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                <div className={`w-8 h-8 flex items-center justify-center font-bold text-xs shrink-0 ${
                   isGrad ? 'bg-amber-400 text-black font-hud' : 'bg-[#1C1C26] text-slate-500 font-mono'
                 }`}>
                   {isGrad ? <Trophy className="w-4 h-4" /> : m.moduleNumber}
@@ -113,7 +113,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         </h3>
 
         {savedLaps.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-[#12121A] border border-[#20202E] text-center text-xs text-slate-400 font-sans">
+          <div className="p-8 bg-[#12121A] border border-[#20202E] text-center text-xs text-slate-400 font-sans">
             No saved practice stints yet. Complete sessions or practice laps to build your telemetry history.
           </div>
         ) : (
@@ -121,10 +121,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             {savedLaps.map((lap, idx) => (
               <div
                 key={lap.lapId || idx}
-                className="p-4 rounded-xl bg-[#12121A] border border-[#20202E] hover:border-[#E10600] transition-all flex items-center justify-between"
+                className="p-4 bg-[#12121A] border border-[#20202E] hover:border-[#E10600] transition-all flex items-center justify-between hud-bracket"
               >
                 <div className="flex items-center space-x-4">
-                  <div className="w-8 h-8 rounded-lg bg-[#E10600]/20 text-[#FF4D4D] font-mono font-bold flex items-center justify-center text-xs border border-[#E10600]/40 tabular-nums">
+                  <div className="w-8 h-8 bg-[#E10600]/20 text-[#FF4D4D] font-mono font-bold flex items-center justify-center text-xs border border-[#E10600]/40 tabular-nums">
                     #{lap.lapNumber}
                   </div>
                   <div>
@@ -146,7 +146,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                   </div>
                   <button
                     onClick={() => onSelectLapForDebrief(lap)}
-                    className="px-3 py-1.5 rounded-lg bg-[#1F1F2C] hover:bg-[#E10600] text-slate-200 hover:text-white text-xs font-racing font-bold tracking-wide border border-[#2D2D3E] transition-all"
+                    className="chamfer-btn-sm px-4 py-2 bg-[#1F1F2C] hover:bg-[#E10600] text-slate-200 hover:text-white text-xs font-racing font-bold tracking-wide border border-[#2D2D3E] transition-all"
                   >
                     Open Debrief
                   </button>

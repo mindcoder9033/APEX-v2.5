@@ -34,9 +34,9 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
   return (
     <div className="flex-1 overflow-y-auto p-8 bg-[#0A0A0E] space-y-6">
       {/* Top Banner Status Strip */}
-      <div className="p-5 rounded-2xl bg-[#12121A] border border-[#232332] flex items-center justify-between shadow-xl">
+      <div className="p-5 bg-[#12121A] border border-[#232332] flex items-center justify-between shadow-xl hud-bracket">
         <div className="flex items-center space-x-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+          <div className={`w-10 h-10 flex items-center justify-center border ${
             hasLiveData 
               ? 'bg-emerald-950/60 border-emerald-500/40' 
               : 'bg-[#181824] border-[#2E2E40]'
@@ -52,7 +52,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
               <h2 className="text-sm font-racing font-bold text-white uppercase tracking-wider">
                 Live Telemetry Ingest & Stint Recorder
               </h2>
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+              <span className={`chamfer-badge text-[10px] font-mono font-bold px-2.5 py-0.5 border ${
                 hasLiveData
                   ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
                   : 'bg-[#181822] text-slate-400 border-[#2A2A3C]'
@@ -72,7 +72,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
           <button
             onClick={handleEndStint}
             disabled={liveFramesBuffer.length < 20}
-            className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-racing font-bold tracking-wide transition-all shadow-lg ${
+            className={`chamfer-btn flex items-center space-x-2 px-5 py-2.5 text-xs font-racing font-bold tracking-wide transition-all shadow-lg ${
               liveFramesBuffer.length >= 20
                 ? 'bg-[#E10600] hover:bg-[#FF1801] text-white shadow-red-950/60 active:scale-95 cursor-pointer'
                 : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'
@@ -88,7 +88,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
       {/* Primary Gauge Cluster */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Speedometer */}
-        <div className="p-6 rounded-2xl bg-[#12121A] border border-[#232332] flex flex-col items-center justify-center relative overflow-hidden shadow-lg group hover:border-[#00F0FF]/30 transition-all">
+        <div className="p-6 bg-[#12121A] border border-[#232332] flex flex-col items-center justify-center relative overflow-hidden shadow-lg group hover:border-[#00F0FF]/30 transition-all hud-bracket">
           <span className="text-[10px] font-tech font-bold text-[#8E8E9F] uppercase tracking-widest">Current Speed</span>
           <div className="flex items-baseline space-x-1.5 my-2">
             <span className="text-5xl font-hud font-black text-[#00F0FF] hud-glow-cyan tabular-nums tracking-tight">
@@ -102,7 +102,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
         </div>
 
         {/* Gear & RPM */}
-        <div className="p-6 rounded-2xl bg-[#12121A] border border-[#232332] flex flex-col items-center justify-center shadow-lg group hover:border-amber-500/30 transition-all">
+        <div className="p-6 bg-[#12121A] border border-[#232332] flex flex-col items-center justify-center shadow-lg group hover:border-amber-500/30 transition-all hud-bracket">
           <span className="text-[10px] font-tech font-bold text-[#8E8E9F] uppercase tracking-widest">Gear & RPM</span>
           <div className="flex items-baseline space-x-2 my-2">
             <span className="text-5xl font-hud font-black text-amber-400 hud-glow-amber">
@@ -112,7 +112,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
               {liveFrame ? `${Math.round(liveFrame.rpm)} RPM` : '0 RPM'}
             </span>
           </div>
-          <div className="w-full bg-[#1F1F2E] h-1.5 rounded-full overflow-hidden mt-1">
+          <div className="w-full bg-[#1F1F2E] h-2 border border-[#2D2D3E] overflow-hidden mt-1">
             <div
               className="bg-gradient-to-r from-emerald-400 via-amber-400 to-[#E10600] h-full transition-all duration-75"
               style={{ width: `${Math.min(100, ((liveFrame?.rpm || 0) / 8000) * 100)}%` }}
@@ -121,13 +121,13 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
         </div>
 
         {/* Throttle & Brake Bars */}
-        <div className="p-6 rounded-2xl bg-[#12121A] border border-[#232332] flex flex-col justify-center space-y-3 shadow-lg">
+        <div className="p-6 bg-[#12121A] border border-[#232332] flex flex-col justify-center space-y-3 shadow-lg hud-bracket">
           <div>
             <div className="flex justify-between text-[11px] font-tech font-bold uppercase tracking-wider mb-1">
               <span className="text-[#00FF66]">THROTTLE</span>
               <span className="text-white font-mono tabular-nums">{((liveFrame?.throttle || 0) * 100).toFixed(0)}%</span>
             </div>
-            <div className="w-full bg-[#1E1E2C] h-2.5 rounded-full overflow-hidden">
+            <div className="w-full bg-[#1E1E2C] h-2 border border-[#252535] overflow-hidden">
               <div
                 className="bg-[#00FF66] h-full transition-all duration-75 shadow-[0_0_8px_rgba(0,255,102,0.4)]"
                 style={{ width: `${(liveFrame?.throttle || 0) * 100}%` }}
@@ -140,7 +140,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
               <span className="text-[#FF1801]">BRAKE</span>
               <span className="text-white font-mono tabular-nums">{((liveFrame?.brake || 0) * 100).toFixed(0)}%</span>
             </div>
-            <div className="w-full bg-[#1E1E2C] h-2.5 rounded-full overflow-hidden">
+            <div className="w-full bg-[#1E1E2C] h-2 border border-[#252535] overflow-hidden">
               <div
                 className="bg-[#FF1801] h-full transition-all duration-75 shadow-[0_0_8px_rgba(255,24,1,0.4)]"
                 style={{ width: `${(liveFrame?.brake || 0) * 100}%` }}
@@ -150,7 +150,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
         </div>
 
         {/* Traction Budget & G-Forces */}
-        <div className="p-6 rounded-2xl bg-[#12121A] border border-[#232332] flex flex-col items-center justify-center shadow-lg group hover:border-emerald-500/30 transition-all">
+        <div className="p-6 bg-[#12121A] border border-[#232332] flex flex-col items-center justify-center shadow-lg group hover:border-emerald-500/30 transition-all hud-bracket">
           <span className="text-[10px] font-tech font-bold text-[#8E8E9F] uppercase tracking-widest">Traction Budget Utilization</span>
           <div className="flex items-baseline space-x-1 my-2">
             <span className="text-5xl font-hud font-black text-emerald-400 hud-glow-green tabular-nums">

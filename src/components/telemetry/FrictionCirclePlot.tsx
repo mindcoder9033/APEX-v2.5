@@ -106,17 +106,17 @@ export const FrictionCirclePlot: React.FC<FrictionCirclePlotProps> = ({
   }, [frames, currentFrame, maxG]);
 
   return (
-    <div className="bg-[#0E0E16] rounded-2xl border border-[#232332] p-4 flex flex-col items-center shadow-lg">
+    <div className="bg-[#0E0E16] border border-[#232332] p-4 flex flex-col items-center shadow-lg hud-bracket">
       <div className="w-full flex items-center justify-between mb-2">
         <h4 className="text-xs font-bold text-white uppercase tracking-wider font-racing flex items-center space-x-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#E10600]" />
+          <span className="w-1.5 h-1.5 diamond-pip bg-[#E10600]" />
           <span>Skip Barber G-G Friction Circle</span>
         </h4>
         <span className="text-[10px] font-tech font-bold uppercase tracking-wider text-[#8E8E9F]">Traction Budget</span>
       </div>
 
       <div className="relative w-48 h-48 flex items-center justify-center">
-        <canvas ref={canvasRef} className="w-full h-full rounded-xl" />
+        <canvas ref={canvasRef} className="w-full h-full border border-[#1F1F2C]" />
       </div>
 
       <div className="w-full mt-3 pt-2 border-t border-[#20202E] flex items-center justify-between text-[11px]">

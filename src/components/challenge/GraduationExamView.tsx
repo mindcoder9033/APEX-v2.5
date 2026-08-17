@@ -64,7 +64,7 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
         <div className="flex items-center space-x-4">
           <button
             onClick={onBack}
-            className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-[#181824] hover:bg-[#222232] text-slate-300 hover:text-white border border-[#2B2B3E] transition-all text-xs font-semibold"
+            className="flex items-center space-x-2 px-3 py-1.5 bg-[#181824] hover:bg-[#222232] text-slate-300 hover:text-white border border-[#2B2B3E] transition-all text-xs font-semibold"
           >
             <ArrowLeft className="w-4 h-4 text-amber-400" />
             <span>Curriculum Modules</span>
@@ -73,7 +73,7 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
           <div className="h-5 w-[1px] bg-[#2A2A3C]" />
 
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-400 text-black flex items-center justify-center font-display font-black text-xs shadow-md shadow-amber-500/20">
+            <div className="w-8 h-8 bg-amber-400 text-black flex items-center justify-center font-display font-black text-xs shadow-md shadow-amber-500/20">
               <Trophy className="w-4 h-4" />
             </div>
             <div>
@@ -87,7 +87,7 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
 
         <div className="flex items-center space-x-3">
           {progress.graduatedModuleIds.includes(module.id) && (
-            <span className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold">
+            <span className="flex items-center space-x-1.5 px-3 py-1 bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Module Certified</span>
             </span>
@@ -99,12 +99,12 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
       <div className="flex-1 overflow-y-auto p-6 lg:p-8 bg-[#0A0A0E]">
         <div className="max-w-5xl mx-auto space-y-6">
           {/* Exam Requirements Card */}
-          <div className="p-6 rounded-2xl bg-[#14141E] border border-[#262638] space-y-4 shadow-xl">
+          <div className="p-6 bg-[#14141E] border border-[#262638] space-y-4 shadow-xl hud-bracket">
             <h2 className="text-sm font-bold uppercase tracking-wider text-white font-mono flex items-center space-x-2">
               <Trophy className="w-4 h-4 text-amber-400" />
               <span>Exam Overview & Circuit Specifications</span>
             </h2>
-            <p className="text-xs text-slate-300 leading-relaxed">{test.examOverview}</p>
+            <p className="text-xs text-slate-300 leading-relaxed font-sans">{test.examOverview}</p>
 
             {/* Recommended Setup Grid */}
             {test.recommendedSetup && (
@@ -114,8 +114,8 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
                   <span>Required Event Configuration</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  <div className="p-3 rounded-xl bg-[#0F0F17] border border-[#20202E] flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-red-950/40 text-[#E10600]">
+                  <div className="p-3 bg-[#0F0F17] border border-[#20202E] flex items-start space-x-3">
+                    <div className="p-2 bg-red-950/40 text-[#E10600]">
                       <Car className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -126,8 +126,8 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-[#0F0F17] border border-[#20202E] flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-cyan-950/40 text-[#00F0FF]">
+                  <div className="p-3 bg-[#0F0F17] border border-[#20202E] flex items-start space-x-3">
+                    <div className="p-2 bg-cyan-950/40 text-[#00F0FF]">
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -138,8 +138,8 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-[#0F0F17] border border-[#20202E] flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-purple-950/40 text-purple-400">
+                  <div className="p-3 bg-[#0F0F17] border border-[#20202E] flex items-start space-x-3">
+                    <div className="p-2 bg-purple-950/40 text-purple-400">
                       <Flag className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -150,8 +150,8 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-[#0F0F17] border border-[#20202E] flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-amber-950/40 text-amber-400">
+                  <div className="p-3 bg-[#0F0F17] border border-[#20202E] flex items-start space-x-3">
+                    <div className="p-2 bg-amber-950/40 text-amber-400">
                       <Sun className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -162,8 +162,8 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-[#0F0F17] border border-[#20202E] flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-blue-950/40 text-blue-400">
+                  <div className="p-3 bg-[#0F0F17] border border-[#20202E] flex items-start space-x-3">
+                    <div className="p-2 bg-blue-950/40 text-blue-400">
                       <CloudRain className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -174,8 +174,8 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-[#0F0F17] border border-[#20202E] flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-emerald-950/40 text-emerald-400">
+                  <div className="p-3 bg-[#0F0F17] border border-[#20202E] flex items-start space-x-3">
+                    <div className="p-2 bg-emerald-950/40 text-emerald-400">
                       <RotateCw className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -190,11 +190,11 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
             )}
 
             <div className="grid grid-cols-2 gap-3 pt-2 font-mono text-xs">
-              <div className="bg-[#101018] p-3 rounded-xl border border-[#222234]">
+              <div className="bg-[#101018] p-3 border border-[#222234]">
                 <span className="text-[10px] text-slate-400 block">Required Benchmark</span>
                 <strong className="text-amber-300 text-sm">{test.requiredLaps} Consecutive Laps</strong>
               </div>
-              <div className="bg-[#101018] p-3 rounded-xl border border-[#222234]">
+              <div className="bg-[#101018] p-3 border border-[#222234]">
                 <span className="text-[10px] text-slate-400 block">Passing Mastery Grade</span>
                 <strong className="text-emerald-400 text-sm">≥ {test.passingScorePct}%</strong>
               </div>
@@ -205,12 +205,12 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">Evaluation Criteria</h3>
             {test.requirements.map((req, rIdx) => (
-              <div key={rIdx} className="p-4 rounded-xl bg-[#12121A] border border-[#20202E] flex items-center justify-between shadow-md">
+              <div key={rIdx} className="p-4 bg-[#12121A] border border-[#20202E] flex items-center justify-between shadow-md hud-bracket">
                 <div>
                   <span className="text-xs font-bold text-white block">{req.title}</span>
-                  <span className="text-[11px] text-slate-400">{req.description}</span>
+                  <span className="text-[11px] text-slate-400 font-sans">{req.description}</span>
                 </div>
-                <span className="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/30">
+                <span className="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 px-3 py-1 border border-amber-400/30">
                   {req.targetText}
                 </span>
               </div>
@@ -219,7 +219,7 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
 
           {/* Exam Result Status */}
           {gradResult && (
-            <div className={`p-6 rounded-2xl border ${
+            <div className={`p-6 border hud-bracket ${
               gradResult.passed
                 ? 'bg-gradient-to-r from-emerald-950/50 to-[#121814] border-emerald-500/50 text-emerald-200 shadow-xl'
                 : 'bg-gradient-to-r from-red-950/50 to-[#181214] border-red-500/50 text-red-200'
@@ -227,10 +227,10 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
               <div className="flex items-center space-x-4">
                 {gradResult.passed ? <CheckCircle2 className="w-8 h-8 text-emerald-400" /> : <AlertCircle className="w-8 h-8 text-red-400" />}
                 <div>
-                  <h3 className="text-base font-bold text-white">
+                  <h3 className="text-base font-bold text-white font-racing">
                     {gradResult.passed ? 'CONGRATULATIONS! MODULE GRADUATION PASSED' : 'GRADUATION ATTEMPT FAILED'}
                   </h3>
-                  <p className="text-xs mt-0.5">
+                  <p className="text-xs mt-0.5 font-sans">
                     Achieved an overall score of <strong className="font-mono text-sm">{gradResult.scorePct}%</strong> (Passing benchmark: ≥ {test.passingScorePct}%).
                   </p>
                 </div>
@@ -238,7 +238,7 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
 
               {gradResult.passed && nextModule && (
                 <div className="mt-4 pt-3 border-t border-emerald-500/30 flex items-center justify-between">
-                  <span className="text-xs font-medium text-emerald-300">
+                  <span className="text-xs font-medium text-emerald-300 font-sans">
                     Unlocked Next Chapter: <strong>Module {nextModule.moduleNumber}: {nextModule.title}</strong>
                   </span>
                 </div>
@@ -247,7 +247,7 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
           )}
 
           {/* Action Bar */}
-          <div className="p-5 rounded-2xl bg-[#12121A] border border-[#232332] flex items-center justify-between shadow-xl">
+          <div className="p-5 bg-[#12121A] border border-[#232332] flex items-center justify-between shadow-xl hud-bracket">
             <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
               <span>Recorded Laps Available in Telemetry History:</span>
               <strong className={historyLaps.length >= test.requiredLaps ? 'text-emerald-400' : 'text-amber-400'}>
@@ -258,7 +258,7 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
             <button
               onClick={handleRunExam}
               disabled={isEvaluating || historyLaps.length < test.requiredLaps}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-xl text-xs font-bold transition-all ${
+              className={`chamfer-btn flex items-center space-x-2 px-6 py-3 text-xs font-racing font-bold tracking-wide transition-all ${
                 historyLaps.length >= test.requiredLaps
                   ? 'bg-gradient-to-r from-amber-500 to-[#E10600] hover:from-amber-400 hover:to-[#FF1801] text-white shadow-xl shadow-red-950/60 active:scale-95 cursor-pointer'
                   : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'

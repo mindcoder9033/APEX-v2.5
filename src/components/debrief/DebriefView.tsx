@@ -80,7 +80,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
       {/* Top Header Category Switcher Bar */}
       <div className="px-6 py-3 border-b border-[#232332] bg-[#0E0E14] flex items-center justify-between shrink-0 shadow-lg">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E10600] to-[#880400] flex items-center justify-center font-display font-black text-white text-xs shadow-md shadow-red-950">
+          <div className="w-8 h-8 bg-gradient-to-br from-[#E10600] to-[#880400] flex items-center justify-center font-display font-black text-white text-xs shadow-md shadow-red-950">
             <Activity className="w-4 h-4" />
           </div>
           <div>
@@ -94,21 +94,21 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
         </div>
 
         {/* Category Tabs: Academy vs Live Practice */}
-        <div className="flex items-center space-x-1.5 bg-[#14141E] p-1 rounded-xl border border-[#262638]">
+        <div className="flex items-center space-x-1.5 bg-[#14141E] p-1 border border-[#262638]">
           <button
             onClick={() => {
               setActiveCategory('academy');
               if (academyLaps.length > 0) onSelectLap(academyLaps[0]);
             }}
-            className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold transition-all ${
               activeCategory === 'academy'
-                ? 'bg-[#E10600] text-white shadow-md shadow-red-950/60'
+                ? 'bg-[#E10600] text-white chamfer-tab shadow-md shadow-red-950/60'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-[#1A1A28]'
             }`}
           >
             <Award className="w-3.5 h-3.5" />
             <span>Curriculum Academy Stints</span>
-            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold ${
+            <span className={`text-[10px] font-mono px-1.5 py-0.5 font-bold ${
               activeCategory === 'academy' ? 'bg-white/20 text-white' : 'bg-[#202030] text-slate-400'
             }`}>
               {academyLaps.length}
@@ -120,15 +120,15 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
               setActiveCategory('practice');
               if (practiceLaps.length > 0) onSelectLap(practiceLaps[0]);
             }}
-            className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold transition-all ${
               activeCategory === 'practice'
-                ? 'bg-[#E10600] text-white shadow-md shadow-red-950/60'
+                ? 'bg-[#E10600] text-white chamfer-tab shadow-md shadow-red-950/60'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-[#1A1A28]'
             }`}
           >
             <Radio className="w-3.5 h-3.5" />
             <span>Live Practice Stints</span>
-            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold ${
+            <span className={`text-[10px] font-mono px-1.5 py-0.5 font-bold ${
               activeCategory === 'practice' ? 'bg-white/20 text-white' : 'bg-[#202030] text-slate-400'
             }`}>
               {practiceLaps.length}
@@ -163,7 +163,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {displayedLaps.length === 0 ? (
               <div className="p-6 text-center space-y-3 mt-8">
-                <div className="w-12 h-12 mx-auto rounded-xl bg-[#161622] border border-[#262638] flex items-center justify-center text-slate-500">
+                <div className="w-12 h-12 mx-auto bg-[#161622] border border-[#262638] flex items-center justify-center text-slate-500">
                   {activeCategory === 'academy' ? <Award className="w-6 h-6" /> : <Radio className="w-6 h-6" />}
                 </div>
                 <h3 className="text-xs font-bold text-slate-300">
@@ -177,7 +177,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                 {activeCategory === 'academy' && onNavigateToAcademy && (
                   <button
                     onClick={onNavigateToAcademy}
-                    className="px-3.5 py-1.5 rounded-lg bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold shadow-md shadow-red-950/50 cursor-pointer transition-all"
+                    className="chamfer-btn px-4 py-2 bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-racing font-bold shadow-md shadow-red-950/50 cursor-pointer transition-all"
                   >
                     Go to Academy
                   </button>
@@ -185,7 +185,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                 {activeCategory === 'practice' && onNavigateToPractice && (
                   <button
                     onClick={onNavigateToPractice}
-                    className="px-3.5 py-1.5 rounded-lg bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold shadow-md shadow-red-950/50 cursor-pointer transition-all"
+                    className="chamfer-btn px-4 py-2 bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-racing font-bold shadow-md shadow-red-950/50 cursor-pointer transition-all"
                   >
                     Go to Live Practice
                   </button>
@@ -199,7 +199,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                   <div
                     key={lap.lapId || idx}
                     onClick={() => onSelectLap(lap)}
-                    className={`w-full text-left p-3.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer group ${
+                    className={`w-full text-left p-3.5 border transition-all relative overflow-hidden cursor-pointer group ${
                       isSelected
                         ? 'bg-[#181824] border-[#E10600] shadow-lg shadow-red-950/20'
                         : 'bg-[#12121A] border-[#222230] hover:bg-[#161622] hover:border-[#2D2D40]'
@@ -214,11 +214,11 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                         {/* Stint Title / Module info */}
                         <div className="flex items-center space-x-1.5 flex-wrap">
                           {lap.source === 'academy' && lap.moduleNumber ? (
-                            <span className="text-[10px] font-mono font-bold text-[#FF4D4D] bg-[#E10600]/10 px-1.5 py-0.2 rounded border border-[#E10600]/30">
+                            <span className="text-[10px] font-mono font-bold text-[#FF4D4D] bg-[#E10600]/10 px-1.5 py-0.5 border border-[#E10600]/30">
                               Mod {lap.moduleNumber}
                             </span>
                           ) : (
-                            <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/40 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                            <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/40 px-1.5 py-0.5 border border-emerald-500/30">
                               Practice
                             </span>
                           )}
@@ -251,7 +251,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                               e.stopPropagation();
                               onDeleteLap(lap.lapId);
                             }}
-                            className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-[#201518] transition-colors"
+                            className="p-1 text-slate-500 hover:text-red-400 hover:bg-[#201518] transition-colors"
                             title="Delete stint from history"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -271,10 +271,10 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
           {selectedLap ? (
             <>
               {/* Debrief Header Banner */}
-              <div className="p-6 rounded-2xl bg-[#12121A] border border-[#232332] flex items-center justify-between shadow-xl">
+              <div className="p-6 bg-[#12121A] border border-[#232332] flex items-center justify-between shadow-xl hud-bracket">
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="bg-[#E10600] text-white text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider tabular-nums">
+                    <span className="bg-[#E10600] text-white text-[11px] font-mono font-bold px-2.5 py-0.5 uppercase tracking-wider tabular-nums">
                       {selectedLap.source === 'academy' ? 'Academy Stint Analysis' : 'Live Practice Stint'}
                     </span>
                     <span className="text-xs text-[#8E8E9F] font-tech uppercase tracking-wider font-semibold">
@@ -292,7 +292,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                 <div className="flex items-center space-x-3">
                   <button
                     onClick={onOpenPdfModal}
-                    className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] text-white text-xs font-racing font-bold tracking-wide shadow-lg shadow-red-950/60 active:scale-95 transition-all cursor-pointer"
+                    className="chamfer-btn flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] text-white text-xs font-racing font-bold tracking-wide shadow-lg shadow-red-950/60 active:scale-95 transition-all cursor-pointer"
                   >
                     <FileDown className="w-4 h-4" />
                     <span>Generate Official PDF</span>
@@ -302,27 +302,27 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
 
               {/* Summary KPI Strip */}
               <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
+                <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                   <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Lap Time</span>
                   <strong className="text-base font-mono font-bold text-white tabular-nums">{selectedLap.lapTimeSec.toFixed(2)}s</strong>
                 </div>
-                <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
+                <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                   <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Peak Velocity</span>
                   <strong className="text-base font-hud-clean font-bold text-[#00F0FF] tabular-nums">{selectedLap.maxSpeedKph} <span className="text-xs font-tech">km/h</span></strong>
                 </div>
-                <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
+                <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                   <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Traction Budget %</span>
                   <strong className="text-base font-hud-clean font-bold text-emerald-400 tabular-nums">{selectedLap.avgTractionBudgetPct}%</strong>
                 </div>
-                <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
+                <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                   <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Max Lateral G</span>
                   <strong className="text-base font-mono font-bold text-purple-400 tabular-nums">{selectedLap.peakLatG}G</strong>
                 </div>
-                <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
+                <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                   <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Max Braking G</span>
                   <strong className="text-base font-mono font-bold text-[#FF1801] tabular-nums">{selectedLap.peakBrakingG}G</strong>
                 </div>
-                <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
+                <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                   <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Mastery Grade</span>
                   <strong className="text-base font-hud-clean font-bold text-amber-400 tabular-nums">{selectedLap.overallScore}%</strong>
                 </div>
@@ -350,11 +350,11 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center min-h-[450px]">
-              <div className="p-10 rounded-3xl bg-[#12121A] border border-[#232332] text-center space-y-4 shadow-2xl max-w-lg mx-auto">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-[#181826] border border-[#2A2A3E] flex items-center justify-center">
+              <div className="p-10 bg-[#12121A] border border-[#232332] text-center space-y-4 shadow-2xl max-w-lg mx-auto hud-bracket">
+                <div className="w-16 h-16 mx-auto bg-[#181826] border border-[#2A2A3E] flex items-center justify-center">
                   <Radio className="w-8 h-8 text-slate-500 animate-pulse" />
                 </div>
-                <h3 className="text-lg font-bold text-white">No Stint Selected or Recorded</h3>
+                <h3 className="text-lg font-bold text-white font-racing">No Stint Selected or Recorded</h3>
                 <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
                   {activeCategory === 'academy'
                     ? 'Start a session in Curriculum Academy and record a stint in Step 2 to view Skip Barber telemetric debriefing.'
@@ -364,7 +364,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                   {activeCategory === 'academy' && onNavigateToAcademy && (
                     <button
                       onClick={onNavigateToAcademy}
-                      className="px-4 py-2 rounded-xl bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold shadow-lg shadow-red-950/50 cursor-pointer transition-all"
+                      className="chamfer-btn px-4 py-2 bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-racing font-bold shadow-lg shadow-red-950/50 cursor-pointer transition-all"
                     >
                       Go to Curriculum Academy
                     </button>
@@ -372,7 +372,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                   {activeCategory === 'practice' && onNavigateToPractice && (
                     <button
                       onClick={onNavigateToPractice}
-                      className="px-4 py-2 rounded-xl bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold shadow-lg shadow-red-950/50 cursor-pointer transition-all"
+                      className="chamfer-btn px-4 py-2 bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-racing font-bold shadow-lg shadow-red-950/50 cursor-pointer transition-all"
                     >
                       Go to Live Practice
                     </button>

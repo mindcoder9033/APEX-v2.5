@@ -81,7 +81,7 @@ body {
 }
 
 
-/* Custom Telemetry Scrollbar */
+/* Custom Telemetry Scrollbar - Sharp 0px */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -91,10 +91,97 @@ body {
 }
 ::-webkit-scrollbar-thumb {
   background: #252535;
-  border-radius: 3px;
+  border-radius: 0px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #E10600;
+}
+
+/* Sharp HUD Panels & Cards */
+.hud-panel {
+  background: #0D0D14;
+  border: 1px solid #232332;
+  position: relative;
+}
+
+.hud-panel-header {
+  border-bottom: 1px solid #1F1F2C;
+  background: #111118;
+}
+
+/* Tactical HUD Corner Brackets */
+.hud-bracket {
+  position: relative;
+}
+.hud-bracket::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 6px;
+  height: 6px;
+  border-top: 2px solid #E10600;
+  border-left: 2px solid #E10600;
+  pointer-events: none;
+  z-index: 10;
+}
+.hud-bracket::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 6px;
+  height: 6px;
+  border-bottom: 2px solid #E10600;
+  border-right: 2px solid #E10600;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.hud-bracket-cyan::before {
+  border-top-color: #00F0FF;
+  border-left-color: #00F0FF;
+}
+.hud-bracket-cyan::after {
+  border-bottom-color: #00F0FF;
+  border-right-color: #00F0FF;
+}
+
+.hud-bracket-green::before {
+  border-top-color: #00FF66;
+  border-left-color: #00FF66;
+}
+.hud-bracket-green::after {
+  border-bottom-color: #00FF66;
+  border-right-color: #00FF66;
+}
+
+/* 45° Chamfered Geometric Clip-Paths */
+.chamfer-btn {
+  clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);
+}
+
+.chamfer-btn-sm {
+  clip-path: polygon(5px 0%, 100% 0%, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0% 100%, 0% 5px);
+}
+
+.chamfer-badge {
+  clip-path: polygon(4px 0%, 100% 0%, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0% 100%, 0% 4px);
+}
+
+.chamfer-tab {
+  clip-path: polygon(6px 0%, 100% 0%, 100% 100%, 0% 100%, 0% 6px);
+}
+
+.chamfer-tag-r {
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%);
+}
+
+/* Diamond Micro-Pips for Serious Telemetry Status */
+.diamond-pip {
+  display: inline-block;
+  transform: rotate(45deg);
+  transform-origin: center;
 }
 
 /* Glass & Neon Race Engineer Panels */

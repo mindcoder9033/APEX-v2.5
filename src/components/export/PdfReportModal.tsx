@@ -49,16 +49,16 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#0E0E16] w-full max-w-5xl h-[92vh] rounded-3xl border border-[#2A2A3E] shadow-2xl flex flex-col overflow-hidden">
+      <div className="bg-[#0E0E16] w-full max-w-5xl h-[92vh] border border-[#2A2A3E] shadow-2xl flex flex-col overflow-hidden hud-bracket">
         {/* Modal Header */}
         <div className="p-5 border-b border-[#232332] bg-[#12121A] flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-[#E10600] flex items-center justify-center text-white">
+            <div className="w-8 h-8 bg-[#E10600] flex items-center justify-center text-white">
               <FileDown className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white">Race-Engineer Telemetry Report Preview</h2>
-              <p className="text-[11px] text-[#8E8E9F]">Multi-page PDF export with telemetry traces and Skip Barber debrief</p>
+              <h2 className="text-sm font-bold text-white font-racing">Race-Engineer Telemetry Report Preview</h2>
+              <p className="text-[11px] text-[#8E8E9F] font-sans">Multi-page PDF export with telemetry traces and Skip Barber debrief</p>
             </div>
           </div>
 
@@ -66,13 +66,13 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
             <button
               onClick={handleDownloadPdf}
               disabled={isGenerating}
-              className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold shadow-lg shadow-red-950/60 active:scale-95 transition-all"
+              className="chamfer-btn flex items-center space-x-2 px-4 py-2 bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-racing font-bold tracking-wide shadow-lg shadow-red-950/60 active:scale-95 transition-all"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>{isGenerating ? 'Rendering PDF...' : 'Download PDF Report'}</span>
             </button>
 
-            <button onClick={onClose} className="p-2 rounded-xl bg-[#1A1A26] text-slate-400 hover:text-white">
+            <button onClick={onClose} className="p-2 border border-[#2A2A3E] bg-[#1A1A26] text-slate-400 hover:text-white transition-all">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -82,17 +82,17 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
         <div className="flex-1 overflow-y-auto p-8 bg-[#060608] flex justify-center">
           <div
             ref={reportRef}
-            className="w-[800px] bg-[#0E0E14] border border-[#232332] rounded-xl p-8 space-y-6 text-slate-200 shadow-2xl"
+            className="w-[800px] bg-[#0E0E14] border border-[#232332] p-8 space-y-6 text-slate-200 shadow-2xl hud-bracket"
           >
             {/* Header Document Banner */}
             <div className="border-b border-[#232332] pb-6 flex items-start justify-between">
               <div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 rounded bg-[#E10600] flex items-center justify-center font-display font-black text-xs text-white">
+                  <div className="w-6 h-6 bg-[#E10600] flex items-center justify-center font-display font-black text-xs text-white">
                     A
                   </div>
                   <span className="font-display font-black text-lg tracking-wider text-white">APEX RACE DEBRIEF</span>
-                  <span className="text-[10px] font-mono bg-[#E10600]/20 text-[#FF4D4D] px-1.5 py-0.5 rounded border border-[#E10600]/40 font-bold">
+                  <span className="text-[10px] font-mono bg-[#E10600]/20 text-[#FF4D4D] px-2 py-0.5 border border-[#E10600]/40 font-bold">
                     OFFICIAL
                   </span>
                 </div>
@@ -110,26 +110,26 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
 
             {/* Executive Summary Grid */}
             <div className="grid grid-cols-4 gap-3 font-mono text-xs">
-              <div className="p-3 rounded-lg bg-[#14141E] border border-[#222230]">
+              <div className="p-3 bg-[#14141E] border border-[#222230]">
                 <span className="text-[10px] text-slate-400 block">Lap Time</span>
                 <strong className="text-sm text-white font-bold">{lap.lapTimeSec.toFixed(2)}s</strong>
               </div>
-              <div className="p-3 rounded-lg bg-[#14141E] border border-[#222230]">
+              <div className="p-3 bg-[#14141E] border border-[#222230]">
                 <span className="text-[10px] text-slate-400 block">Top Velocity</span>
                 <strong className="text-sm text-[#00F0FF] font-bold">{lap.maxSpeedKph} km/h</strong>
               </div>
-              <div className="p-3 rounded-lg bg-[#14141E] border border-[#222230]">
+              <div className="p-3 bg-[#14141E] border border-[#222230]">
                 <span className="text-[10px] text-slate-400 block">Traction Budget %</span>
                 <strong className="text-sm text-emerald-400 font-bold">{lap.avgTractionBudgetPct}%</strong>
               </div>
-              <div className="p-3 rounded-lg bg-[#14141E] border border-[#222230]">
+              <div className="p-3 bg-[#14141E] border border-[#222230]">
                 <span className="text-[10px] text-slate-400 block">Mastery Score</span>
                 <strong className="text-sm text-amber-400 font-bold">{lap.overallScore}%</strong>
               </div>
             </div>
 
             {/* Tactical Action Items */}
-            <div className="p-4 rounded-xl bg-[#14141E] border border-[#262638] space-y-2">
+            <div className="p-4 bg-[#14141E] border border-[#262638] space-y-2">
               <h3 className="text-xs font-bold font-display uppercase tracking-wider text-[#FF4D4D] flex items-center space-x-1.5">
                 <Target className="w-3.5 h-3.5" />
                 <span>Executive Action Plan</span>

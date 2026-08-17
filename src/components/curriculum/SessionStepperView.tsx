@@ -147,7 +147,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
         <div className="flex items-center space-x-4">
           <button
             onClick={onBack}
-            className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-[#181824] hover:bg-[#222232] text-slate-300 hover:text-white border border-[#2B2B3E] transition-all text-xs font-semibold"
+            className="flex items-center space-x-2 px-3 py-1.5 bg-[#181824] hover:bg-[#222232] text-slate-300 hover:text-white border border-[#2B2B3E] transition-all text-xs font-semibold"
           >
             <ArrowLeft className="w-4 h-4 text-[#E10600]" />
             <span>Curriculum Modules</span>
@@ -156,7 +156,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
           <div className="h-5 w-[1px] bg-[#2A2A3C]" />
 
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E10600] to-[#880400] flex items-center justify-center font-display font-black text-white text-xs shadow-md shadow-red-950">
+            <div className="w-8 h-8 bg-gradient-to-br from-[#E10600] to-[#880400] flex items-center justify-center font-display font-black text-white text-xs shadow-md shadow-red-950">
               {module.moduleNumber}.{session.sessionNumber}
             </div>
             <div>
@@ -174,12 +174,12 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
         {/* Right Status Badges */}
         <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2 px-3 py-1 rounded-lg bg-[#14141E] border border-[#232332] text-xs font-mono">
+          <div className="flex items-center space-x-2 px-3 py-1 bg-[#14141E] border border-[#232332] text-xs font-mono">
             <span className="text-[#8E8E9F]">Stint Laps:</span>
             <strong className="text-emerald-400 font-bold">{sessionLaps.length}</strong>
           </div>
           {progress.completedSessionIds.includes(session.id) && (
-            <span className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold">
+            <span className="flex items-center space-x-1.5 px-3 py-1 bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Session Completed</span>
             </span>
@@ -203,9 +203,9 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
               <button
                 key={stage.key}
                 onClick={() => setActiveStage(stage.key as any)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`flex items-center space-x-2 px-4 py-2 text-xs font-bold transition-all ${
                   isActive
-                    ? 'bg-[#E10600] text-white shadow-md shadow-red-950/60 border border-red-400/40'
+                    ? 'bg-[#E10600] text-white chamfer-tab shadow-md shadow-red-950/60 border border-red-400/40'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-[#1A1A28] border border-transparent'
                 }`}
               >
@@ -217,7 +217,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
         </div>
 
         <div className="hidden lg:flex items-center space-x-2 text-xs font-mono text-[#8E8E9F]">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="w-1.5 h-1.5 diamond-pip bg-emerald-400 animate-pulse" />
           <span>Skip Barber 5-Stage Coaching Framework</span>
         </div>
       </div>
@@ -227,7 +227,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
         {/* STAGE 1: TEACH */}
         {activeStage === 'teach' && (
           <div className="max-w-5xl mx-auto space-y-6">
-            <div className="p-6 rounded-2xl bg-[#14141E] border border-[#262638] space-y-4 shadow-xl">
+            <div className="p-6 bg-[#14141E] border border-[#262638] space-y-4 shadow-xl hud-bracket">
               <div className="flex items-center space-x-2 text-[#E10600] text-xs font-mono font-bold uppercase tracking-wider">
                 <BookOpen className="w-4 h-4" />
                 <span>Skip Barber Theoretical Foundation</span>
@@ -236,13 +236,13 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
               <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
                 {session.theorySummary.map((para, pIdx) => (
-                  <p key={pIdx} className="bg-[#101018] p-4 rounded-xl border border-[#1E1E2C]">{para}</p>
+                  <p key={pIdx} className="bg-[#101018] p-4 border border-[#1E1E2C]">{para}</p>
                 ))}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 {session.keyPrinciples.map((kp, kpIdx) => (
-                  <div key={kpIdx} className="p-4 rounded-xl bg-[#181826] border border-[#2D2D40]">
+                  <div key={kpIdx} className="p-4 bg-[#181826] border border-[#2D2D40]">
                     <h3 className="text-xs font-bold text-[#FF4D4D] uppercase tracking-wider font-mono">{kp.title}</h3>
                     <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">{kp.explanation}</p>
                   </div>
@@ -251,14 +251,14 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
             </div>
 
             {/* Target Metrics */}
-            <div className="p-6 rounded-2xl bg-[#14141E] border border-[#262638] space-y-4 shadow-xl">
+            <div className="p-6 bg-[#14141E] border border-[#262638] space-y-4 shadow-xl hud-bracket">
               <div className="flex items-center space-x-2 text-white text-xs font-mono font-bold uppercase tracking-wider">
                 <Target className="w-4 h-4 text-[#00F0FF]" />
                 <span>Telemetric Target Criteria for this Session</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {session.targetMetrics.map((tm, tmIdx) => (
-                  <div key={tmIdx} className="p-4 rounded-xl bg-[#101018] border border-[#222234] flex items-center justify-between">
+                  <div key={tmIdx} className="p-4 bg-[#101018] border border-[#222234] flex items-center justify-between">
                     <div>
                       <span className="text-xs font-semibold text-slate-300 block">{tm.label}</span>
                       <span className="text-[11px] text-[#8E8E9F]">{tm.hint}</span>
@@ -272,7 +272,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setActiveStage('practice')}
-                className="flex items-center space-x-2 px-6 py-3 rounded-xl bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold shadow-lg shadow-red-950/60 transition-all active:scale-95 cursor-pointer"
+                className="chamfer-btn flex items-center space-x-2 px-6 py-3 bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-racing font-bold tracking-wide shadow-lg shadow-red-950/60 transition-all active:scale-95 cursor-pointer"
               >
                 <span>Proceed to Step 2: Practice & Ingest</span>
                 <ArrowRight className="w-4 h-4" />
@@ -286,20 +286,20 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
           <div className="max-w-5xl mx-auto space-y-6">
             {/* Recommended Forza Event Setup Briefing */}
             {session.recommendedSetup && (
-              <div className="p-6 rounded-2xl bg-[#14141E] border border-[#262638] space-y-4 shadow-xl">
+              <div className="p-6 bg-[#14141E] border border-[#262638] space-y-4 shadow-xl hud-bracket">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2 text-[#00F0FF] text-xs font-mono font-bold uppercase tracking-wider">
                     <Flag className="w-4 h-4 text-[#00F0FF]" />
                     <span>Recommended Forza Motorsport Event Setup</span>
                   </div>
-                  <span className="text-[11px] font-mono text-slate-400 bg-[#1A1A28] px-2.5 py-1 rounded-full border border-[#2A2A3E]">
+                  <span className="text-[11px] font-mono text-slate-400 bg-[#1A1A28] px-2.5 py-1 border border-[#2A2A3E]">
                     Free Play / Test Drive Setup
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  <div className="p-3.5 rounded-xl bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-red-950/40 text-[#E10600] border border-red-900/30">
+                  <div className="p-3.5 bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
+                    <div className="p-2 bg-red-950/40 text-[#E10600] border border-red-900/30">
                       <Car className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -310,8 +310,8 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-cyan-950/40 text-[#00F0FF] border border-cyan-900/30">
+                  <div className="p-3.5 bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
+                    <div className="p-2 bg-cyan-950/40 text-[#00F0FF] border border-cyan-900/30">
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -322,8 +322,8 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-purple-950/40 text-purple-400 border border-purple-900/30">
+                  <div className="p-3.5 bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
+                    <div className="p-2 bg-purple-950/40 text-purple-400 border border-purple-900/30">
                       <Flag className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -334,8 +334,8 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-amber-950/40 text-amber-400 border border-amber-900/30">
+                  <div className="p-3.5 bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
+                    <div className="p-2 bg-amber-950/40 text-amber-400 border border-amber-900/30">
                       <Sun className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -346,8 +346,8 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-blue-950/40 text-blue-400 border border-blue-900/30">
+                  <div className="p-3.5 bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
+                    <div className="p-2 bg-blue-950/40 text-blue-400 border border-blue-900/30">
                       <CloudRain className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -358,8 +358,8 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-emerald-950/40 text-emerald-400 border border-emerald-900/30">
+                  <div className="p-3.5 bg-[#0F0F17] border border-[#222232] flex items-start space-x-3">
+                    <div className="p-2 bg-emerald-950/40 text-emerald-400 border border-emerald-900/30">
                       <RotateCw className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -372,7 +372,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                 </div>
 
                 {session.recommendedSetup.notes && (
-                  <div className="p-3 rounded-xl bg-[#101018] border border-[#222232] text-xs text-slate-300 flex items-start space-x-2">
+                  <div className="p-3 bg-[#101018] border border-[#222232] text-xs text-slate-300 flex items-start space-x-2">
                     <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                     <span>{session.recommendedSetup.notes}</span>
                   </div>
@@ -381,10 +381,10 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
             )}
 
             {/* Live Telemetry Ingest & Stint Recording Control */}
-            <div className="p-6 rounded-2xl bg-[#14141E] border border-[#262638] space-y-6 shadow-xl">
+            <div className="p-6 bg-[#14141E] border border-[#262638] space-y-6 shadow-xl hud-bracket">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+                  <div className={`w-10 h-10 flex items-center justify-center border ${
                     isRecording 
                       ? 'bg-red-950/60 border-red-500/60' 
                       : hasLiveData 
@@ -401,10 +401,10 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                   </div>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                      <h3 className="text-sm font-bold text-white uppercase tracking-wider font-racing">
                         Practice Telemetry Ingestion & Stint Recorder
                       </h3>
-                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                      <span className={`chamfer-badge text-[10px] font-mono font-bold px-2 py-0.5 border ${
                         isRecording
                           ? 'bg-red-950 text-red-300 border-red-500/50 animate-pulse'
                           : hasLiveData
@@ -414,7 +414,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                         {isRecording ? `RECORDING STINT (${formatTime(recordingSeconds)})` : hasLiveData ? '60Hz UDP Connected' : 'Waiting for Telemetry'}
                       </span>
                     </div>
-                    <p className="text-xs text-[#8E8E9F]">
+                    <p className="text-xs text-[#8E8E9F] font-sans">
                       {isRecording 
                         ? `Recording telemetry frames: ${recordedFrames.length} captured`
                         : 'Port 5300 listening. Click "Start Recording Stint" when ready to drive.'}
@@ -427,7 +427,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                   {!isRecording ? (
                     <button
                       onClick={handleStartRecording}
-                      className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] text-white text-xs font-bold tracking-wide shadow-xl shadow-red-950/60 border border-red-400/40 active:scale-95 cursor-pointer transition-all"
+                      className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] text-white text-xs font-racing font-bold tracking-wide shadow-xl shadow-red-950/60 border border-red-400/40 active:scale-95 cursor-pointer transition-all"
                     >
                       <Play className="w-4 h-4 fill-white" />
                       <span>Start Recording Stint</span>
@@ -435,7 +435,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                   ) : (
                     <button
                       onClick={handleStopRecording}
-                      className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold tracking-wide shadow-xl shadow-red-950/60 border border-red-400/50 active:scale-95 cursor-pointer transition-all"
+                      className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-racing font-bold tracking-wide shadow-xl shadow-red-950/60 border border-red-400/50 active:scale-95 cursor-pointer transition-all"
                     >
                       <Square className="w-4 h-4 fill-white" />
                       <span>Stop Recording Stint ({recordedFrames.length} frames)</span>
@@ -446,30 +446,30 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
               {/* Live Gauges Strip */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 rounded-xl bg-[#0F0F17] border border-[#222232] flex flex-col items-center justify-center">
-                  <span className="text-[10px] font-mono font-bold text-[#8E8E9F] uppercase tracking-widest">Speed</span>
+                <div className="p-4 bg-[#0F0F17] border border-[#222232] flex flex-col items-center justify-center hud-bracket">
+                  <span className="text-[10px] font-tech font-bold text-[#8E8E9F] uppercase tracking-widest">Speed</span>
                   <div className="flex items-baseline space-x-1 my-1">
-                    <span className="text-3xl font-mono font-black text-[#00F0FF]">
+                    <span className="text-3xl font-hud font-black text-[#00F0FF] tabular-nums">
                       {liveFrame ? liveFrame.speedKph.toFixed(0) : '0'}
                     </span>
-                    <span className="text-xs font-mono text-slate-400">km/h</span>
+                    <span className="text-xs font-tech text-slate-400">km/h</span>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-500">
+                  <span className="text-[10px] font-mono text-slate-500 tabular-nums">
                     {liveFrame ? `${liveFrame.speedMph.toFixed(0)} mph` : '0 mph'}
                   </span>
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#0F0F17] border border-[#222232] flex flex-col items-center justify-center">
-                  <span className="text-[10px] font-mono font-bold text-[#8E8E9F] uppercase tracking-widest">Gear & RPM</span>
+                <div className="p-4 bg-[#0F0F17] border border-[#222232] flex flex-col items-center justify-center hud-bracket">
+                  <span className="text-[10px] font-tech font-bold text-[#8E8E9F] uppercase tracking-widest">Gear & RPM</span>
                   <div className="flex items-baseline space-x-1.5 my-1">
-                    <span className="text-3xl font-mono font-black text-amber-400">
+                    <span className="text-3xl font-hud font-black text-amber-400 tabular-nums">
                       {liveFrame ? (liveFrame.gear === 0 ? 'R' : liveFrame.gear === 11 ? 'N' : liveFrame.gear) : 'N'}
                     </span>
-                    <span className="text-xs font-mono text-slate-300">
+                    <span className="text-xs font-mono text-slate-300 tabular-nums">
                       {liveFrame ? `${Math.round(liveFrame.rpm)}` : '0'}
                     </span>
                   </div>
-                  <div className="w-full bg-[#1F1F2E] h-1 rounded-full overflow-hidden mt-1">
+                  <div className="w-full bg-[#1F1F2E] h-1.5 border border-[#28283C] overflow-hidden mt-1">
                     <div
                       className="bg-gradient-to-r from-emerald-400 via-amber-400 to-[#E10600] h-full"
                       style={{ width: `${Math.min(100, ((liveFrame?.rpm || 0) / 8000) * 100)}%` }}
@@ -477,17 +477,17 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                   </div>
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#0F0F17] border border-[#222232] flex flex-col items-center justify-center">
-                  <span className="text-[10px] font-mono font-bold text-[#8E8E9F] uppercase tracking-widest">Traction Usage</span>
-                  <span className="text-3xl font-mono font-black text-emerald-400 my-1">
+                <div className="p-4 bg-[#0F0F17] border border-[#222232] flex flex-col items-center justify-center hud-bracket">
+                  <span className="text-[10px] font-tech font-bold text-[#8E8E9F] uppercase tracking-widest">Traction Usage</span>
+                  <span className="text-3xl font-hud font-black text-emerald-400 my-1 tabular-nums">
                     {liveFrame ? `${liveFrame.tractionBudgetPct.toFixed(0)}%` : '0%'}
                   </span>
                   <span className="text-[10px] font-mono text-slate-500">Peak Budget</span>
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#0F0F17] border border-[#222232] flex flex-col items-center justify-center">
-                  <span className="text-[10px] font-mono font-bold text-[#8E8E9F] uppercase tracking-widest">Lateral G</span>
-                  <span className="text-3xl font-mono font-black text-purple-400 my-1">
+                <div className="p-4 bg-[#0F0F17] border border-[#222232] flex flex-col items-center justify-center hud-bracket">
+                  <span className="text-[10px] font-tech font-bold text-[#8E8E9F] uppercase tracking-widest">Lateral G</span>
+                  <span className="text-3xl font-hud font-black text-purple-400 my-1 tabular-nums">
                     {liveFrame ? `${Math.abs(liveFrame.latG).toFixed(2)}G` : '0.00G'}
                   </span>
                   <span className="text-[10px] font-mono text-slate-500">Cornering Load</span>
@@ -496,33 +496,33 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
               {/* Stint Recorded Success Banner */}
               {lastSavedStintLap && (
-                <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-[#121820] to-[#12121C] border border-emerald-500/50 shadow-xl space-y-3">
+                <div className="p-5 bg-gradient-to-r from-emerald-950/40 via-[#121820] to-[#12121C] border border-emerald-500/50 shadow-xl space-y-3 hud-bracket">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2.5 text-emerald-400">
                       <CheckCircle2 className="w-5 h-5" />
-                      <h4 className="text-sm font-bold uppercase tracking-wider">
+                      <h4 className="text-sm font-bold uppercase tracking-wider font-racing">
                         Stint Telemetry Successfully Captured & Saved
                       </h4>
                     </div>
-                    <span className="text-xs font-mono font-bold text-emerald-300 bg-emerald-950 px-2.5 py-1 rounded-lg border border-emerald-500/40">
+                    <span className="text-xs font-mono font-bold text-emerald-300 bg-emerald-950 px-2.5 py-1 border border-emerald-500/40">
                       Lap Grade: {lastSavedStintLap.overallScore}%
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono pt-1">
-                    <div className="bg-[#0C0C12] p-2.5 rounded-xl border border-[#202030]">
+                    <div className="bg-[#0C0C12] p-2.5 border border-[#202030]">
                       <span className="text-slate-400 block text-[10px]">Lap Time:</span>
                       <strong className="text-white text-sm">{lastSavedStintLap.lapTimeSec.toFixed(2)}s</strong>
                     </div>
-                    <div className="bg-[#0C0C12] p-2.5 rounded-xl border border-[#202030]">
+                    <div className="bg-[#0C0C12] p-2.5 border border-[#202030]">
                       <span className="text-slate-400 block text-[10px]">Max Velocity:</span>
                       <strong className="text-[#00F0FF] text-sm">{lastSavedStintLap.maxSpeedKph} km/h</strong>
                     </div>
-                    <div className="bg-[#0C0C12] p-2.5 rounded-xl border border-[#202030]">
+                    <div className="bg-[#0C0C12] p-2.5 border border-[#202030]">
                       <span className="text-slate-400 block text-[10px]">Traction Budget:</span>
                       <strong className="text-emerald-400 text-sm">{lastSavedStintLap.avgTractionBudgetPct}%</strong>
                     </div>
-                    <div className="bg-[#0C0C12] p-2.5 rounded-xl border border-[#202030]">
+                    <div className="bg-[#0C0C12] p-2.5 border border-[#202030]">
                       <span className="text-slate-400 block text-[10px]">Peak Lateral G:</span>
                       <strong className="text-purple-400 text-sm">{lastSavedStintLap.peakLatG}G</strong>
                     </div>
@@ -531,7 +531,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                   <div className="flex justify-end pt-2">
                     <button
                       onClick={() => setActiveStage('analyze')}
-                      className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-950/60 active:scale-95 cursor-pointer transition-all"
+                      className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-racing font-bold shadow-lg shadow-emerald-950/60 active:scale-95 cursor-pointer transition-all"
                     >
                       <span>Proceed to Step 3: Analyze Telemetry</span>
                       <ArrowRight className="w-4 h-4" />
@@ -550,29 +550,29 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
               <>
                 {/* Summary Stats Strip */}
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                  <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
+                  <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                     <span className="text-[10px] text-slate-400 font-mono block">Lap Time</span>
-                    <strong className="text-base font-mono font-bold text-white">{currentLap.lapTimeSec.toFixed(2)}s</strong>
+                    <strong className="text-base font-mono font-bold text-white tabular-nums">{currentLap.lapTimeSec.toFixed(2)}s</strong>
                   </div>
-                  <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
+                  <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                     <span className="text-[10px] text-slate-400 font-mono block">Top Speed</span>
-                    <strong className="text-base font-mono font-bold text-[#00F0FF]">{currentLap.maxSpeedKph} km/h</strong>
+                    <strong className="text-base font-hud-clean font-bold text-[#00F0FF] tabular-nums">{currentLap.maxSpeedKph} km/h</strong>
                   </div>
-                  <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
+                  <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                     <span className="text-[10px] text-slate-400 font-mono block">Traction Budget</span>
-                    <strong className="text-base font-mono font-bold text-emerald-400">{currentLap.avgTractionBudgetPct}%</strong>
+                    <strong className="text-base font-hud-clean font-bold text-emerald-400 tabular-nums">{currentLap.avgTractionBudgetPct}%</strong>
                   </div>
-                  <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
+                  <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                     <span className="text-[10px] text-slate-400 font-mono block">Peak Lat G</span>
-                    <strong className="text-base font-mono font-bold text-purple-400">{currentLap.peakLatG}G</strong>
+                    <strong className="text-base font-mono font-bold text-purple-400 tabular-nums">{currentLap.peakLatG}G</strong>
                   </div>
-                  <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
+                  <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                     <span className="text-[10px] text-slate-400 font-mono block">Peak Braking G</span>
-                    <strong className="text-base font-mono font-bold text-[#FF1801]">{currentLap.peakBrakingG}G</strong>
+                    <strong className="text-base font-mono font-bold text-[#FF1801] tabular-nums">{currentLap.peakBrakingG}G</strong>
                   </div>
-                  <div className="bg-[#14141E] p-3.5 rounded-xl border border-[#232332]">
+                  <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
                     <span className="text-[10px] text-slate-400 font-mono block">Mastery Grade</span>
-                    <strong className="text-base font-mono font-bold text-amber-400">{currentLap.overallScore}%</strong>
+                    <strong className="text-base font-hud-clean font-bold text-amber-400 tabular-nums">{currentLap.overallScore}%</strong>
                   </div>
                 </div>
 
@@ -596,7 +596,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                 <div className="flex justify-end pt-2">
                   <button
                     onClick={() => setActiveStage('adjust')}
-                    className="flex items-center space-x-2 px-6 py-2.5 rounded-xl bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold shadow-lg shadow-red-950/60 transition-all cursor-pointer"
+                    className="chamfer-btn flex items-center space-x-2 px-6 py-2.5 bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-racing font-bold tracking-wide shadow-lg shadow-red-950/60 transition-all cursor-pointer"
                   >
                     <span>Proceed to Step 4: Adjust Plan</span>
                     <ArrowRight className="w-4 h-4" />
@@ -604,18 +604,18 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                 </div>
               </>
             ) : (
-              <div className="p-12 rounded-3xl bg-[#14141E] border border-[#232332] text-center space-y-4 shadow-2xl">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-[#1A1A28] border border-[#2D2D44] flex items-center justify-center">
+              <div className="p-12 bg-[#14141E] border border-[#232332] text-center space-y-4 shadow-2xl hud-bracket">
+                <div className="w-16 h-16 mx-auto bg-[#1A1A28] border border-[#2D2D44] flex items-center justify-center">
                   <Radio className="w-8 h-8 text-amber-400 animate-pulse" />
                 </div>
-                <h3 className="text-lg font-bold text-white">No Stint Telemetry Recorded For This Session Yet</h3>
+                <h3 className="text-lg font-bold text-white font-racing">No Stint Telemetry Recorded For This Session Yet</h3>
                 <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
                   Go to Step 2 (Practice), click "Start Recording Stint", drive your laps in Forza Motorsport, and stop the recording to generate full telemetric traces and corner diagnostics.
                 </p>
                 <div className="pt-2">
                   <button
                     onClick={() => setActiveStage('practice')}
-                    className="px-5 py-2.5 rounded-xl bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-bold shadow-lg shadow-red-950/60 cursor-pointer"
+                    className="chamfer-btn px-5 py-2.5 bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-racing font-bold shadow-lg shadow-red-950/60 cursor-pointer"
                   >
                     Go to Step 2: Practice & Record
                   </button>
@@ -640,7 +640,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setActiveStage('challenge')}
-                className="flex items-center space-x-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-[#E10600] hover:from-amber-400 hover:to-[#FF1801] text-white text-xs font-bold shadow-lg shadow-red-950/60 transition-all cursor-pointer"
+                className="chamfer-btn flex items-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-[#E10600] hover:from-amber-400 hover:to-[#FF1801] text-white text-xs font-racing font-bold tracking-wide shadow-lg shadow-red-950/60 transition-all cursor-pointer"
               >
                 <span>Proceed to Step 5: Challenge Gate</span>
                 <ArrowRight className="w-4 h-4" />
@@ -652,16 +652,16 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
         {/* STAGE 5: CHALLENGE */}
         {activeStage === 'challenge' && (
           <div className="max-w-3xl mx-auto space-y-6">
-            <div className="p-8 rounded-3xl bg-gradient-to-br from-[#1A1520] via-[#12121A] to-[#0E0E14] border border-amber-500/40 shadow-2xl space-y-5">
+            <div className="p-8 bg-gradient-to-br from-[#1A1520] via-[#12121A] to-[#0E0E14] border border-amber-500/40 shadow-2xl space-y-5 hud-bracket">
               <div className="flex items-center space-x-2 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider">
                 <Trophy className="w-5 h-5" />
                 <span>Session Challenge Gate</span>
               </div>
 
               <h3 className="text-2xl font-display font-bold text-white">{session.challenge.name}</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">{session.challenge.description}</p>
+              <p className="text-xs text-slate-300 leading-relaxed font-sans">{session.challenge.description}</p>
 
-              <div className="p-4 rounded-2xl bg-[#14141E] border border-[#242436] flex items-center justify-between font-mono">
+              <div className="p-4 bg-[#14141E] border border-[#242436] flex items-center justify-between font-mono">
                 <div>
                   <span className="text-xs text-slate-400 block">Required Target</span>
                   <strong className="text-sm text-white">
@@ -676,16 +676,16 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
               {/* Challenge Result Status */}
               {challengeResult && (
-                <div className={`p-4 rounded-2xl border ${
+                <div className={`p-4 border ${
                   challengeResult.passed
                     ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-300'
                     : 'bg-red-950/40 border-red-500/50 text-red-300'
                 }`}>
-                  <div className="flex items-center space-x-2 font-bold text-sm">
+                  <div className="flex items-center space-x-2 font-bold text-sm font-racing">
                     {challengeResult.passed ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                     <span>{challengeResult.passed ? 'CHALLENGE PASSED!' : 'CHALLENGE ATTEMPT FAILED'}</span>
                   </div>
-                  <p className="text-xs mt-1 text-slate-200">{challengeResult.notes}</p>
+                  <p className="text-xs mt-1 text-slate-200 font-sans">{challengeResult.notes}</p>
                 </div>
               )}
 
@@ -697,7 +697,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                 <button
                   onClick={handleEvaluateChallenge}
                   disabled={sessionLaps.length === 0}
-                  className={`flex items-center space-x-2 px-6 py-3 rounded-xl text-xs font-bold transition-all ${
+                  className={`chamfer-btn flex items-center space-x-2 px-6 py-3 text-xs font-racing font-bold tracking-wide transition-all ${
                     sessionLaps.length > 0
                       ? 'bg-gradient-to-r from-amber-500 to-[#E10600] hover:from-amber-400 hover:to-[#FF1801] text-white shadow-xl shadow-red-950/60 active:scale-95 cursor-pointer'
                       : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'
