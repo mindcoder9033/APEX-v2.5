@@ -361,7 +361,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                       if (!selectedLap || isGeneratingPdf) return;
                       setIsGeneratingPdf(true);
                       try {
-                        await generateOfficialPdf(selectedLap, module, session);
+                        await generateOfficialPdf(selectedLap, module, session, activeSelectedStint || undefined);
                       } catch (err) {
                         console.error('Failed to generate PDF:', err);
                       } finally {

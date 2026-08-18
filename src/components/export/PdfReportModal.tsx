@@ -1,8 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { LapAnalysis } from '../../types/telemetry';
 import { Module, Session } from '../../types/curriculum';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+import { generateOfficialPdf } from '../../utils/pdfGenerator';
 import { X, FileDown, CheckCircle2, Shield, Activity, Target, Sparkles, Printer } from 'lucide-react';
 
 interface PdfReportModalProps {
@@ -22,24 +21,9 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleDownloadPdf = async () => {
-    if (!reportRef.current) return;
     setIsGenerating(true);
-
     try {
-      const element = reportRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#0A0A0E'
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`APEX_Debrief_Lap_${lap.lapNumber}_${Date.now()}.pdf`);
+      await generateOfficialPdf(lap, module, session);
     } catch (err) {
       console.error('Error generating PDF:', err);
     } finally {
