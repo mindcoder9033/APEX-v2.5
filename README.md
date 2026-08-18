@@ -103,19 +103,17 @@ cd "APEX v2.5"
 npm install
 ```
 
-### 2. Running the Development Environment
+### 2. Running the Application
 
-Launch both the Vite UI dev server and the UDP Telemetry Bridge:
+Launch APEX with a single command (the UDP telemetry bridge and WebSocket stream start automatically embedded within Vite):
 
 ```bash
-# Terminal 1: Launch Web Application
 npm run dev
-
-# Terminal 2: Launch Live UDP Telemetry Bridge
-npm run udp-server
 ```
 
-Open your browser at **`http://localhost:5173`**.
+Open your browser at **`http://localhost:3000`** (or the port displayed in your terminal).
+- The top header features a **`!`** helper icon: hover over it anytime to view your laptop's live local IP, recommended Subnet Broadcast IP, and Port configuration.
+
 
 ---
 

@@ -48,6 +48,12 @@ export function App() {
   const [isUdpConnected, setIsUdpConnected] = useState(false);
   const [liveFrame, setLiveFrame] = useState<TelemetryFrame | null>(null);
   const [liveFramesBuffer, setLiveFramesBuffer] = useState<TelemetryFrame[]>([]);
+  const [networkInfo, setNetworkInfo] = useState<{
+    directIps: string[];
+    broadcastIps: string[];
+    udpPort: number;
+    secondaryUdpPort: number;
+  } | null>(null);
 
   // Multi-Lap Stint Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -131,22 +137,58 @@ export function App() {
     let reconnectTimer: any = null;
     let packetWatchdogTimer: any = null;
     let isMounted = true;
+    let currentAttemptUrlIdx = 0;
+
+    // Fetch initial network info from Vite API endpoint
+    const fetchNetworkInfo = () => {
+      fetch('/api/network-info')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && isMounted) setNetworkInfo(data);
+        })
+        .catch(() => {});
+    };
+
+    fetchNetworkInfo();
 
     const connectBridge = () => {
       if (!isMounted) return;
       try {
-        const host = window.location.hostname || 'localhost';
-        ws = new WebSocket(`ws://${host}:5301`);
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const hostname = window.location.hostname || 'localhost';
+
+        // Candidates: 1. Embedded Vite bridge path, 2. Standalone fallback port 5301
+        const candidateUrls = [
+          `${protocol}//${host}/telemetry-bridge`,
+          `ws://${hostname}:5301`
+        ];
+
+        const targetUrl = candidateUrls[currentAttemptUrlIdx % candidateUrls.length];
+        ws = new WebSocket(targetUrl);
         ws.binaryType = 'arraybuffer';
 
         ws.onopen = () => {
           if (!isMounted) return;
           setIsBridgeConnected(true);
-          console.log('[APEX] Connected to live Forza UDP stream bridge.');
+          console.log(`[APEX] Connected to live Forza UDP stream bridge at ${targetUrl}`);
+          fetchNetworkInfo();
         };
 
         ws.onmessage = (event) => {
           if (!isMounted) return;
+
+          // Handle initial JSON config/network greeting message
+          if (typeof event.data === 'string') {
+            try {
+              const meta = JSON.parse(event.data);
+              if (meta && meta.type === 'APEX_BRIDGE_INFO' && meta.network) {
+                setNetworkInfo(meta.network);
+              }
+            } catch (_) {}
+            return;
+          }
+
           if (event.data instanceof ArrayBuffer) {
             const packet = parseForzaBuffer(event.data);
             if (packet) {
@@ -274,6 +316,7 @@ export function App() {
           latestLiveFrameRef.current = null;
           liveFramesWindowRef.current = [];
           setLiveFramesBuffer([]);
+          currentAttemptUrlIdx++;
           reconnectTimer = setTimeout(connectBridge, 2000);
         };
 
@@ -297,11 +340,13 @@ export function App() {
         latestLiveFrameRef.current = null;
         liveFramesWindowRef.current = [];
         setLiveFramesBuffer([]);
+        currentAttemptUrlIdx++;
         reconnectTimer = setTimeout(connectBridge, 2000);
       }
     };
 
     connectBridge();
+
 
     return () => {
       isMounted = false;
@@ -613,7 +658,9 @@ export function App() {
         isUdpConnected={isUdpConnected}
         isBridgeConnected={isBridgeConnected}
         totalMasteredModules={progress.graduatedModuleIds.length}
+        networkInfo={networkInfo}
       />
+
 
       {/* Main View Container */}
       <main className="flex-1 flex overflow-hidden">

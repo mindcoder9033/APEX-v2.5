@@ -29,6 +29,21 @@ wss.on('connection', (ws) => {
   connectedClients.add(ws);
   console.log(`[APEX Telemetry Bridge] Frontend UI client connected. Active WebSockets: ${connectedClients.size}`);
 
+  // Send initial network metadata greeting to frontend
+  try {
+    const localIps = getLocalIpAddresses();
+    ws.send(JSON.stringify({
+      type: 'APEX_BRIDGE_INFO',
+      network: {
+        directIps: localIps.length > 0 ? localIps : ['127.0.0.1'],
+        broadcastIps: ['192.168.1.255', '255.255.255.255'],
+        udpPort: UDP_PORT,
+        secondaryUdpPort: 20777
+      },
+      timestamp: Date.now()
+    }));
+  } catch (_) {}
+
   ws.on('close', () => {
     connectedClients.delete(ws);
     console.log(`[APEX Telemetry Bridge] Frontend UI client disconnected. Active WebSockets: ${connectedClients.size}`);
@@ -39,12 +54,21 @@ wss.on('connection', (ws) => {
   });
 });
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.warn(`⚠️ [APEX Telemetry Bridge] Port ${WS_PORT} is already in use by another running instance.`);
+  } else {
+    console.error(`[APEX Telemetry Bridge] Server error:`, err);
+  }
+});
+
 server.listen(WS_PORT, '0.0.0.0', () => {
   console.log(`====================================================`);
-  console.log(`🏎️  APEX TELEMETRY BRIDGE ONLINE`);
+  console.log(`🏎️  APEX TELEMETRY BRIDGE ONLINE (Standalone)`);
   console.log(`📡 WebSocket stream: ws://localhost:${WS_PORT}`);
   console.log(`====================================================`);
 });
+
 
 // Create UDP Socket for Forza telemetry ingestion (Port 5300 + Broadcast support)
 const udpSocket = dgram.createSocket({ type: 'udp4', reuseAddr: true });

@@ -36,13 +36,18 @@ Your APEX header will now display **"Forza 60Hz Live"** with the green indicator
 
 ---
 
-### Future Reference
-Whenever you launch APEX in the future, run both commands in separate terminal windows:
+### Starting APEX (Streamlined Single Command) 🏎️⚡
 
+You no longer need to run `npm run udp-server` in a separate terminal.
+
+Simply run:
 ```bash
-# Terminal 1: Web UI
 npm run dev
-
-# Terminal 2: Telemetry Ingest Bridge
-npm run udp-server
 ```
+
+1. **Vite UI + Telemetry Bridge Combined**: Vite starts both the web UI and the live UDP telemetry bridge (port 5300 & WebSocket `/telemetry-bridge`).
+2. **Network IP & Port Helper (`!` Icon)**: In the top header bar, hover over the **`!`** icon to immediately view:
+   - Direct Laptop IP
+   - Subnet Broadcast IP (e.g. `192.168.1.255` - Recommended for Forza so you never have to re-enter settings when your laptop IP changes!)
+   - UDP Ingest Port (`5300`)
+   - Data Out format (`CarDash`)

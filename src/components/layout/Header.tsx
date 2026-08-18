@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Award, BarChart3, Radio, Maximize2, Minimize2, Clock } from 'lucide-react';
+import { Activity, Award, BarChart3, Radio, Maximize2, Minimize2, Clock, Wifi } from 'lucide-react';
 
 export type AppView = 'curriculum' | 'practice' | 'debrief' | 'history';
+
+export interface NetworkInfo {
+  directIps: string[];
+  broadcastIps: string[];
+  udpPort: number;
+  secondaryUdpPort: number;
+}
 
 interface HeaderProps {
   currentView: AppView;
@@ -9,6 +16,7 @@ interface HeaderProps {
   isUdpConnected: boolean;
   isBridgeConnected?: boolean;
   totalMasteredModules: number;
+  networkInfo?: NetworkInfo | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,7 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   setCurrentView,
   isUdpConnected,
   isBridgeConnected = false,
-  totalMasteredModules
+  totalMasteredModules,
+  networkInfo
 }) => {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
     return typeof document !== 'undefined' ? Boolean(document.fullscreenElement) : false;
@@ -56,6 +65,16 @@ export const Header: React.FC<HeaderProps> = ({
       console.warn('Fullscreen request failed or was blocked by browser permissions:', err);
     }
   };
+
+  const directIpsList = networkInfo?.directIps && networkInfo.directIps.length > 0
+    ? networkInfo.directIps
+    : ['192.168.1.35'];
+
+  const broadcastIpsList = networkInfo?.broadcastIps && networkInfo.broadcastIps.length > 0
+    ? networkInfo.broadcastIps
+    : ['192.168.1.255', '255.255.255.255'];
+
+  const udpPort = networkInfo?.udpPort || 5300;
 
   return (
     <header className="h-16 bg-[#0E0E14] border-b border-[#232332] px-6 flex items-center justify-between select-none z-30 shrink-0">
@@ -132,7 +151,7 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
       </nav>
 
-      {/* Right Controls: Ingest Status & Actions */}
+      {/* Right Controls: Ingest Status, Network Info & Actions */}
       <div className="flex items-center space-x-2.5">
         {/* UDP Connection Status Pill */}
         <div className={`flex items-center space-x-2 px-3 py-1.5 border text-xs font-mono font-medium ${
@@ -156,6 +175,63 @@ export const Header: React.FC<HeaderProps> = ({
               ? 'Bridge Ready • Waiting for Forza'
               : 'Bridge Offline (Port 5300)'}
           </span>
+        </div>
+
+        {/* Network IP & Port Helper Hover Tooltip */}
+        <div className="relative group">
+          <button
+            type="button"
+            aria-label="Forza Telemetry Network Info"
+            className="w-8 h-8 flex items-center justify-center bg-[#14141E] hover:bg-[#1C1C28] border border-[#232332] hover:border-amber-500/60 text-amber-400 font-mono font-bold text-sm transition-all shadow-sm cursor-help active:scale-95"
+          >
+            !
+          </button>
+
+          {/* Hover Tooltip Card */}
+          <div className="absolute right-0 top-full mt-2 w-84 bg-[#101018]/95 backdrop-blur-md border border-[#2E2E42] shadow-2xl p-4 hidden group-hover:block z-50 transition-all pointer-events-none">
+            <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-[#232332]">
+              <div className="flex items-center space-x-2">
+                <Wifi className="w-3.5 h-3.5 text-[#00F0FF]" />
+                <span className="text-[11px] font-racing font-bold tracking-wider text-slate-200 uppercase">
+                  Forza Telemetry Config
+                </span>
+              </div>
+              <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 border ${
+                isBridgeConnected
+                  ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300'
+                  : 'bg-red-950/60 border-red-500/50 text-red-300'
+              }`}>
+                {isBridgeConnected ? 'BRIDGE ONLINE' : 'BRIDGE STANDBY'}
+              </span>
+            </div>
+
+            <div className="space-y-2 text-[11px] font-mono">
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-sans font-semibold">Direct Laptop IP:</span>
+                <span className="text-white font-bold text-xs bg-[#181824] px-1.5 py-0.5 border border-[#28283C] inline-block mt-0.5">
+                  {directIpsList.join(' • ')}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-sans font-semibold">
+                  Subnet Broadcast IP <span className="text-emerald-400">(Recommended)</span>:
+                </span>
+                <span className="text-emerald-300 font-bold text-xs bg-emerald-950/30 px-1.5 py-0.5 border border-emerald-600/40 inline-block mt-0.5">
+                  {broadcastIpsList.join(' • ')}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between pt-1 text-[10px] text-slate-300 border-t border-[#1C1C28]">
+                <span>Data Out Port: <strong className="text-amber-400 font-mono text-xs">{udpPort}</strong></span>
+                <span>Format: <strong className="text-slate-200 font-mono">CarDash</strong></span>
+              </div>
+
+              <div className="pt-2 text-[10px] font-sans text-slate-400 leading-snug border-t border-[#1C1C28]">
+                💡 <span className="text-slate-300">Pro Tip:</span> Set Forza Data Out IP to your <strong className="text-emerald-300">Broadcast IP</strong> ({broadcastIpsList[0] || '192.168.1.255'}). You will never have to re-enter settings when your Wi-Fi IP changes!
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* 12-Hour Real-Time Clock */}
@@ -185,4 +261,5 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+
 
