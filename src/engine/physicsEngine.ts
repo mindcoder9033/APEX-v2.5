@@ -1,5 +1,7 @@
 import { TelemetryFrame, CornerTelemetryAnalysis, LapAnalysis } from '../types/telemetry';
 import { SessionChallengeCriteria, ChallengeResult, ModuleGraduationTest, GraduationResult } from '../types/curriculum';
+import { resolveForzaCar } from '../data/carMapping';
+import { detectTrackFromFrames } from './trackDetector';
 
 export interface PredefinedCornerDef {
   index: number;
@@ -226,6 +228,14 @@ export function analyzeLapTelemetry(
     actionItems.push(`Consistency Focus: Maintain the current braking markers and commit to earlier throttle unwind.`);
   }
 
+  // Extract car metadata from telemetry frames if available
+  const sampleFrameWithCar = sanitizedFrames.find(f => f.carOrdinal !== undefined && f.carOrdinal > 0);
+  const detectedCarName = sampleFrameWithCar
+    ? resolveForzaCar(sampleFrameWithCar.carOrdinal, sampleFrameWithCar.carClass, sampleFrameWithCar.carPI)
+    : undefined;
+
+  const detectedTrackName = detectTrackFromFrames(sanitizedFrames, trackLengthMeters);
+
   return {
     lapId: `lap-${Date.now()}-${lapNumber}`,
     lapNumber,
@@ -240,7 +250,9 @@ export function analyzeLapTelemetry(
     overallScore,
     corners,
     frames: adaptiveDownsampleFrames(sanitizedFrames),
-    actionItems
+    actionItems,
+    detectedCarName,
+    detectedTrackName: detectedTrackName !== 'Unknown Track' ? detectedTrackName : undefined
   };
 }
 

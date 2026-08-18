@@ -17,6 +17,8 @@ import { Module, Session, UserProgressState, ChallengeResult, GraduationResult }
 import { LapAnalysis, StintSession, TelemetryFrame } from './types/telemetry';
 import { analyzeLapTelemetry } from './engine/physicsEngine';
 import { parseForzaBuffer, convertPacketToTelemetryFrame } from './engine/forzaParser';
+import { resolveForzaCar } from './data/carMapping';
+import { detectTrackFromFrames } from './engine/trackDetector';
 
 export function App() {
   const [currentView, setCurrentView] = useState<AppView>('curriculum');
@@ -473,10 +475,25 @@ export function App() {
 
   const handleSkipAndSaveStint = () => {
     const nextStintNum = stintHistory.length + 1;
+    const allFrames = [
+      ...activeStintLaps.flatMap(l => l.frames || []),
+      ...currentLapBufferRef.current,
+      ...liveFramesBuffer
+    ];
+    const sampleFrame = allFrames.find(f => f.carOrdinal !== undefined && f.carOrdinal > 0);
+    const detectedCar = sampleFrame
+      ? resolveForzaCar(sampleFrame.carOrdinal, sampleFrame.carClass, sampleFrame.carPI)
+      : (activeStintLaps.find(l => l.detectedCarName)?.detectedCarName || 'Formula Skip Barber 2000');
+    
+    const detectedTrackResult = detectTrackFromFrames(allFrames);
+    const detectedTrack = detectedTrackResult !== 'Unknown Track'
+      ? detectedTrackResult
+      : (activeStintLaps.find(l => l.detectedTrackName)?.detectedTrackName || 'Lime Rock Park - Full Circuit');
+
     handleConfirmSaveStint({
       title: `Practice Stint #${nextStintNum}`,
-      carName: 'Formula Skip Barber 2000',
-      trackName: 'Lime Rock Park - Full Circuit'
+      carName: detectedCar,
+      trackName: detectedTrack
     });
   };
 
@@ -764,18 +781,38 @@ export function App() {
       </main>
 
       {/* Save Stint Metadata Modal */}
-      <StintMetadataModal
-        isOpen={isSaveModalOpen}
-        stintNumber={stintHistory.length + 1}
-        durationSec={recordingDurationSec}
-        laps={
-          activeStintLaps.length > 0
-            ? activeStintLaps
-            : [analyzeLapTelemetry(currentLapBufferRef.current.length >= 20 ? currentLapBufferRef.current : liveFramesBuffer)]
-        }
-        onSave={handleConfirmSaveStint}
-        onSkip={handleSkipAndSaveStint}
-      />
+      {(() => {
+        const candidateFrames = [
+          ...activeStintLaps.flatMap(l => l.frames || []),
+          ...currentLapBufferRef.current,
+          ...liveFramesBuffer
+        ];
+        const sampleFrame = candidateFrames.find(f => f.carOrdinal !== undefined && f.carOrdinal > 0);
+        const resolvedCar = sampleFrame
+          ? resolveForzaCar(sampleFrame.carOrdinal, sampleFrame.carClass, sampleFrame.carPI)
+          : activeStintLaps.find(l => l.detectedCarName)?.detectedCarName;
+        const resolvedTrack = detectTrackFromFrames(candidateFrames);
+        const detectedTrack = resolvedTrack !== 'Unknown Track'
+          ? resolvedTrack
+          : activeStintLaps.find(l => l.detectedTrackName)?.detectedTrackName;
+
+        return (
+          <StintMetadataModal
+            isOpen={isSaveModalOpen}
+            stintNumber={stintHistory.length + 1}
+            durationSec={recordingDurationSec}
+            detectedCarName={resolvedCar}
+            detectedTrackName={detectedTrack}
+            laps={
+              activeStintLaps.length > 0
+                ? activeStintLaps
+                : [analyzeLapTelemetry(currentLapBufferRef.current.length >= 20 ? currentLapBufferRef.current : liveFramesBuffer)]
+            }
+            onSave={handleConfirmSaveStint}
+            onSkip={handleSkipAndSaveStint}
+          />
+        );
+      })()}
     </div>
   );
 }

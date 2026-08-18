@@ -107,6 +107,9 @@ export interface TelemetryFrame {
   posX: number;
   posY: number;
   posZ: number;
+  carOrdinal?: number;
+  carClass?: number;
+  carPI?: number;
 }
 
 export interface CornerTelemetryAnalysis {
@@ -153,6 +156,8 @@ export interface LapAnalysis {
   sessionId?: string;
   sessionTitle?: string;
   recordedAt?: string;
+  detectedCarName?: string;
+  detectedTrackName?: string;
 }
 
 export interface StintSession {

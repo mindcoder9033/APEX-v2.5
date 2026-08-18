@@ -259,6 +259,9 @@ export function convertPacketToTelemetryFrame(packet: ForzaCarDashPacket, lapDis
     slipAngleDifferential,
     posX: packet.positionX,
     posY: packet.positionY,
-    posZ: packet.positionZ
+    posZ: packet.positionZ,
+    carOrdinal: packet.carOrdinal,
+    carClass: packet.carClass,
+    carPI: packet.carPerformanceIndex
   };
 }

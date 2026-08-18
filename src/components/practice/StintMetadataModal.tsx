@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Flag, Car, MapPin, CheckCircle2, FastForward, Timer, Award } from 'lucide-react';
+import { Flag, Car, MapPin, CheckCircle2, FastForward, Timer, Award, Sparkles } from 'lucide-react';
 import { LapAnalysis } from '../../types/telemetry';
 
 export interface StintMetadataInput {
@@ -13,6 +13,8 @@ interface StintMetadataModalProps {
   stintNumber: number;
   durationSec: number;
   laps: LapAnalysis[];
+  detectedCarName?: string;
+  detectedTrackName?: string;
   onSave: (metadata: StintMetadataInput) => void;
   onSkip: () => void;
 }
@@ -22,25 +24,31 @@ export const StintMetadataModal: React.FC<StintMetadataModalProps> = ({
   stintNumber,
   durationSec,
   laps,
+  detectedCarName,
+  detectedTrackName,
   onSave,
   onSkip
 }) => {
+  // Infer detected car/track from props or lap items if available
+  const autoCar = detectedCarName || laps.find(l => l.detectedCarName)?.detectedCarName;
+  const autoTrack = detectedTrackName || laps.find(l => l.detectedTrackName)?.detectedTrackName;
+
   const defaultTitle = `Practice Stint #${stintNumber}`;
-  const defaultCar = 'Formula Skip Barber 2000';
-  const defaultTrack = 'Lime Rock Park - Full Circuit';
+  const effectiveDefaultCar = autoCar || 'Formula Skip Barber 2000';
+  const effectiveDefaultTrack = autoTrack || 'Lime Rock Park - Full Circuit';
 
   const [title, setTitle] = useState(defaultTitle);
-  const [carName, setCarName] = useState(defaultCar);
-  const [trackName, setTrackName] = useState(defaultTrack);
+  const [carName, setCarName] = useState(effectiveDefaultCar);
+  const [trackName, setTrackName] = useState(effectiveDefaultTrack);
 
   // Sync defaults when modal opens or stintNumber changes
   useEffect(() => {
     if (isOpen) {
       setTitle(`Practice Stint #${stintNumber}`);
-      setCarName('Formula Skip Barber 2000');
-      setTrackName('Lime Rock Park - Full Circuit');
+      setCarName(autoCar || 'Formula Skip Barber 2000');
+      setTrackName(autoTrack || 'Lime Rock Park - Full Circuit');
     }
-  }, [isOpen, stintNumber]);
+  }, [isOpen, stintNumber, autoCar, autoTrack]);
 
   // Handle ESC key for quick skip and ENTER for save
   useEffect(() => {
@@ -61,8 +69,8 @@ export const StintMetadataModal: React.FC<StintMetadataModalProps> = ({
     e.preventDefault();
     onSave({
       title: title.trim() || defaultTitle,
-      carName: carName.trim() || defaultCar,
-      trackName: trackName.trim() || defaultTrack
+      carName: carName.trim() || effectiveDefaultCar,
+      trackName: trackName.trim() || effectiveDefaultTrack
     });
   };
 
@@ -158,29 +166,45 @@ export const StintMetadataModal: React.FC<StintMetadataModalProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-tech font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center space-x-1.5">
-                <Car className="w-3.5 h-3.5 text-[#00F0FF]" />
-                <span>Car Used</span>
+              <label className="block text-xs font-tech font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center justify-between">
+                <div className="flex items-center space-x-1.5">
+                  <Car className="w-3.5 h-3.5 text-[#00F0FF]" />
+                  <span>Car Used</span>
+                </div>
+                {autoCar && (
+                  <span className="flex items-center space-x-1 text-[9px] text-[#00F0FF] bg-[#00F0FF]/10 px-1.5 py-0.5 border border-[#00F0FF]/30 uppercase font-mono tracking-tight">
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>Auto-detected</span>
+                  </span>
+                )}
               </label>
               <input
                 type="text"
                 value={carName}
                 onChange={(e) => setCarName(e.target.value)}
-                placeholder={defaultCar}
+                placeholder={effectiveDefaultCar}
                 className="w-full bg-[#181824] border border-[#2E2E42] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00F0FF] transition-colors font-sans placeholder-slate-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-tech font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center space-x-1.5">
-                <MapPin className="w-3.5 h-3.5 text-[#E10600]" />
-                <span>Track Name</span>
+              <label className="block text-xs font-tech font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center justify-between">
+                <div className="flex items-center space-x-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-[#E10600]" />
+                  <span>Track Name</span>
+                </div>
+                {autoTrack && (
+                  <span className="flex items-center space-x-1 text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 border border-emerald-500/30 uppercase font-mono tracking-tight">
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>Auto-detected</span>
+                  </span>
+                )}
               </label>
               <input
                 type="text"
                 value={trackName}
                 onChange={(e) => setTrackName(e.target.value)}
-                placeholder={defaultTrack}
+                placeholder={effectiveDefaultTrack}
                 className="w-full bg-[#181824] border border-[#2E2E42] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00F0FF] transition-colors font-sans placeholder-slate-600"
               />
             </div>
