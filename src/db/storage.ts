@@ -7,6 +7,8 @@ const STORAGE_KEY_SESSIONS = 'apex_saved_sessions_v2_5';
 const STORAGE_KEY_STINTS = 'apex_saved_stints_v2_5';
 
 export const INITIAL_PROGRESS_STATE: UserProgressState = {
+  selectedDriverLevel: 'Beginner',
+  unlockedDriverLevels: ['Beginner'],
   unlockedModuleIds: ['mod-1'],
   unlockedSessionIds: ['s-1-1'],
   completedSessionIds: [],
@@ -199,6 +201,13 @@ export function recordGraduationCompletion(
     }
     if (firstSessionOfNextModuleId && !updated.unlockedSessionIds.includes(firstSessionOfNextModuleId)) {
       updated.unlockedSessionIds = [...updated.unlockedSessionIds, firstSessionOfNextModuleId];
+    }
+    // Level unlock progression
+    if (moduleId === 'mod-4') {
+      const currentLevels = updated.unlockedDriverLevels || ['Beginner'];
+      if (!currentLevels.includes('Novice')) {
+        updated.unlockedDriverLevels = [...currentLevels, 'Novice'];
+      }
     }
   }
 

@@ -123,6 +123,11 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
                       <strong className="text-xs text-white font-semibold truncate block" title={test.recommendedSetup.car}>
                         {test.recommendedSetup.car}
                       </strong>
+                      {test.recommendedSetup.altCar && (
+                        <span className="text-[10px] text-slate-400 font-mono block truncate" title={test.recommendedSetup.altCar}>
+                          Alt: {test.recommendedSetup.altCar}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -235,6 +240,16 @@ export const GraduationExamView: React.FC<GraduationExamViewProps> = ({
                   </p>
                 </div>
               </div>
+
+              {gradResult.passed && module.id === 'mod-4' && (
+                <div className="mt-4 p-3 bg-amber-950/40 border border-amber-500/50 flex items-center space-x-3">
+                  <Award className="w-5 h-5 text-amber-400 shrink-0" />
+                  <div>
+                    <strong className="text-xs font-bold text-amber-300 block font-racing">APEX BEGINNER DRIVER LICENSE CERTIFIED!</strong>
+                    <span className="text-[11px] text-slate-300 font-sans">You have graduated the entire Beginner Driver Level. Novice Driver Level (Trail-Braking & Weight Transfer) is now unlocked!</span>
+                  </div>
+                </div>
+              )}
 
               {gradResult.passed && nextModule && (
                 <div className="mt-4 pt-3 border-t border-emerald-500/30 flex items-center justify-between">

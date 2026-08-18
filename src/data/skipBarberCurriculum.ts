@@ -1,159 +1,172 @@
 import { Module } from '../types/curriculum';
 
 export const SKIP_BARBER_MODULES: Module[] = [
+  // ==========================================
+  // DRIVER LEVEL: BEGINNER (MODULES 1 - 4)
+  // ==========================================
   {
     id: 'mod-1',
+    driverLevel: 'Beginner',
     moduleNumber: 1,
-    title: 'The Racing Line & Types of Corners',
-    tagline: 'Geometric vs Early vs Late Apexes and Exit Prioritization',
-    bookChapter: 'Chapter 2: The Racing Line',
-    iconName: 'Route',
-    description: 'Master the fundamental geometry of cornering. Learn why a late apex maximizes corner exit speed on straightaway lead-ins, how to identify sacrifice turns, and how to execute precise positioning.',
+    title: 'Seating, Vision & Track Reference Points',
+    tagline: 'Developing High-Speed Vision, Focal Scanning, and Reference Point Discipline',
+    bookChapter: 'Chapters 1 & 4: Vision & Reference Points',
+    iconName: 'Eye',
+    description: 'Master the psychological and optical foundation of motorsport. Overcome high-speed tunnel vision, anchor your line using fixed static reference markers, and optimize corner exit track-out vision.',
     sessions: [
       {
         id: 's-1-1',
         moduleId: 'mod-1',
         sessionNumber: 1,
-        title: 'Geometric vs Late Apex Identification',
-        subtitle: 'Understanding radius, clipping points, and corner classification',
-        bookReference: 'Going Faster Chapter 2, pp. 24-38',
+        title: 'Seating Posture & The Expanding Field of View',
+        subtitle: 'Overcoming tunnel vision through high-frequency eye scanning',
+        bookReference: 'Going Faster Chapter 1, pp. 12-23',
         theorySummary: [
-          'A corner leading onto a straight is an "Exit Priority" corner requiring a Late Apex.',
-          'Early apexes lead to running out of road on exit or having to back off throttle.',
-          'Geometric apex gives minimum speed scrub but compromises exit acceleration.'
+          'Proper seating posture (slight bend in elbows and knees, firm back contact) maximizes kinesthetic feedback through the chassis.',
+          'Tunnel vision occurs when staring directly over the hood; racers must keep their gaze far down the road to slow down perceived speed.',
+          'Your hands naturally follow where your eyes look.'
         ],
         keyPrinciples: [
-          { title: 'The Straight Follows the Turn', explanation: 'Exit speed is carried down the entire length of the ensuing straight.' },
-          { title: 'Late Apex Geometry', explanation: 'Turn in slightly later and sharper to straighten the car earlier for maximum throttle.' }
+          { title: 'Look Where You Want to Go', explanation: 'Direct your focal vision at your next objective (apex/exit) rather than the immediate road surface.' },
+          { title: 'High-Frequency Eye Scanning', explanation: 'Continuously scan between your immediate turn-in point, apex clipping point, and future track-out.' }
         ],
-        drillGoal: 'Hit within ±1.5m of the designated late apex clipping point across all sector turns.',
+        drillGoal: 'Complete 5 consistent laps maintaining smooth line stability with minimal micro-corrections.',
         targetMetrics: [
-          { label: 'Apex Accuracy', value: '≥ 90%', hint: 'Clipping point within 1.5m tolerance' },
-          { label: 'Exit Throttle Point', value: 'Before Apex + 10m', hint: 'Car positioned to accelerate early' }
+          { label: 'Steering Smoothness', value: '≥ 75/100', hint: 'Fluid, decisive inputs with minimal sawing' },
+          { label: 'Track Limit Discipline', value: '0 Violations', hint: 'Stay completely within track boundary limits' }
         ],
         challenge: {
-          id: 'ch-1-1',
-          name: 'Late Apex Precision Challenge',
-          description: 'Achieve an apex clipping accuracy score of ≥ 85% on 2 consecutive laps.',
-          metric: 'overall_lap_score',
+          id: 'ch-beg-1-1',
+          name: 'Vision & Smoothness Challenge',
+          description: 'Attain a steering smoothness score of ≥ 75/100 across 2 consecutive laps.',
+          metric: 'steering_smoothness_score',
           operator: 'gte',
-          targetValue: 85,
-          unit: '%',
-          requiredLaps: 2
+          targetValue: 75,
+          unit: '/100',
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 80, gold: 90 }
         },
         recommendedSetup: {
-          car: 'Mazda Formula Mazda 2015',
+          car: 'Mazda MX-5 Miata 1994',
+          altCar: 'Mazda MX-5 2016',
           track: 'Lime Rock Full',
-          gameType: 'Test Drive',
-          timeOfDay: 'Afternoon',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Morning',
           weather: 'Clear',
           laps: 5,
           drivatars: 0,
-          notes: 'Focus on hitting the late apex at Big Bend and the Downhill leading onto the main straight.'
+          notes: 'Focus on looking through Big Bend toward the Esses long before you arrive at turn-in.'
         }
       },
       {
         id: 's-1-2',
         moduleId: 'mod-1',
         sessionNumber: 2,
-        title: 'Corner Exit Maximization',
-        subtitle: 'Unwinding steering lock to unleash wide-open throttle',
-        bookReference: 'Going Faster Chapter 2, pp. 39-49',
+        title: 'Identifying Static Reference Markers (Braking & Turn-In)',
+        subtitle: 'Eliminating guesswork by anchoring inputs to permanent trackside landmarks',
+        bookReference: 'Going Faster Chapter 4, pp. 62-74',
         theorySummary: [
-          'You cannot have full throttle and maximum steering lock at the same time.',
-          'Unwinding the steering wheel as the car tracks out allows rapid progression to 100% throttle.'
+          'Intuition and "feeling" vary by fatigue; elite drivers rely on fixed visual markers (meter boards, curbing starts, painted lines, access roads).',
+          'Finding a reliable turn-in point provides consistency across consecutive stints.',
+          'Once past your braking marker, your eyes must immediately snap to the apex clipping point.'
         ],
         keyPrinciples: [
-          { title: 'Unwind = Accelerate', explanation: 'As steering angle decreases, throttle application increases proportionately.' },
-          { title: 'Using the Full Width', explanation: 'Let the car drift out to the exit curbing to maximize effective turn radius.' }
+          { title: 'Hard Markers vs Soft Markers', explanation: 'Use stationary objects (curbs/signs), never moving shadows, tire marks, or parked vehicles.' },
+          { title: 'Commitment Point', explanation: 'Once at your braking marker, execute deceleration without hesitation and scan ahead.' }
         ],
-        drillGoal: 'Reach 100% throttle within 15 meters of the apex without running off-track.',
+        drillGoal: 'Brake and turn in within ±2 meters of the exact designated reference point on every lap.',
         targetMetrics: [
-          { label: 'Throttle Unwind Linearity', value: '≥ 85/100', hint: 'Smooth inverse relationship between steer & throttle' },
-          { label: 'Full Throttle Commitment', value: '100% before curb', hint: 'Zero hesitation or throttle lift' }
+          { label: 'Lap Delta Variance', value: '≤ 0.30s', hint: 'Consistent lap times from repeatable marker points' },
+          { label: 'Turn-in Consistency', value: '≥ 80%', hint: 'Repeatable steering initiation point' }
         ],
         challenge: {
-          id: 'ch-1-2',
-          name: 'Exit Velocity & Unwind Challenge',
-          description: 'Achieve a throttle unwind linearity score of ≥ 82/100 across 2 consecutive laps.',
-          metric: 'throttle_unwind_score',
-          operator: 'gte',
-          targetValue: 82,
-          unit: '/100',
-          requiredLaps: 2
+          id: 'ch-beg-1-2',
+          name: 'Marker Point Consistency Challenge',
+          description: 'Achieve a lap delta variance of ≤ 0.30s across 3 consecutive laps.',
+          metric: 'lap_delta_variance_sec',
+          operator: 'lte',
+          targetValue: 0.30,
+          unit: 's',
+          requiredLaps: 3,
+          medals: { bronze: 0.40, silver: 0.25, gold: 0.15 }
         },
         recommendedSetup: {
-          car: 'Mazda Formula Mazda 2015',
-          track: 'Laguna Seca',
-          gameType: 'Test Drive',
-          timeOfDay: 'Morning',
+          car: 'Mazda MX-5 Miata 1994',
+          altCar: 'Honda Civic Type R 1997',
+          track: 'Lime Rock Full',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Late Morning',
           weather: 'Mostly Clear',
           laps: 6,
           drivatars: 0,
-          notes: 'Practice unwinding lock coming out of Turn 11 onto the front straight.'
+          notes: 'Pick fixed trackside markers on the approach to Turn 1 and the West Bend chicane.'
         }
       },
       {
         id: 's-1-3',
         moduleId: 'mod-1',
         sessionNumber: 3,
-        title: 'Compromised Lines & Linked Corners',
-        subtitle: 'The art of sacrificing Turn 1 to dominate Turn 2',
-        bookReference: 'Going Faster Chapter 2, pp. 50-61',
+        title: 'Exit Track-Out Vision & Track Width Exploitation',
+        subtitle: 'Using every millimeter of curbing to maximize effective turn radius',
+        bookReference: 'Going Faster Chapter 4, pp. 75-85',
         theorySummary: [
-          'In quick S-curves or double-apexes, optimizing Turn 1 often ruins Turn 2.',
-          'Always sacrifice the entrance to the first turn to achieve a perfect late apex and exit on the second turn.'
+          'Leaving even 1 foot of pavement unused at corner exit artificially tightens the corner radius and sacrifices top speed down the entire straight.',
+          'Eyes must lock onto the exit curbing apex transition before the car physically clips the inner apex.'
         ],
         keyPrinciples: [
-          { title: 'The Priority Rule', explanation: 'The corner that leads to the longer straight always takes priority.' },
-          { title: 'Mid-Complex Positioning', explanation: 'Keep the car tight on Turn 1 exit so you are wide for Turn 2 entry.' }
+          { title: 'Use Every Inch of Pavement', explanation: 'Maximizing exit radius directly increases allowable exit velocity.' },
+          { title: 'Peripheral Awareness', explanation: 'Keep central focus on the horizon while using peripheral vision to gauge curb distance.' }
         ],
-        drillGoal: 'Sacrifice Entry 1 speed to gain +5 km/h higher exit speed out of Turn 2.',
+        drillGoal: 'Position outer tires within 0.5 meters of the exit curbing without exceeding track limits.',
         targetMetrics: [
-          { label: 'Turn 2 Exit Speed Delta', value: '+5 km/h', hint: 'Measurable exit speed increase' },
-          { label: 'Complex Time Delta', value: '-0.30s', hint: 'Overall sector improvement' }
+          { label: 'Overall Lap Score', value: '≥ 75%', hint: 'Clean track-out execution on all key sectors' },
+          { label: 'Exit Width Utilization', value: '≥ 90%', hint: 'Using the full width of the exit curbing' }
         ],
         challenge: {
-          id: 'ch-1-3',
-          name: 'Linked Complex Execution Challenge',
-          description: 'Attain an overall complex sector grade of ≥ 85/100 with zero off-tracks.',
+          id: 'ch-beg-1-3',
+          name: 'Track-Out Precision Challenge',
+          description: 'Attain an overall sector track-out precision score of ≥ 75% on 2 consecutive laps.',
           metric: 'overall_lap_score',
           operator: 'gte',
-          targetValue: 85,
+          targetValue: 75,
           unit: '%',
-          requiredLaps: 2
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 80, gold: 90 }
         },
         recommendedSetup: {
-          car: 'Mazda Formula Mazda 2015',
-          track: 'Mid-Ohio',
-          gameType: 'Test Drive',
-          timeOfDay: 'Late Morning',
-          weather: 'Partly Cloudy',
-          laps: 6,
+          car: 'Mazda MX-5 Miata 1994',
+          altCar: 'Mazda MX-5 2016',
+          track: 'Lime Rock Full',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Noon',
+          weather: 'Clear',
+          laps: 5,
           drivatars: 0,
-          notes: 'Sacrifice the Keyhole entry to carry massive exit speed down the back straight.'
+          notes: 'Let the car track all the way to the paint on the exit of the Downhill onto the main straight.'
         }
       }
     ],
     graduationTest: {
       id: 'gt-1',
       moduleId: 'mod-1',
-      title: 'Module 1 Graduation: Racing Line Mastery Exam',
-      examOverview: 'A comprehensive 3-lap evaluation testing late apex geometry, exit track-out acceleration, and linked corner sacrifices.',
-      trackName: 'Laguna Seca',
-      carName: 'Mazda Formula Mazda 2015',
+      title: 'Module 1 Graduation: Vision & Reference Point Exam',
+      examOverview: 'A comprehensive 3-lap evaluation testing eye discipline, repeatable braking marker alignment, and full track-width utilization.',
+      trackName: 'Lime Rock Full',
+      carName: 'Mazda MX-5 Miata 1994',
+      altCarName: 'Honda Civic Type R 1997',
       requiredLaps: 3,
-      passingScorePct: 82,
+      passingScorePct: 80,
       requirements: [
-        { title: 'Apex Consistency', description: 'Hit clipping zones on all priority turns', metric: 'Apex Accuracy', targetText: '≥ 85%', minScorePct: 85 },
-        { title: 'Throttle Unwind Linearity', description: 'Smooth throttle application synchronized with steering unwind', metric: 'Unwind Score', targetText: '≥ 80/100', minScorePct: 80 },
-        { title: 'Clean Lap Execution', description: '3 consecutive clean laps with zero track limit violations', metric: 'Clean Laps', targetText: '3/3 Laps', minScorePct: 100 }
+        { title: 'Braking Marker Precision', description: 'Lap time variance under 0.30s across laps', metric: 'Consistency', targetText: '≤ 0.30s', minScorePct: 80 },
+        { title: 'Steering Smoothness', description: 'Average smoothness score of at least 75/100', metric: 'Smoothness', targetText: '≥ 75/100', minScorePct: 80 },
+        { title: 'Track Limits Discipline', description: '3 clean laps with zero off-track violations', metric: 'Clean Laps', targetText: '3/3 Laps', minScorePct: 100 }
       ],
       recommendedSetup: {
-        car: 'Mazda Formula Mazda 2015',
-        track: 'Laguna Seca',
+        car: 'Mazda MX-5 Miata 1994',
+        altCar: 'Honda Civic Type R 1997',
+        track: 'Lime Rock Full',
         gameType: 'Circuit Race',
-        timeOfDay: 'Noon',
+        timeOfDay: 'Afternoon',
         weather: 'Clear',
         laps: 3,
         drivatars: 3,
@@ -161,1094 +174,741 @@ export const SKIP_BARBER_MODULES: Module[] = [
       }
     }
   },
+
   {
     id: 'mod-2',
+    driverLevel: 'Beginner',
     moduleNumber: 2,
-    title: 'The Traction Budget & G-G Diagram',
-    tagline: 'Friction Circle Mastery and 100% Combined Grip Utilization',
-    bookChapter: 'Chapter 3: The Traction Budget',
-    iconName: 'Activity',
-    description: 'Understand the tire contact patch as a finite budget of grip (100%). Learn how to blend braking, steering, and accelerating so you continuously ride the outer envelope of the G-G friction circle.',
+    title: 'The Racing Line & Apex Geometry',
+    tagline: 'Geometric vs Early vs Late Apexes and Corner Prioritization',
+    bookChapter: 'Chapter 2: The Racing Line',
+    iconName: 'Route',
+    description: 'Master the fundamental geometry of cornering. Learn why a late apex maximizes corner exit speed on straightaway lead-ins, how to navigate decreasing-radius turns, and how to execute sacrifice turns in linked complexes.',
     sessions: [
       {
         id: 's-2-1',
         moduleId: 'mod-2',
         sessionNumber: 1,
-        title: 'Pure Longitudinal vs Pure Lateral Grip',
-        subtitle: 'Finding the isolated limits in straight-line braking and steady-state cornering',
-        bookReference: 'Going Faster Chapter 3, pp. 62-75',
+        title: 'Geometric vs Late Apexes on Lead-in Corners',
+        subtitle: 'Prioritizing exit speed for maximum straightaway velocity',
+        bookReference: 'Going Faster Chapter 2, pp. 24-38',
         theorySummary: [
-          'Under pure straight-line braking, 100% of the friction circle is dedicated to longitudinal deceleration.',
-          'At the apex with zero throttle/brake, 100% of the friction circle is dedicated to lateral grip.'
+          'A corner leading onto a straight is an "Exit Priority" corner requiring a Late Apex.',
+          'Early apexes lead to running out of road on exit or having to lift off throttle.',
+          'Geometric apex gives minimum speed scrub but compromises exit acceleration.'
         ],
         keyPrinciples: [
-          { title: 'The Grip Pie', explanation: 'You cannot use 100% braking and 100% steering simultaneously; they share the same budget.' },
-          { title: 'G-G Coordinate System', explanation: 'X-axis = Lateral Gs; Y-axis = Longitudinal Gs.' }
+          { title: 'The Straight Follows the Turn', explanation: 'Exit speed is carried down the entire length of the ensuing straight.' },
+          { title: 'Late Apex Geometry', explanation: 'Turn in slightly later and sharper to straighten the car earlier for maximum throttle.' }
         ],
-        drillGoal: 'Reach >1.2G longitudinal braking and >1.3G steady lateral apex cornering.',
+        drillGoal: 'Hit within ±1.0m of the late apex clipping point across all sector turns.',
         targetMetrics: [
-          { label: 'Peak Braking G', value: '≥ 1.25 G', hint: 'Maximum straight-line deceleration' },
-          { label: 'Apex Lateral G', value: '≥ 1.30 G', hint: 'Steady-state cornering grip' }
+          { label: 'Apex Accuracy', value: '≥ 85%', hint: 'Clipping point within 1.0m tolerance' },
+          { label: 'Exit Throttle Point', value: 'Before Apex + 10m', hint: 'Car positioned to accelerate early' }
         ],
         challenge: {
-          id: 'ch-2-1',
-          name: 'Peak G-G Boundary Challenge',
-          description: 'Achieve an average peak grip score of ≥ 85% on 2 consecutive laps.',
-          metric: 'traction_budget_pct',
+          id: 'ch-beg-2-1',
+          name: 'Late Apex Precision Challenge',
+          description: 'Achieve an apex clipping accuracy score of ≥ 75% on 2 consecutive laps.',
+          metric: 'overall_lap_score',
           operator: 'gte',
-          targetValue: 85,
+          targetValue: 75,
           unit: '%',
-          requiredLaps: 2
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 80, gold: 90 }
         },
         recommendedSetup: {
-          car: 'Mazda Formula Mazda 2015',
-          track: 'Road America',
-          gameType: 'Test Drive',
-          timeOfDay: 'Noon',
-          weather: 'Clear',
+          car: 'Honda Civic Type R 1997',
+          altCar: 'Acura Integra Type R 2001',
+          track: 'Laguna Seca',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Morning',
+          weather: 'Mostly Clear',
           laps: 5,
           drivatars: 0,
-          notes: 'Test pure straight-line braking into Turn 5 and maximum steady-state G in the Carousel.'
+          notes: 'Focus strictly on squaring off Turn 11 so you can be 100% full throttle before the pit wall.'
         }
       },
       {
         id: 's-2-2',
         moduleId: 'mod-2',
         sessionNumber: 2,
-        title: 'Transitioning Around the Friction Circle',
-        subtitle: 'Eliminating the dead zone between braking and steering',
-        bookReference: 'Going Faster Chapter 3, pp. 76-88',
+        title: 'Constant-Radius vs Decreasing-Radius Corners',
+        subtitle: 'Patience and platform balance in tightening turns',
+        bookReference: 'Going Faster Chapter 2, pp. 39-51',
         theorySummary: [
-          'Amateur drivers brake hard, completely release the brake, and then steer (leaving a huge grip deficit in the G-G circle).',
-          'Professional drivers bleed off brake pressure in direct proportion to adding steering angle, hugging the friction circle perimeter.'
+          'Constant-radius turns allow steady-state lateral grip throughout the mid-corner.',
+          'Decreasing-radius corners trap impatient drivers into early apexes, causing severe understeer and off-track exits.',
+          'Delay initial turn-in and maintain neutral maintenance throttle until the final apex is cleared.'
         ],
         keyPrinciples: [
-          { title: 'No Grip Vacuums', explanation: 'Never let combined G fall below 0.85G during the transition from entry to apex.' },
-          { title: 'Circular Transition Path', explanation: 'The telemetry G-G trace should trace a smooth perimeter arc.' }
+          { title: 'Patient Turn-In', explanation: 'Do not rush the front tires into tightening corners.' },
+          { title: 'Platform Balance', explanation: 'Maintain neutral maintenance throttle through the mid-corner.' }
         ],
-        drillGoal: 'Maintain combined G > 80% of peak capacity through corner entry transitions.',
+        drillGoal: 'Execute smooth transition through multi-radius corners without mid-corner throttle chopping.',
         targetMetrics: [
-          { label: 'Transition Grip Retention', value: '≥ 80%', hint: 'Minimum combined G during turn-in' },
-          { label: 'G-G Arc Smoothness', value: '≥ 85/100', hint: 'Continuous circular trace' }
+          { label: 'Throttle Stability', value: '≥ 80/100', hint: 'Zero hesitations or throttle chops' },
+          { label: 'Understeer Management', value: '0 Scrub Spikes', hint: 'Avoid pushing the front axle past grip limits' }
         ],
         challenge: {
-          id: 'ch-2-2',
-          name: 'Friction Circle Arc Challenge',
-          description: 'Maintain an average combined traction budget of ≥ 82% throughout all corner transitions.',
-          metric: 'traction_budget_pct',
+          id: 'ch-beg-2-2',
+          name: 'Corner Radius Management Challenge',
+          description: 'Attain a throttle stability and unwind score of ≥ 78/100 across 2 consecutive laps.',
+          metric: 'throttle_unwind_score',
           operator: 'gte',
-          targetValue: 82,
-          unit: '%',
-          requiredLaps: 2
+          targetValue: 78,
+          unit: '/100',
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 80, gold: 90 }
         },
         recommendedSetup: {
-          car: 'Mazda Formula Mazda 2015',
-          track: 'Silverstone GP',
-          gameType: 'Test Drive',
-          timeOfDay: 'Afternoon',
-          weather: 'Clear',
+          car: 'Honda Civic Type R 1997',
+          altCar: 'Mazda MX-5 Miata 1990',
+          track: 'Laguna Seca',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Late Morning',
+          weather: 'Partly Cloudy',
           laps: 6,
           drivatars: 0,
-          notes: 'Smoothly blend brake bleed-off into steering angle through Stowe and Brooklands.'
+          notes: 'Turn 3 and Turn 4 reward delayed steering commitment; avoid rushing the front tires.'
         }
       },
       {
         id: 's-2-3',
         moduleId: 'mod-2',
         sessionNumber: 3,
-        title: 'Maximizing Grip Utilization',
-        subtitle: 'Living at 90%+ traction budget throughout the entire lap',
-        bookReference: 'Going Faster Chapter 3, pp. 89-101',
+        title: 'Linked Corners & The Sacrifice Principle',
+        subtitle: 'Sacrificing entry speed in the first corner to optimize the second',
+        bookReference: 'Going Faster Chapter 2, pp. 52-61',
         theorySummary: [
-          'Lap time is won by spending the highest possible percentage of time near 100% grip capacity.',
-          'Telemetry tracks "Traction Budget Utilization %" across all sectors.'
+          'When two corners are linked with little or no straightaway between them, the first corner must be sacrificed to optimize entry and exit for the second corner.',
+          'The corner leading onto the longest straight takes 100% priority.'
         ],
         keyPrinciples: [
-          { title: 'Continuous Exploitation', explanation: 'If the car is not at 100% braking, 100% cornering, or 100% acceleration, speed is being left on the table.' },
-          { title: 'Tire Budget Consciousness', explanation: 'Feel the tires through the steering resistance and chassis yaw.' }
+          { title: 'Priority Allocation', explanation: 'Always sacrifice the turn that leads into another turn, never the turn that leads onto a straight.' },
+          { title: 'Position Over Speed', explanation: 'Geometric placement into the second corner matters more than entry velocity in the first.' }
         ],
-        drillGoal: 'Achieve an average lap traction budget utilization of ≥ 85%.',
+        drillGoal: 'Sacrifice Turn 8 (Corkscrew) entry to maximize track position for Turn 8A and Turn 9 (Rainey Curve).',
         targetMetrics: [
-          { label: 'Lap Grip Utilization', value: '≥ 85%', hint: 'Calculated over all non-straightaway zones' }
+          { label: 'Complex Exit Velocity', value: '+5 km/h', hint: 'Carrying exit momentum out of Rainey Curve' },
+          { label: 'Line Accuracy', value: '≥ 85%', hint: 'Correct positioning over the blind crest' }
         ],
         challenge: {
-          id: 'ch-2-3',
-          name: '85% Traction Budget Challenge',
-          description: 'Achieve ≥ 85% average traction budget utilization across 2 full consecutive laps.',
-          metric: 'traction_budget_pct',
+          id: 'ch-beg-2-3',
+          name: 'Linked Complex Execution Challenge',
+          description: 'Attain an overall complex sector score of ≥ 78% with zero off-tracks across 2 consecutive laps.',
+          metric: 'overall_lap_score',
           operator: 'gte',
-          targetValue: 85,
+          targetValue: 78,
           unit: '%',
-          requiredLaps: 2
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 80, gold: 90 }
         },
         recommendedSetup: {
-          car: 'Porsche 911 GT3 2021',
-          track: 'Road America',
-          gameType: 'Test Drive',
-          timeOfDay: 'Late Afternoon',
+          car: 'Honda Civic Type R 1997',
+          altCar: 'Acura Integra Type R 2001',
+          track: 'Laguna Seca',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Noon',
           weather: 'Clear',
           laps: 6,
           drivatars: 0,
-          notes: 'Push the GT3 tire envelope continuously around the entire 4-mile layout.'
+          notes: 'Hug the left side over the blind crest of the Corkscrew to open up the right-hand drop.'
         }
       }
     ],
     graduationTest: {
       id: 'gt-2',
       moduleId: 'mod-2',
-      title: 'Module 2 Graduation: Traction Budget & G-G Certification',
-      examOverview: 'Execute 3 consecutive high-grip laps demonstrating continuous friction circle utilization and smooth corner entry/exit transitions.',
-      trackName: 'Silverstone GP',
-      carName: 'Porsche 911 GT3 2021',
+      title: 'Module 2 Graduation: Racing Line Mastery Exam',
+      examOverview: 'A comprehensive 3-lap exam evaluating apex precision, corner classification execution, and linked corner sacrifices.',
+      trackName: 'Laguna Seca',
+      carName: 'Honda Civic Type R 1997',
+      altCarName: 'Mazda MX-5 Miata 1990',
       requiredLaps: 3,
-      passingScorePct: 83,
+      passingScorePct: 80,
       requirements: [
-        { title: 'Average Traction Budget', description: 'Maintain high grip utilization across all corners', metric: 'Traction Budget %', targetText: '≥ 83%', minScorePct: 83 },
-        { title: 'Transition G Retention', description: 'Zero grip collapse during brake-to-steer transitions', metric: 'Transition Score', targetText: '≥ 80/100', minScorePct: 80 },
-        { title: 'Lap Consistency', description: 'Lap delta variance within ±0.4s', metric: 'Delta Variance', targetText: '< 0.40s', minScorePct: 85 }
+        { title: 'Apex Consistency', description: 'Hit clipping zones on all priority turns', metric: 'Apex Accuracy', targetText: '≥ 80%', minScorePct: 80 },
+        { title: 'Throttle Unwind Linearity', description: 'Smooth throttle application synchronized with steering unwind', metric: 'Unwind Score', targetText: '≥ 78/100', minScorePct: 80 },
+        { title: 'Clean Lap Execution', description: '3 consecutive clean laps with zero track limit violations', metric: 'Clean Laps', targetText: '3/3 Laps', minScorePct: 100 }
       ],
       recommendedSetup: {
-        car: 'Porsche 911 GT3 2021',
-        track: 'Silverstone GP',
+        car: 'Honda Civic Type R 1997',
+        altCar: 'Mazda MX-5 Miata 1990',
+        track: 'Laguna Seca',
         gameType: 'Circuit Race',
         timeOfDay: 'Afternoon',
         weather: 'Clear',
         laps: 3,
-        drivatars: 4,
-        notes: 'High-speed traction budget exam at Silverstone Grand Prix.'
+        drivatars: 3,
+        notes: 'Official Module 2 Graduation Exam with light field traffic.'
       }
     }
   },
+
   {
     id: 'mod-3',
+    driverLevel: 'Beginner',
     moduleNumber: 3,
-    title: 'Braking Mechanics & Threshold Braking',
-    tagline: 'Peak Initial Hit, High-Speed Downforce Modulation, and Stopping Consistency',
-    bookChapter: 'Chapter 4: Braking',
-    iconName: 'AlertOctagon',
-    description: 'Learn the difference between stopping a road car and racing threshold braking. Master instant initial rise-time, modulating pedal pressure as aerodynamic downforce bleeds off, and achieving millimeter braking consistency.',
+    title: 'Basic Braking & Throttle Control',
+    tagline: 'Straight-Line Threshold Deceleration, Rise Time, and Throttle Unwind',
+    bookChapter: 'Chapter 4: Braking & Throttle Mechanics',
+    iconName: 'Zap',
+    description: 'Learn high-rate brake rise time without inducing wheel lockups, establish linear throttle unwind synchronized with steering return, and maintain powertrain smoothness through clean gear shifts.',
     sessions: [
       {
         id: 's-3-1',
         moduleId: 'mod-3',
         sessionNumber: 1,
-        title: 'Initial Brake Rise-Time & Hit Rate',
-        subtitle: 'Reaching 100% threshold pressure in under 120 milliseconds',
-        bookReference: 'Going Faster Chapter 4, pp. 102-115',
+        title: 'Initial Brake Rise-Time & Straight-Line Threshold Hit',
+        subtitle: 'Reaching maximum stopping force instantly in a straight line',
+        bookReference: 'Going Faster Chapter 4, pp. 86-98',
         theorySummary: [
-          'Braking is not a gentle squeeze; in a racing car, you hit the pedal with immediate maximum force while the car is travelling fast and has maximum downforce.',
-          'Slow pedal application wastes precious stopping distance before deceleration begins.'
+          'Fast drivers reach peak brake pressure in milliseconds, while novices squeeze gently and waste stopping distance.',
+          'In straight-line braking, front tires have 100% grip dedicated to deceleration.',
+          'Reach threshold rapidly, then modulate at the limit to prevent lockup flat-spots.'
         ],
         keyPrinciples: [
-          { title: 'Hit Fast, Bleed Slow', explanation: 'Instant rise time to threshold, followed by controlled release.' },
-          { title: 'High-Speed Grip', explanation: 'At 200+ km/h, aero load allows extreme braking force without locking wheels.' }
+          { title: 'Bite Fast, Not Hard', explanation: 'Reach 90-95% threshold in under 150 milliseconds.' },
+          { title: 'Zero Lockup Discipline', explanation: 'Modulate pressure right at the threshold limit without triggering severe slip.' }
         ],
-        drillGoal: 'Achieve brake pedal rise-time from 0% to peak threshold in < 140ms.',
+        drillGoal: 'Achieve brake application rise-time under 140ms with zero wheel lockups.',
         targetMetrics: [
-          { label: 'Brake Rise Time', value: '< 140 ms', hint: 'Milliseconds to reach peak pressure' },
-          { label: 'Zero Lockup', value: 'Slip Ratio < 15%', hint: 'Avoid wheel lock spikes' }
+          { label: 'Initial Hit Rise Time', value: '< 140ms', hint: 'Rapid transition to peak brake pressure' },
+          { label: 'Lockup Avoidance', value: '100% Clean', hint: 'Zero wheel slide spikes over 20% slip' }
         ],
         challenge: {
-          id: 'ch-3-1',
-          name: 'Sub-140ms Threshold Hit Challenge',
-          description: 'Achieve an average brake rise time of < 140ms across all heavy braking zones for 2 laps.',
+          id: 'ch-beg-3-1',
+          name: 'Straight-Line Threshold Braking Challenge',
+          description: 'Achieve an average brake rise-time of ≤ 140ms across 2 consecutive laps.',
           metric: 'braking_rise_time_ms',
           operator: 'lte',
           targetValue: 140,
           unit: 'ms',
-          requiredLaps: 2
+          requiredLaps: 2,
+          medals: { bronze: 170, silver: 140, gold: 110 }
         },
         recommendedSetup: {
           car: 'Mazda Formula Mazda 2015',
-          track: 'Watkins Glen Full',
-          gameType: 'Test Drive',
+          altCar: 'Subaru BRZ 2022',
+          track: 'Mid-Ohio Short',
+          gameType: 'Circuit Race',
           timeOfDay: 'Morning',
           weather: 'Clear',
-          laps: 6,
+          laps: 5,
           drivatars: 0,
-          notes: 'Focus on instant initial hit rate at the end of the back straight into the Inner Loop (Bus Stop).'
+          notes: 'Slam into the brakes firmly in a dead-straight line at the end of the back straight into the Keyhole.'
         }
       },
       {
         id: 's-3-2',
         moduleId: 'mod-3',
         sessionNumber: 2,
-        title: 'High-Speed vs Low-Speed Modulation',
-        subtitle: 'Relieving pressure as downforce bleeds off to prevent lockups',
-        bookReference: 'Going Faster Chapter 4, pp. 116-128',
+        title: 'Throttle Unwind Synchronization (Steering Angle vs Throttle)',
+        subtitle: 'Linear power application matched to steering wheel return',
+        bookReference: 'Going Faster Chapter 4, pp. 99-112',
         theorySummary: [
-          'As the car slows down, downforce decreases and tire grip drops.',
-          'Holding maximum initial brake pressure into slow speed causes sudden front wheel lockup.'
+          'As steering lock is removed on corner exit, available grip for acceleration increases proportionately.',
+          'Applying full throttle with lingering steering lock results in immediate snap oversteer (RWD) or power understeer (FWD).',
+          'Once throttle application begins, avoid hesitation, pumping, or lifting.'
         ],
         keyPrinciples: [
-          { title: 'Aero Decay Compensation', explanation: 'Taper off straight-line brake pressure from 100% to 75% as speed falls below 120 km/h.' },
-          { title: 'Auditory & FFB Feedback', explanation: 'Listen for tire scrub and feel steering lightening as front wheels approach threshold.' }
+          { title: 'Unwind = Accelerate', explanation: 'Linear 1-to-1 relationship between steering return and throttle depression.' },
+          { title: 'Zero Hesitation Commitment', explanation: 'Once throttle begins, feed it progressively to 100% without lifting.' }
         ],
-        drillGoal: 'Decelerate from top speed into a 2nd-gear hairpin without a single lockup spike.',
+        drillGoal: 'Maintain a linear inverse relationship between steering angle decrease and throttle pedal increase.',
         targetMetrics: [
-          { label: 'Brake Modulation Score', value: '≥ 85/100', hint: 'Smooth taper preventing low-speed lockup' }
+          { label: 'Throttle Unwind Linearity', value: '≥ 80/100', hint: 'Smooth inverse relationship between steer & throttle' },
+          { label: 'Full Throttle Commitment', value: '100% before curb', hint: 'Zero hesitation or throttle lift' }
         ],
         challenge: {
-          id: 'ch-3-2',
-          name: 'Zero-Lockup Modulation Challenge',
-          description: 'Score ≥ 85/100 in brake modulation with zero lockups across 2 laps.',
-          metric: 'overall_lap_score',
+          id: 'ch-beg-3-2',
+          name: 'Throttle Unwind Linearity Challenge',
+          description: 'Achieve a throttle unwind linearity score of ≥ 80/100 across 2 consecutive laps.',
+          metric: 'throttle_unwind_score',
           operator: 'gte',
-          targetValue: 85,
+          targetValue: 80,
           unit: '/100',
-          requiredLaps: 2
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 80, gold: 90 }
         },
         recommendedSetup: {
-          car: 'Porsche 911 GT3 RS 2019',
-          track: 'Circuit de Spa-Francorchamps',
-          gameType: 'Test Drive',
-          timeOfDay: 'Afternoon',
+          car: 'Mazda Formula Mazda 2015',
+          altCar: 'Toyota GR86 2022',
+          track: 'Mid-Ohio Short',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Late Morning',
           weather: 'Mostly Clear',
-          laps: 5,
+          laps: 6,
           drivatars: 0,
-          notes: 'Brake heavily from 250+ km/h into Les Combes and bleed pressure as downforce decays.'
+          notes: 'Feed in power out of the Carousel precisely as your hands unwind back toward center.'
         }
       },
       {
         id: 's-3-3',
         moduleId: 'mod-3',
         sessionNumber: 3,
-        title: 'Braking Point Precision & Marker Alignment',
-        subtitle: 'Eliminating braking point variation across consecutive stints',
-        bookReference: 'Going Faster Chapter 4, pp. 129-140',
+        title: 'Smooth Shifting, Engine Braking & RPM Management',
+        subtitle: 'Preserving chassis stability through clean gear selection',
+        bookReference: 'Going Faster Chapter 10, pp. 210-225',
         theorySummary: [
-          'Consistent lap times require braking at the exact same physical meter board every single lap.',
-          'Creeping braking points earlier by 10 meters forfeits tenths of a second per corner.'
+          'Abrupt downshifting without rev-matching causes the drive wheels to momentarily lock (compression lockup), inducing destabilizing yaw.',
+          'Upshifting at the engine optimal power peak preserves acceleration torque without bouncing off the limiter.'
         ],
         keyPrinciples: [
-          { title: 'Visual Reference Markers', explanation: 'Use fixed trackside objects (meter boards, curbs, track marks) rather than intuition.' },
-          { title: 'Confidence through Repeatability', explanation: 'Trust the car and your muscle memory.' }
+          { title: 'Braking in Gear', explanation: 'Execute all downshifts in a straight line before turning the wheel.' },
+          { title: 'Smooth Drivetrain Engagement', explanation: 'Match revs cleanly to prevent rear axle hop.' }
         ],
-        drillGoal: 'Hit your initial braking point within ±2 meters over 4 consecutive laps.',
+        drillGoal: 'Complete 5 laps with zero engine rev-limiter bounces and zero downshift-induced rear slip spikes.',
         targetMetrics: [
-          { label: 'Braking Point Variance', value: '± 2.0 m', hint: 'Deviation from benchmark' }
+          { label: 'Steering Smoothness', value: '≥ 80/100', hint: 'Stable chassis heading through downshift zones' },
+          { label: 'Drivetrain Stability', value: '0 Compression Lockups', hint: 'Smooth clutch/gear engagement' }
         ],
         challenge: {
-          id: 'ch-3-3',
-          name: 'Braking Marker Consistency Challenge',
-          description: 'Maintain braking point variance within ±2.5m for 3 consecutive laps.',
-          metric: 'overall_lap_score',
+          id: 'ch-beg-3-3',
+          name: 'Powertrain & Stability Challenge',
+          description: 'Achieve a stability and smoothness score of ≥ 80/100 across 2 consecutive laps.',
+          metric: 'steering_smoothness_score',
           operator: 'gte',
-          targetValue: 85,
-          unit: '%',
-          requiredLaps: 3
+          targetValue: 80,
+          unit: '/100',
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 80, gold: 90 }
         },
         recommendedSetup: {
           car: 'Mazda Formula Mazda 2015',
-          track: 'Watkins Glen Short',
-          gameType: 'Test Drive',
-          timeOfDay: 'Late Morning',
-          weather: 'Clear',
-          laps: 8,
+          altCar: 'Mazda MX-5 2016',
+          track: 'Mid-Ohio Short',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Noon',
+          weather: 'Partly Cloudy',
+          laps: 5,
           drivatars: 0,
-          notes: 'Use the 300-200-100 meter boards into Turn 1 with zero marker creep.'
+          notes: 'Complete your downshift to 2nd gear before turn-in at Turn 1.'
         }
       }
     ],
     graduationTest: {
       id: 'gt-3',
       moduleId: 'mod-3',
-      title: 'Module 3 Graduation: Threshold Braking Certification',
-      examOverview: 'Demonstrate rapid initial hit rate, aero-compensated modulation, and precision stopping points on a heavy-braking circuit.',
-      trackName: 'Watkins Glen Full',
-      carName: 'Porsche 911 GT3 RS 2019',
+      title: 'Module 3 Graduation: Threshold Braking & Throttle Certification',
+      examOverview: 'A comprehensive 3-lap exam evaluating rapid brake threshold hit rate, clean unwinding throttle linearity, and vehicle stability under deceleration.',
+      trackName: 'Mid-Ohio Short',
+      carName: 'Mazda Formula Mazda 2015',
+      altCarName: 'Subaru BRZ 2022',
       requiredLaps: 3,
-      passingScorePct: 84,
+      passingScorePct: 80,
       requirements: [
-        { title: 'Initial Hit Rise Time', description: 'Average rise time under 135ms', metric: 'Rise Time', targetText: '< 135ms', minScorePct: 85 },
-        { title: 'Zero Lockup Penalty', description: 'No tire flat-spotting or lockup spikes > 20% slip', metric: 'Lockup Avoidance', targetText: '100% Clean', minScorePct: 90 },
-        { title: 'Stopping Consistency', description: 'Braking zone distance variation under 3%', metric: 'Consistency', targetText: '≥ 85%', minScorePct: 85 }
+        { title: 'Initial Hit Rise Time', description: 'Average rise time under 140ms', metric: 'Rise Time', targetText: '< 140ms', minScorePct: 80 },
+        { title: 'Throttle Unwind Linearity', description: 'Unwind linearity score of at least 80/100', metric: 'Unwind Score', targetText: '≥ 80/100', minScorePct: 80 },
+        { title: 'Zero Lockup Penalty', description: 'No tire flat-spotting or lockup spikes > 20% slip', metric: 'Lockup Avoidance', targetText: '100% Clean', minScorePct: 90 }
       ],
       recommendedSetup: {
-        car: 'Porsche 911 GT3 RS 2019',
-        track: 'Watkins Glen Full',
+        car: 'Mazda Formula Mazda 2015',
+        altCar: 'Subaru BRZ 2022',
+        track: 'Mid-Ohio Short',
         gameType: 'Circuit Race',
         timeOfDay: 'Afternoon',
         weather: 'Clear',
         laps: 3,
-        drivatars: 5,
-        notes: 'High-speed threshold braking certification with dynamic traffic.'
+        drivatars: 4,
+        notes: 'Official Module 3 Graduation Exam with light field traffic.'
       }
     }
   },
+
   {
     id: 'mod-4',
+    driverLevel: 'Beginner',
     moduleNumber: 4,
-    title: 'Trail Braking & Weight Transfer',
-    tagline: 'Smooth Brake Release, Pitch Control, and Inducing Corner Rotation',
-    bookChapter: 'Chapter 5: Corner Entry & Trail Braking',
-    iconName: 'GitCommit',
-    description: 'Master the defining skill of professional drivers: carrying brake pressure past the turn-in point directly to the apex. Use forward weight transfer to pin the front tires and pivot the rear of the car.',
+    title: 'The Friction Circle & Weight Transfer Fundamentals',
+    tagline: 'Mastering the 100% Traction Budget, Pitch/Roll Dynamics, and Input Blending',
+    bookChapter: 'Chapter 3: The Traction Budget',
+    iconName: 'Activity',
+    description: 'Understand tire adhesion as a 100% finite friction budget. Master longitudinal and lateral weight transfer and smoothly blend braking release with initial steering input to unlock your Beginner License.',
     sessions: [
       {
         id: 's-4-1',
         moduleId: 'mod-4',
         sessionNumber: 1,
-        title: 'Brake Release Timing & Pitch Management',
-        subtitle: 'Avoiding abrupt brake pop-off that unloads the front suspension',
-        bookReference: 'Going Faster Chapter 5, pp. 141-155',
+        title: 'The 100% Traction Budget Concept',
+        subtitle: 'Understanding the finite limits of tire contact patch adhesion',
+        bookReference: 'Going Faster Chapter 3, pp. 62-74',
         theorySummary: [
-          'Abruptly snapping off the brake pedal causes the front suspension to rebound upwards, unloading the front contact patches and causing severe entry understeer.',
-          'A smooth, controlled release ramp keeps the nose loaded while steering angle is applied.'
+          'Under pure straight-line braking, 100% of the friction circle is dedicated to longitudinal deceleration.',
+          'In steady-state cornering at the apex, 100% of tire grip is lateral.',
+          'Demanding 70% braking + 50% steering exceeds 100% of tire adhesion and induces understeer.'
         ],
         keyPrinciples: [
-          { title: 'Smooth Release Ramp', explanation: 'The release of the brake pedal should take 0.3 to 0.7 seconds depending on corner speed.' },
-          { title: 'Pitch Control', explanation: 'Manage the front-to-rear weight balance via the left foot.' }
+          { title: 'Budget Allocation', explanation: 'You cannot exceed 100% total grip without breaking traction.' },
+          { title: 'No Grip Vacuums', explanation: 'Keep the telemetry G-G circle populated near the perimeter rather than collapsing to 0G.' }
         ],
-        drillGoal: 'Maintain smooth brake release decay duration > 0.35s on all corner entries.',
+        drillGoal: 'Maintain average combined G-force utilization above 75% through all transition phases.',
         targetMetrics: [
-          { label: 'Trail Brake Decay Time', value: '≥ 0.35 s', hint: 'Duration of tapering brake pressure' },
-          { label: 'Release Smoothness', value: '≥ 85/100', hint: 'No sudden drops in pressure' }
+          { label: 'Traction Budget Utilization', value: '≥ 75%', hint: 'Continuous utilization of tire friction budget' },
+          { label: 'Combined G Retention', value: '≥ 0.80G', hint: 'Avoid drops into the friction circle dead zone' }
         ],
         challenge: {
-          id: 'ch-4-1',
-          name: 'Smooth Release Ramp Challenge',
-          description: 'Achieve a trail-braking decay score of ≥ 82/100 across 2 consecutive laps.',
-          metric: 'trail_braking_score',
+          id: 'ch-beg-4-1',
+          name: 'Traction Budget Utilization Challenge',
+          description: 'Maintain an average combined traction budget of ≥ 75% across 2 consecutive laps.',
+          metric: 'traction_budget_pct',
           operator: 'gte',
-          targetValue: 82,
-          unit: '/100',
-          requiredLaps: 2
+          targetValue: 75,
+          unit: '%',
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 78, gold: 85 }
         },
         recommendedSetup: {
           car: 'Mazda Formula Mazda 2015',
-          track: 'Lime Rock Full',
-          gameType: 'Test Drive',
+          altCar: 'Subaru BRZ 2022',
+          track: 'Grand Oak Club',
+          gameType: 'Circuit Race',
           timeOfDay: 'Morning',
           weather: 'Clear',
           laps: 6,
           drivatars: 0,
-          notes: 'Master pitch control going down the hill into the final sweeper.'
+          notes: 'Watch your APEX live friction circle; avoid dropping into the center dead zone.'
         }
       },
       {
         id: 's-4-2',
         moduleId: 'mod-4',
         sessionNumber: 2,
-        title: 'Trail-Braking for Corner Rotation',
-        subtitle: 'Carrying 10-20% trailing pressure directly into the apex clipping point',
-        bookReference: 'Going Faster Chapter 5, pp. 156-170',
+        title: 'Pitch and Roll: Longitudinal vs Lateral Weight Transfer',
+        subtitle: 'Managing chassis load distribution to control tire grip',
+        bookReference: 'Going Faster Chapter 3, pp. 75-88',
         theorySummary: [
-          'Holding light brake pressure (10-20%) while turning rotates the car around its vertical yaw axis.',
-          'This allows you to point the nose at the exit earlier and get back to full throttle sooner.'
+          'Braking pitches weight onto front tires (increasing front grip, lightening the rear).',
+          'Acceleration transfers weight rearward (increasing rear traction, lightening the steering).',
+          'Smooth pedal releases manage the rate of weight transfer, preventing chassis snap.'
         ],
         keyPrinciples: [
-          { title: 'Rotation at Apex', explanation: 'Trail braking finishes rotating the car before throttle application begins.' },
-          { title: 'Steering & Brake Blend', explanation: 'Maximum steering angle coincides with minimum trailing brake pressure.' }
+          { title: 'Loading the Front Tires', explanation: 'Turn in while the nose is loaded for crisp turn-in response.' },
+          { title: 'Smooth Weight Settling', explanation: 'Slowly release the brake so the nose does not violently rebound.' }
         ],
-        drillGoal: 'Carry light trailing brake pressure all the way to within 5m of apex.',
+        drillGoal: 'Eliminate abrupt chassis pitch/roll spikes by graduating brake release smoothly into turn-in.',
         targetMetrics: [
-          { label: 'Apex Rotation Score', value: '≥ 85/100', hint: 'Car yaw aligned before throttle pickup' },
-          { label: 'Trail-to-Apex Coverage', value: '≥ 80%', hint: 'Pressure maintained into apex entry' }
+          { label: 'Steering Smoothness', value: '≥ 80/100', hint: 'Smooth chassis roll transition' },
+          { label: 'Zero Snap Oversteer', value: '100% Controlled', hint: 'Stable rear axle load retention' }
         ],
         challenge: {
-          id: 'ch-4-2',
-          name: 'Apex Trail-Rotation Challenge',
-          description: 'Achieve an apex trail-braking score of ≥ 85/100 on 2 consecutive laps.',
-          metric: 'trail_braking_score',
+          id: 'ch-beg-4-2',
+          name: 'Weight Transfer Smoothness Challenge',
+          description: 'Achieve a steering and chassis smoothness score of ≥ 80/100 across 2 consecutive laps.',
+          metric: 'steering_smoothness_score',
           operator: 'gte',
-          targetValue: 85,
+          targetValue: 80,
           unit: '/100',
-          requiredLaps: 2
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 80, gold: 90 }
         },
         recommendedSetup: {
-          car: 'Porsche 911 GT3 2021',
-          track: 'Mid-Ohio',
-          gameType: 'Test Drive',
-          timeOfDay: 'Afternoon',
+          car: 'Subaru BRZ 2022',
+          altCar: 'Honda S2000 CR 2009',
+          track: 'Grand Oak Club',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Late Morning',
           weather: 'Partly Cloudy',
           laps: 6,
           drivatars: 0,
-          notes: 'Trail deep into the downhill off-camber Turn 1 and Madness complex.'
+          notes: 'Feel the front tires bite as you trail the last 10% of brake pressure past turn-in.'
         }
       },
       {
         id: 's-4-3',
         moduleId: 'mod-4',
         sessionNumber: 3,
-        title: 'Adapting Trail Braking to Corner Radii',
-        subtitle: 'Deep trail in tight hairpins vs brief breathers in fast sweepers',
-        bookReference: 'Going Faster Chapter 5, pp. 171-185',
+        title: 'Basic Input Blending on Corner Entry',
+        subtitle: 'Transitioning around the perimeter of the G-G friction circle',
+        bookReference: 'Going Faster Chapter 3, pp. 89-105',
         theorySummary: [
-          'Tight hairpins require deep, prolonged trail braking deep into the turn to overcome low-speed understeer.',
-          'Fast high-speed sweepers require only a quick, light trail-brake to transfer weight without scrubbing momentum.'
+          'As steering angle increases from 0° toward apex lock, brake pressure must linearly decay from 100% toward 0%.',
+          'The transition trace on the G-G diagram should create a smooth, rounded arc along the perimeter.',
+          'Never leave a dead zone between brake release and steering application.'
         ],
         keyPrinciples: [
-          { title: 'Corner Type Matching', explanation: 'Match trail braking depth to corner tightness.' },
-          { title: 'Speed Scrub Awareness', explanation: 'Do not over-trail in fast corners; prioritize minimum corner speed.' }
+          { title: 'Give and Take', explanation: 'If you add 20% steering, you must surrender 20% brake pressure.' },
+          { title: 'Continuous Envelope Riding', explanation: 'Keep the tire right at its optimal slip angle without breaking traction.' }
         ],
-        drillGoal: 'Successfully vary trail braking duration across slow hairpins (>0.6s) and fast sweepers (<0.25s).',
+        drillGoal: 'Execute continuous circular G-G transition arcs on all corner entries.',
         targetMetrics: [
-          { label: 'Adaptive Trail Score', value: '≥ 88/100', hint: 'Correct duration per corner type' }
+          { label: 'Transition Grip Retention', value: '≥ 80%', hint: 'Minimum combined G during turn-in' },
+          { label: 'G-G Arc Smoothness', value: '≥ 82/100', hint: 'Continuous circular trace' }
         ],
         challenge: {
-          id: 'ch-4-3',
-          name: 'Multi-Corner Adaptive Trail Challenge',
-          description: 'Achieve an overall trail-braking grade of ≥ 85/100 across a mixed-corner circuit.',
-          metric: 'trail_braking_score',
+          id: 'ch-beg-4-3',
+          name: 'Friction Circle Arc Challenge',
+          description: 'Maintain an average combined traction budget of ≥ 80% throughout all corner transitions across 2 consecutive laps.',
+          metric: 'traction_budget_pct',
           operator: 'gte',
-          targetValue: 85,
-          unit: '/100',
-          requiredLaps: 2
+          targetValue: 80,
+          unit: '%',
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 80, gold: 88 }
         },
         recommendedSetup: {
           car: 'Mazda Formula Mazda 2015',
-          track: 'Circuit de Spa-Francorchamps',
-          gameType: 'Test Drive',
-          timeOfDay: 'Sunset',
-          weather: 'Clear',
-          laps: 5,
+          altCar: 'Subaru BRZ 2022',
+          track: 'Silverstone National',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Noon',
+          weather: 'Mostly Clear',
+          laps: 6,
           drivatars: 0,
-          notes: 'Compare deep trail at La Source hairpin versus brief breathers at Pouhon.'
+          notes: 'Practice blending off brakes while turning into Brooklands and Luffield.'
         }
       }
     ],
     graduationTest: {
       id: 'gt-4',
       moduleId: 'mod-4',
-      title: 'Module 4 Graduation: Trail Braking & Rotation Mastery Exam',
-      examOverview: '3-lap certification demonstrating seamless brake bleed-off, chassis pitch stabilization, and apex rotation across all corner types.',
-      trackName: 'Lime Rock Full',
-      carName: 'Porsche 911 GT3 2021',
-      requiredLaps: 3,
-      passingScorePct: 85,
+      title: 'Module 4 Graduation: Beginner License Master Certification',
+      examOverview: 'The comprehensive 5-lap Beginner Level Master Exam certifying that the driver has mastered vision, late apex geometry, threshold braking, and the friction circle traction budget.',
+      trackName: 'Silverstone National',
+      carName: 'Mazda Formula Mazda 2015',
+      altCarName: 'Subaru BRZ 2022',
+      requiredLaps: 5,
+      passingScorePct: 80,
       requirements: [
-        { title: 'Trail Braking Score', description: 'Average trail braking decay score across all sectors', metric: 'Trail Score', targetText: '≥ 85/100', minScorePct: 85 },
-        { title: 'Apex Minimum Speed', description: 'Carry optimal rolling speed without over-slowing', metric: 'Apex Delta', targetText: '≥ 80%', minScorePct: 80 },
-        { title: 'Chassis Stability', description: 'No sudden pitch snap or uncontrolled oversteer snaps', metric: 'Stability', targetText: '≥ 90%', minScorePct: 90 }
+        { title: 'Friction Circle Budget', description: 'Average combined traction budget of at least 80%', metric: 'Traction Budget', targetText: '≥ 80%', minScorePct: 80 },
+        { title: 'Pace & Consistency', description: 'Lap delta variance under 0.35s across all 5 laps', metric: 'Consistency', targetText: '≤ 0.35s', minScorePct: 80 },
+        { title: 'Clean Execution in Field', description: '5 clean laps with zero off-tracks or spins', metric: 'Clean Laps', targetText: '5/5 Laps', minScorePct: 100 }
       ],
       recommendedSetup: {
-        car: 'Porsche 911 GT3 2021',
-        track: 'Lime Rock Full',
+        car: 'Mazda Formula Mazda 2015',
+        altCar: 'Subaru BRZ 2022',
+        track: 'Silverstone National',
         gameType: 'Circuit Race',
-        timeOfDay: 'Late Afternoon',
-        weather: 'Mostly Clear',
-        laps: 3,
+        timeOfDay: 'Afternoon',
+        weather: 'Clear',
+        laps: 5,
         drivatars: 4,
-        notes: 'Continuous trail-braking rotation exam.'
+        notes: 'Master Certification Exam. Passing unlocks the Novice Driver Level.'
       }
     }
   },
+
+  // ==========================================
+  // DRIVER LEVEL: NOVICE (MODULES 5 - 7)
+  // ==========================================
   {
     id: 'mod-5',
+    driverLevel: 'Novice',
     moduleNumber: 5,
-    title: 'Turn-In Technique & Steering Smoothness',
-    tagline: 'Single-Input Steering, Roll-Rate Matching, and Eliminating Wheel Sawing',
-    bookChapter: 'Chapter 6: Steering & Turn-In',
-    iconName: 'Compass',
-    description: 'Develop silky, decisive steering inputs. Learn how sawing at the wheel destroys tire grip, how to set the car with a single smooth input, and how to match steering speed to suspension roll rate.',
+    title: 'Trail-Braking & Corner Entry Rotation',
+    tagline: 'Carrying Deceleration into the Apex to Yaw the Car',
+    bookChapter: 'Chapter 5: Trail Braking',
+    iconName: 'GitBranch',
+    description: 'Learn how to bleed off the last 20% of brake pressure past the turn-in point all the way to the apex, transferring load to the front tires to generate progressive entry yaw.',
     sessions: [
       {
         id: 's-5-1',
         moduleId: 'mod-5',
         sessionNumber: 1,
-        title: 'The Single-Input Steering Rule',
-        subtitle: 'Turning in once, setting the steering angle, and holding the arc',
-        bookReference: 'Going Faster Chapter 6, pp. 186-200',
+        title: 'The Trail-Braking Taper: Linear Decay Rate',
+        subtitle: 'Mastering the decaying ramp of brake pressure past turn-in',
+        bookReference: 'Going Faster Chapter 5, pp. 115-128',
         theorySummary: [
-          'Every steering adjustment upsets tire contact patches and scrubs speed.',
-          'The ideal corner turn-in is one smooth, continuous input to the desired lock, held through the apex.'
+          'Straight-line braking stops the car; trail-braking turns the car.',
+          'Releasing the brake abruptly causes front-end lift and immediate entry understeer.',
+          'A linear decay from 80% down to 5% pressure right at the apex keeps the front tires loaded.'
         ],
         keyPrinciples: [
-          { title: 'Commitment on Entry', explanation: 'Look far ahead to the apex to calculate the exact steering angle needed.' },
-          { title: 'Eliminate Sawing', explanation: 'Micro-corrections indicate a lack of visual focus or improper entry speed.' }
+          { title: 'Brake-to-Apex Connection', explanation: 'Brake pressure should reach zero precisely at the geometric/late apex.' },
+          { title: 'Front Load Retention', explanation: 'Keep the front suspension compressed to maintain maximum turn-in bite.' }
         ],
-        drillGoal: 'Maintain steering micro-correction variance < 8% throughout corner entry.',
+        drillGoal: 'Maintain progressive brake taper through the first 40 meters of corner entry.',
         targetMetrics: [
-          { label: 'Steering Smoothness Score', value: '≥ 88/100', hint: 'Smooth input trace with zero oscillation' }
+          { label: 'Trail Braking Score', value: '≥ 85/100', hint: 'Smooth continuous decay trace' },
+          { label: 'Release Point Precision', value: '±2m from Apex', hint: 'Zero pressure right at clipping point' }
         ],
         challenge: {
           id: 'ch-5-1',
-          name: 'Steering Smoothness Challenge',
-          description: 'Achieve a steering smoothness score of ≥ 85/100 on 2 consecutive laps.',
-          metric: 'steering_smoothness_score',
+          name: 'Trail-Braking Taper Challenge',
+          description: 'Achieve a trail-braking score of ≥ 82/100 across 2 consecutive laps.',
+          metric: 'trail_braking_score',
           operator: 'gte',
-          targetValue: 85,
+          targetValue: 82,
           unit: '/100',
-          requiredLaps: 2
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 82, gold: 92 }
         },
         recommendedSetup: {
-          car: 'Mazda Formula Mazda 2015',
-          track: 'Circuit de Barcelona-Catalunya GP',
-          gameType: 'Test Drive',
+          car: 'BMW M3 2005',
+          altCar: 'Porsche 718 Cayman GTS 2018',
+          track: 'Mid-Ohio',
+          gameType: 'Circuit Race',
           timeOfDay: 'Morning',
           weather: 'Clear',
           laps: 6,
           drivatars: 0,
-          notes: 'Focus on Turn 3 long sweeper: set the wheel once and hold a pristine arc.'
-        }
-      },
-      {
-        id: 's-5-2',
-        moduleId: 'mod-5',
-        sessionNumber: 2,
-        title: 'Steering Rate & Chassis Roll Matching',
-        subtitle: 'Allowing the suspension to take a set without overloading the outside tires',
-        bookReference: 'Going Faster Chapter 6, pp. 201-215',
-        theorySummary: [
-          'Turning the steering wheel too quickly snaps the chassis, spiking tire slip angle into severe understeer.',
-          'Turn in at a rate that allows the outside springs and dampers to compress smoothly.'
-        ],
-        keyPrinciples: [
-          { title: 'Chassis Set', explanation: 'Feel the outside suspension load up before reaching maximum lateral G.' },
-          { title: 'Speed-Dependent Rate', explanation: 'Steer slower at 200 km/h than at 60 km/h.' }
-        ],
-        drillGoal: 'Match steering rate to lateral acceleration rise rate for seamless weight transfer.',
-        targetMetrics: [
-          { label: 'Lateral G Rise Linearity', value: '≥ 85%', hint: 'Progressive lateral load transfer' }
-        ],
-        challenge: {
-          id: 'ch-5-2',
-          name: 'Chassis Roll Matching Challenge',
-          description: 'Score ≥ 85/100 in steering linearity and chassis settlement across 2 laps.',
-          metric: 'steering_smoothness_score',
-          operator: 'gte',
-          targetValue: 85,
-          unit: '/100',
-          requiredLaps: 2
-        },
-        recommendedSetup: {
-          car: 'Porsche 718 Cayman GTS 2018',
-          track: 'Suzuka Full',
-          gameType: 'Test Drive',
-          timeOfDay: 'Afternoon',
-          weather: 'Mostly Clear',
-          laps: 5,
-          drivatars: 0,
-          notes: 'Rhythmically load the chassis through the famous Sector 1 S-Curves.'
+          notes: 'Practice trailing into Turn 1 and the Keyhole.'
         }
       }
     ],
     graduationTest: {
       id: 'gt-5',
       moduleId: 'mod-5',
-      title: 'Module 5 Graduation: Steering Precision Exam',
-      examOverview: '3-lap evaluation testing smooth, single-input steering arcs and chassis roll control through complex technical sectors.',
-      trackName: 'Suzuka Full',
-      carName: 'Mazda Formula Mazda 2015',
+      title: 'Module 5 Graduation: Trail-Braking Mastery Exam',
+      examOverview: 'A 3-lap evaluation testing entry yaw control and trail-braking decay smoothness.',
+      trackName: 'Mid-Ohio',
+      carName: 'BMW M3 2005',
+      altCarName: 'Porsche 718 Cayman GTS 2018',
       requiredLaps: 3,
-      passingScorePct: 85,
+      passingScorePct: 82,
       requirements: [
-        { title: 'Steering Smoothness', description: 'Zero erratic wheel corrections', metric: 'Smoothness', targetText: '≥ 85/100', minScorePct: 85 },
-        { title: 'Turn-In Consistency', description: 'Precise initiation points', metric: 'Turn-In Score', targetText: '≥ 82%', minScorePct: 82 }
+        { title: 'Trail Score', description: 'Average trail braking score ≥ 82/100', metric: 'Trail Score', targetText: '≥ 82/100', minScorePct: 82 },
+        { title: 'Clean Laps', description: '3 clean consecutive laps', metric: 'Clean Laps', targetText: '3/3 Laps', minScorePct: 100 }
       ],
       recommendedSetup: {
-        car: 'Mazda Formula Mazda 2015',
-        track: 'Suzuka Full',
-        gameType: 'Circuit Race',
-        timeOfDay: 'Noon',
-        weather: 'Clear',
-        laps: 3,
-        drivatars: 4,
-        notes: 'Steering smoothness certification across Suzuka S-Curves and 130R.'
-      }
-    }
-  },
-  {
-    id: 'mod-6',
-    moduleNumber: 6,
-    title: 'Throttle Application & Corner Exit',
-    tagline: 'Initial Pick-Up Point, Steering Unwind Coordination, and Slip Ratio Control',
-    bookChapter: 'Chapter 7: Throttle Application',
-    iconName: 'Zap',
-    description: 'Learn when, where, and how hard to apply throttle out of corners. Master the synchronization between unwinding steering lock and pressing the gas to avoid exit wheelspin and power oversteer.',
-    sessions: [
-      {
-        id: 's-6-1',
-        moduleId: 'mod-6',
-        sessionNumber: 1,
-        title: 'The Maintenance Throttle Pick-Up',
-        subtitle: 'Eliminating the coasting lag between trail braking and power application',
-        bookReference: 'Going Faster Chapter 7, pp. 216-230',
-        theorySummary: [
-          'Any moment spent coasting (neither braking nor accelerating) is lost time.',
-          'As trailing brake pressure reaches zero at the apex, your foot should instantly transition to light maintenance throttle (10-20%) to stabilize the rear platform.'
-        ],
-        keyPrinciples: [
-          { title: 'Zero Hesitation Gap', explanation: 'Keep the transition time between brake off and throttle on under 150ms.' },
-          { title: 'Rear Platform Settlement', explanation: 'Light throttle shifts weight to the rear tires, planting the back end for exit.' }
-        ],
-        drillGoal: 'Transition from 0% brake to initial throttle pickup in < 150ms at every apex.',
-        targetMetrics: [
-          { label: 'Throttle Pickup Lag', value: '< 150 ms', hint: 'Milliseconds between brake off & throttle on' }
-        ],
-        challenge: {
-          id: 'ch-6-1',
-          name: 'Zero-Coasting Pickup Challenge',
-          description: 'Achieve an average throttle pickup hesitation time < 150ms across 2 laps.',
-          metric: 'overall_lap_score',
-          operator: 'gte',
-          targetValue: 85,
-          unit: '%',
-          requiredLaps: 2
-        },
-        recommendedSetup: {
-          car: 'Mazda Formula Mazda 2015',
-          track: 'Watkins Glen Full',
-          gameType: 'Test Drive',
-          timeOfDay: 'Morning',
-          weather: 'Clear',
-          laps: 6,
-          drivatars: 0,
-          notes: 'Instantly pick up maintenance throttle at the apex of the Boot corners.'
-        }
-      },
-      {
-        id: 's-6-2',
-        moduleId: 'mod-6',
-        sessionNumber: 2,
-        title: 'Synchronizing Throttle with Steering Unwind',
-        subtitle: 'Progressive power delivery as lateral grip requirements decrease',
-        bookReference: 'Going Faster Chapter 7, pp. 231-248',
-        theorySummary: [
-          'Full throttle can only be achieved when steering angle is reduced near zero.',
-          'Increase throttle in direct 1:1 proportion to opening the steering wheel.'
-        ],
-        keyPrinciples: [
-          { title: 'Unwind Rule', explanation: 'If you cannot unwind the wheel, you cannot add more throttle without oversteering or understeering off track.' },
-          { title: 'Traction Band Management', explanation: 'Maintain driven wheel slip ratio between 6% and 12% for peak acceleration.' }
-        ],
-        drillGoal: 'Achieve a throttle-to-unwind linearity correlation score of ≥ 90/100.',
-        targetMetrics: [
-          { label: 'Unwind Linearity', value: '≥ 90/100', hint: '1:1 ratio between wheel open & throttle' }
-        ],
-        challenge: {
-          id: 'ch-6-2',
-          name: 'Unwind Synchronization Challenge',
-          description: 'Achieve a throttle unwind score of ≥ 88/100 on 2 consecutive laps.',
-          metric: 'throttle_unwind_score',
-          operator: 'gte',
-          targetValue: 88,
-          unit: '/100',
-          requiredLaps: 2
-        },
-        recommendedSetup: {
-          car: 'Chevrolet Corvette Z06 2023',
-          track: 'Road America',
-          gameType: 'Test Drive',
-          timeOfDay: 'Afternoon',
-          weather: 'Clear',
-          laps: 6,
-          drivatars: 0,
-          notes: 'Apply high horsepower progressively as you unwind lock out of Canada Corner.'
-        }
-      }
-    ],
-    graduationTest: {
-      id: 'gt-6',
-      moduleId: 'mod-6',
-      title: 'Module 6 Graduation: Exit Acceleration Certification',
-      examOverview: 'Complete 3 laps demonstrating zero apex coasting, rapid maintenance pickup, and perfect throttle/unwind synchronization.',
-      trackName: 'Watkins Glen Full',
-      carName: 'Chevrolet Corvette Z06 2023',
-      requiredLaps: 3,
-      passingScorePct: 86,
-      requirements: [
-        { title: 'Throttle Unwind Linearity', description: 'Smooth progressive power delivery', metric: 'Unwind Score', targetText: '≥ 88/100', minScorePct: 88 },
-        { title: 'Apex Pickup Lag', description: 'Zero coasting between brake and throttle', metric: 'Pickup Lag', targetText: '< 160ms', minScorePct: 85 }
-      ],
-      recommendedSetup: {
-        car: 'Chevrolet Corvette Z06 2023',
-        track: 'Watkins Glen Full',
-        gameType: 'Circuit Race',
-        timeOfDay: 'Late Afternoon',
-        weather: 'Clear',
-        laps: 3,
-        drivatars: 5,
-        notes: 'High-power RWD throttle modulation and unwind graduation exam.'
-      }
-    }
-  },
-  {
-    id: 'mod-7',
-    moduleNumber: 7,
-    title: 'Slip Angles & Finding the Limit',
-    tagline: 'Tire Slip Physics, Feeling the Grip Plateau, and Optimal Cornering Angles',
-    bookChapter: 'Chapter 8: Slip Angles',
-    iconName: 'Sliders',
-    description: 'Understand tire mechanics: pneumatic trail, slip angle generation, and why maximum tire grip occurs when tires point 4° to 8° away from the direction of travel.',
-    sessions: [
-      {
-        id: 's-7-1',
-        moduleId: 'mod-7',
-        sessionNumber: 1,
-        title: 'The Tire Slip Angle Window',
-        subtitle: 'Living in the 4° - 7° peak lateral grip sweet spot',
-        bookReference: 'Going Faster Chapter 8, pp. 249-265',
-        theorySummary: [
-          'Tires do not steer like rail cars; the tread distorts to create a slip angle relative to the wheel heading.',
-          'Peak lateral grip occurs between 4° and 7° of slip. Beyond 8°, grip falls off dramatically and generates excessive tire scrub.'
-        ],
-        keyPrinciples: [
-          { title: 'The Grip Plateau', explanation: 'Tires reach peak grip across a broad slip plateau before breaking away.' },
-          { title: 'Over-Steering Scrubs Speed', explanation: 'Turning the wheel further once past peak slip angle only overheats the tires and slows the car down.' }
-        ],
-        drillGoal: 'Maintain average cornering slip angles between 4.5° and 7.0° throughout apex zones.',
-        targetMetrics: [
-          { label: 'Avg Apex Slip Angle', value: '5.2° ± 1.0°', hint: 'Optimal grip envelope' }
-        ],
-        challenge: {
-          id: 'ch-7-1',
-          name: 'Slip Angle Plateau Challenge',
-          description: 'Keep all 4 tire slip angles within the 4° - 7.5° optimal window for ≥ 80% of mid-corner distance over 2 laps.',
-          metric: 'slip_angle_window',
-          operator: 'gte',
-          targetValue: 80,
-          unit: '%',
-          requiredLaps: 2
-        },
-        recommendedSetup: {
-          car: 'Mazda Formula Mazda 2015',
-          track: 'Mugello Full',
-          gameType: 'Test Drive',
-          timeOfDay: 'Morning',
-          weather: 'Clear',
-          laps: 6,
-          drivatars: 0,
-          notes: 'Feel the 5-degree slip angle plateau around Arrabbiata 1 and 2.'
-        }
-      }
-    ],
-    graduationTest: {
-      id: 'gt-7',
-      moduleId: 'mod-7',
-      title: 'Module 7 Graduation: Slip Angle & Limit Mastery Exam',
-      examOverview: 'Demonstrate continuous cornering at the tire grip plateau without exceeding critical slip angle scrub thresholds.',
-      trackName: 'Silverstone GP',
-      carName: 'Mazda Formula Mazda 2015',
-      requiredLaps: 3,
-      passingScorePct: 84,
-      requirements: [
-        { title: 'Slip Angle Control', description: 'Maintain optimal slip window through high-load corners', metric: 'Slip Window', targetText: '≥ 80%', minScorePct: 80 },
-        { title: 'Corner Minimum Speed', description: 'Maximize rolling speed at peak grip', metric: 'Apex Speed', targetText: '≥ 85%', minScorePct: 85 }
-      ],
-      recommendedSetup: {
-        car: 'Mazda Formula Mazda 2015',
-        track: 'Silverstone GP',
+        car: 'BMW M3 2005',
+        altCar: 'Porsche 718 Cayman GTS 2018',
+        track: 'Mid-Ohio',
         gameType: 'Circuit Race',
         timeOfDay: 'Afternoon',
         weather: 'Clear',
         laps: 3,
-        drivatars: 4,
-        notes: 'Sustained slip angle mastery test on Silverstone high-load turns.'
+        drivatars: 3
       }
     }
   },
+
+  // ==========================================
+  // DRIVER LEVEL: INTERMEDIATE (MODULES 8 - 10)
+  // ==========================================
   {
     id: 'mod-8',
+    driverLevel: 'Intermediate',
     moduleNumber: 8,
-    title: 'Handling Understeer & Oversteer',
-    tagline: 'Slip Differentials, Weight Transfer Remedies, and Fast Reflexive Corrections',
-    bookChapter: 'Chapter 9: Vehicle Balance',
-    iconName: 'ShieldAlert',
-    description: 'Diagnose whether the front or rear tires are exceeding their friction budget. Learn how to fix understeer by opening the steering wheel and breathing off throttle, and how to catch oversteer without snapping back.',
+    title: 'Tire Slip Angles & Peak Grip Envelopes',
+    tagline: 'Riding the 6°-10° Slip Angle Plateau for Maximum Cornering Speed',
+    bookChapter: 'Chapter 6: Tire Dynamics & Slip Angles',
+    iconName: 'Compass',
+    description: 'Understand tire mechanics at the molecular slip level. Learn why tires must slip to generate cornering force, and how to hold the tire at its peak friction peak without exceeding it into scrub.',
     sessions: [
       {
         id: 's-8-1',
         moduleId: 'mod-8',
         sessionNumber: 1,
-        title: 'Diagnosing & Correcting Understeer (Push)',
-        subtitle: 'Why turning the wheel more is the worst response to front wash',
-        bookReference: 'Going Faster Chapter 9, pp. 266-282',
+        title: 'The Tire Slip Angle Curve: Peak vs Slide',
+        subtitle: 'Understanding why peak lateral force requires controlled tire slip',
+        bookReference: 'Going Faster Chapter 6, pp. 142-158',
         theorySummary: [
-          'Understeer occurs when front tire slip angle exceeds rear slip angle (Front Slip > Rear Slip + 2°).',
-          'The correct remedy is to slightly OPEN the steering wheel and gently breathe off throttle to transfer weight back to the front contact patch.'
+          'A tire travelling in a straight line has 0° slip angle.',
+          'Maximum lateral grip occurs between 6° and 10° slip angle for racing slicks.',
+          'Exceeding 12° slip angle results in thermal degradation and dramatic loss of grip.'
         ],
         keyPrinciples: [
-          { title: 'Unwind to Grip', explanation: 'Reduce steering lock to bring front tires back from oversaturated slip angle to peak plateau.' },
-          { title: 'Throttle Breathing', explanation: 'A smooth 10% throttle lift transfers weight forward to bite the front tires.' }
+          { title: 'Feel the Plateau', explanation: 'Listen for tire scrub and feel steering wheel weight at peak slip.' },
+          { title: 'Do Not Oversteer into Scrub', explanation: 'Excessive steering wheel angle overheats tires and scrubs velocity.' }
         ],
-        drillGoal: 'Correct induced entry understeer within 0.25 seconds by opening the wheel and modulating throttle.',
+        drillGoal: 'Keep tires in the 6°-10° optimal slip window throughout high-speed sweepers.',
         targetMetrics: [
-          { label: 'Understeer Recovery Time', value: '< 300 ms', hint: 'Time to restore front tire grip' }
+          { label: 'Slip Window Retention', value: '≥ 85%', hint: '% of cornering duration in peak grip window' }
         ],
         challenge: {
           id: 'ch-8-1',
-          name: 'Understeer Recovery Challenge',
-          description: 'Recover from entry push events with minimal speed scrub, achieving a balance score of ≥ 85/100.',
-          metric: 'overall_lap_score',
+          name: 'Peak Slip Angle Plateau Challenge',
+          description: 'Maintain optimal slip angle retention of ≥ 82% across 2 consecutive laps.',
+          metric: 'slip_angle_window',
           operator: 'gte',
-          targetValue: 85,
+          targetValue: 82,
           unit: '%',
-          requiredLaps: 2
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 82, gold: 92 }
         },
         recommendedSetup: {
-          car: 'Honda Civic Type R 2018',
-          track: 'Nurburgring GP',
-          gameType: 'Test Drive',
+          car: 'Porsche 911 GT3 2021',
+          altCar: 'Chevrolet Corvette Z06 2023',
+          track: 'Road America',
+          gameType: 'Circuit Race',
           timeOfDay: 'Morning',
-          weather: 'Overcast Dry',
-          laps: 6,
-          drivatars: 0,
-          notes: 'Experience FWD push characteristics and practice steering unwind recovery.'
-        }
-      },
-      {
-        id: 's-8-2',
-        moduleId: 'mod-8',
-        sessionNumber: 2,
-        title: 'Catching & Balancing Oversteer (Loose)',
-        subtitle: 'Immediate counter-steer reaction and throttle stabilization',
-        bookReference: 'Going Faster Chapter 9, pp. 283-300',
-        theorySummary: [
-          'Oversteer occurs when rear slip angle exceeds front slip angle.',
-          'Catch it with fast, decisive counter-steer matching yaw velocity, while keeping throttle steady to avoid lift-off snap.'
-        ],
-        keyPrinciples: [
-          { title: 'Never Chop Throttle', explanation: 'Lifting abruptly off throttle during oversteer unloads the rear tires, guaranteeing a spin.' },
-          { title: 'Fast Hands, Smooth Feet', explanation: 'Counter-steer instantly, and unwind just as quickly as the rear steps back in line.' }
-        ],
-        drillGoal: 'Catch induced rear slide with single counter-steer input and zero tank-slapper oscillations.',
-        targetMetrics: [
-          { label: 'Counter-steer Reaction Time', value: '< 180 ms', hint: 'Instant reaction to yaw acceleration spike' }
-        ],
-        challenge: {
-          id: 'ch-8-2',
-          name: 'Oversteer Catch & Balance Challenge',
-          description: 'Control rear slides with zero secondary snap oscillations, achieving ≥ 85% balance score.',
-          metric: 'overall_lap_score',
-          operator: 'gte',
-          targetValue: 85,
-          unit: '%',
-          requiredLaps: 2
-        },
-        recommendedSetup: {
-          car: 'Nissan Silvia Spec-R 2000',
-          track: 'Grand Oak Club',
-          gameType: 'Drift',
-          timeOfDay: 'Late Afternoon',
           weather: 'Clear',
           laps: 6,
-          drivatars: 0,
-          notes: 'Master fast counter-steer reflex and steady throttle control during yaw breakaway.'
+          drivatars: 0
         }
       }
     ],
     graduationTest: {
       id: 'gt-8',
       moduleId: 'mod-8',
-      title: 'Module 8 Graduation: Vehicle Balance Certification',
-      examOverview: '3-lap exam testing proactive balance management and instantaneous recovery from both push and loose conditions.',
-      trackName: 'Nurburgring GP',
-      carName: 'Porsche 911 GT3 RS 2019',
-      requiredLaps: 3,
-      passingScorePct: 85,
-      requirements: [
-        { title: 'Vehicle Balance Index', description: 'Keep slip angle differential under ±1.5°', metric: 'Balance Score', targetText: '≥ 85/100', minScorePct: 85 },
-        { title: 'Zero Spin / Loss of Control', description: 'Zero spins or off-tracks across all 3 laps', metric: 'Car Control', targetText: '100% Clean', minScorePct: 95 }
-      ],
-      recommendedSetup: {
-        car: 'Porsche 911 GT3 RS 2019',
-        track: 'Nurburgring GP',
-        gameType: 'Circuit Race',
-        timeOfDay: 'Afternoon',
-        weather: 'Mostly Clear',
-        laps: 3,
-        drivatars: 5,
-        notes: 'Chassis balance and dynamic oversteer/understeer control exam.'
-      }
-    }
-  },
-  {
-    id: 'mod-9',
-    moduleNumber: 9,
-    title: 'Linking Corners & Complex Chicanes',
-    tagline: 'Sacrifice Principles, Rapid Directional Transitions, and Momentum Preservation',
-    bookChapter: 'Chapter 10: Corner Combinations',
-    iconName: 'Share2',
-    description: 'Master fast chicanes, esses, and technical complexes. Learn how to manage the pendulum effect of weight transfer during quick left-right transitions.',
-    sessions: [
-      {
-        id: 's-9-1',
-        moduleId: 'mod-9',
-        sessionNumber: 1,
-        title: 'The Chicane Weight Reversal',
-        subtitle: 'Using damper compression and curb strikes to rotate between transitions',
-        bookReference: 'Going Faster Chapter 10, pp. 301-318',
-        theorySummary: [
-          'In a fast chicane, the rebound of the suspension from the first turn can be used to whip the car into the second turn.',
-          'Timing the steering reversal to coincide with chassis pitch and roll rebound maximizes agility.'
-        ],
-        keyPrinciples: [
-          { title: 'Transition Rhythm', explanation: 'A chicane is driven to a tempo: Turn, Settle, Reversal, Power.' },
-          { title: 'Straightening the Line', explanation: 'Use allowable curb geometry to turn two sharp corners into one smooth shallow S.' }
-        ],
-        drillGoal: 'Minimize time spent in transition roll while maintaining chassis composure.',
-        targetMetrics: [
-          { label: 'Chicane Sector Delta', value: '-0.25s', hint: 'Improvement through rapid transition' }
-        ],
-        challenge: {
-          id: 'ch-9-1',
-          name: 'Chicane Transition Challenge',
-          description: 'Achieve a chicane sector score of ≥ 85/100 on 2 consecutive laps.',
-          metric: 'overall_lap_score',
-          operator: 'gte',
-          targetValue: 85,
-          unit: '%',
-          requiredLaps: 2
-        },
-        recommendedSetup: {
-          car: 'Mazda Formula Mazda 2015',
-          track: 'Circuit de Spa-Francorchamps',
-          gameType: 'Test Drive',
-          timeOfDay: 'Morning',
-          weather: 'Clear',
-          laps: 6,
-          drivatars: 0,
-          notes: 'Master curb strikes and pendulum direction changes through the Bus Stop Chicane.'
-        }
-      }
-    ],
-    graduationTest: {
-      id: 'gt-9',
-      moduleId: 'mod-9',
-      title: 'Module 9 Graduation: Complex Combinations Exam',
-      examOverview: 'Execute 3 flawless laps through high-speed chicane complexes and linked multi-apex technical sections.',
-      trackName: 'Circuit de Spa-Francorchamps',
-      carName: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
+      title: 'Module 8 Graduation: Tire Slip Dynamics Exam',
+      examOverview: 'A 3-lap examination verifying tire slip angle management and cornering envelope mastery.',
+      trackName: 'Road America',
+      carName: 'Porsche 911 GT3 2021',
+      altCarName: 'Chevrolet Corvette Z06 2023',
       requiredLaps: 3,
       passingScorePct: 84,
       requirements: [
-        { title: 'Chicane Sector Score', description: 'Flawless line and momentum maintenance', metric: 'Sector Score', targetText: '≥ 85%', minScorePct: 85 }
+        { title: 'Slip Angle Retention', description: 'Hold peak slip envelope', metric: 'Slip Window', targetText: '≥ 82%', minScorePct: 82 },
+        { title: 'Clean Laps', description: '3 clean laps', metric: 'Clean Laps', targetText: '3/3 Laps', minScorePct: 100 }
       ],
       recommendedSetup: {
-        car: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
-        track: 'Circuit de Spa-Francorchamps',
-        gameType: 'Circuit Race',
-        timeOfDay: 'Noon',
-        weather: 'Clear',
-        laps: 3,
-        drivatars: 6,
-        notes: 'High-speed chicane and complex sequence evaluation at Spa.'
-      }
-    }
-  },
-  {
-    id: 'mod-10',
-    moduleNumber: 10,
-    title: 'Downshifting, Engine Braking & Gear Selection',
-    tagline: 'Rev-Matching, Powerband Optimization, and Rear Axle Stability',
-    bookChapter: 'Chapter 11: Shifting & Gearing',
-    iconName: 'Gauge',
-    description: 'Master precision downshifting and rev-matching. Learn how sloppy downshifts lock the rear axle under heavy braking and how corner exit gear selection impacts acceleration.',
-    sessions: [
-      {
-        id: 's-10-1',
-        moduleId: 'mod-10',
-        sessionNumber: 1,
-        title: 'Rev-Matching & Rear Axle Stability',
-        subtitle: 'Eliminating engine braking spikes that cause entry oversteer',
-        bookReference: 'Going Faster Chapter 11, pp. 319-335',
-        theorySummary: [
-          'A mismatched downshift acts like pulling the handbrake on the driven wheels.',
-          'Proper rev-matching blips ensure engine RPM matches transmission speed perfectly before clutch engagement.'
-        ],
-        keyPrinciples: [
-          { title: 'Axle Stability Under Decel', explanation: 'Prevent rear tire slip ratio spikes during downshift sequence.' },
-          { title: 'Sequential Timing', explanation: 'Complete downshifts sequentially as speed drops rather than dumping multiple gears at once.' }
-        ],
-        drillGoal: 'Execute clean downshifts with zero rear slip ratio spikes > 10% during heavy braking.',
-        targetMetrics: [
-          { label: 'Downshift Smoothness', value: '≥ 90/100', hint: 'Zero RPM mismatch shudder' }
-        ],
-        challenge: {
-          id: 'ch-10-1',
-          name: 'Downshift Rev-Match Challenge',
-          description: 'Achieve zero rear-axle lockup spikes across all downshifts for 2 consecutive laps.',
-          metric: 'overall_lap_score',
-          operator: 'gte',
-          targetValue: 86,
-          unit: '%',
-          requiredLaps: 2
-        },
-        recommendedSetup: {
-          car: 'Ford Mustang Shelby GT350R 2016',
-          track: 'VIR Full',
-          gameType: 'Test Drive',
-          timeOfDay: 'Morning',
-          weather: 'Clear',
-          laps: 6,
-          drivatars: 0,
-          notes: 'Execute heel-toe downshifts under heavy braking into Turn 1 and the Oak Tree turn.'
-        }
-      }
-    ],
-    graduationTest: {
-      id: 'gt-10',
-      moduleId: 'mod-10',
-      title: 'Module 10 Graduation: Powertrain & Gearing Exam',
-      examOverview: 'Demonstrate perfect downshift execution, optimal gear selection, and peak RPM exit acceleration over 3 laps.',
-      trackName: 'VIR Full',
-      carName: 'Ford Mustang Shelby GT350R 2016',
-      requiredLaps: 3,
-      passingScorePct: 85,
-      requirements: [
-        { title: 'Downshift Axle Stability', description: 'Zero rear-axle hop or lockup events', metric: 'Axle Stability', targetText: '100% Clean', minScorePct: 90 }
-      ],
-      recommendedSetup: {
-        car: 'Ford Mustang Shelby GT350R 2016',
-        track: 'VIR Full',
+        car: 'Porsche 911 GT3 2021',
+        altCar: 'Chevrolet Corvette Z06 2023',
+        track: 'Road America',
         gameType: 'Circuit Race',
         timeOfDay: 'Afternoon',
         weather: 'Clear',
         laps: 3,
-        drivatars: 5,
-        notes: 'Manual transmission rev-matching and rear stability exam at VIR.'
+        drivatars: 4
       }
     }
   },
+
+  // ==========================================
+  // DRIVER LEVEL: ADVANCED (MODULES 11 - 12)
+  // ==========================================
   {
     id: 'mod-11',
+    driverLevel: 'Advanced',
     moduleNumber: 11,
     title: 'Aerodynamics, Downforce & High-Speed Corners',
-    tagline: 'Speed-Squared Grip Physics and High-Speed Mental Commitment',
-    bookChapter: 'Chapter 12: Aerodynamics',
+    tagline: 'Speed-Dependent Grip ($V^2$ Physics) and Aero Trust',
+    bookChapter: 'Chapter 9: Aerodynamics & Downforce',
     iconName: 'Wind',
-    description: 'Learn how aerodynamic wings generate downforce proportional to the square of vehicle speed ($V^2$), and why high-speed sweepers require total commitment at corner entry.',
+    description: 'Learn how aerodynamic downforce scales with the square of velocity ($F_{down} \\propto V^2$). Overcome human survival instincts by committing to full throttle in high-speed turns where grip exists only at high speed.',
     sessions: [
       {
         id: 's-11-1',
         moduleId: 'mod-11',
         sessionNumber: 1,
         title: 'Speed-Dependent Grip ($V^2$ Physics)',
-        subtitle: 'Trusting downforce at 220+ km/h where grip is double low-speed grip',
-        bookReference: 'Going Faster Chapter 12, pp. 336-352',
+        subtitle: 'Trusting downforce in corners where slowing down induces oversteer',
+        bookReference: 'Going Faster Chapter 9, pp. 195-208',
         theorySummary: [
-          'Downforce doubles every time speed increases by ~41%.',
-          'Braking or hesitating in a high-speed aero corner drops downforce, instantly reducing grip and inducing snap oversteer.'
+          'Aerodynamic grip increases with the square of speed ($V^2$). At 200 km/h, downforce is 4x greater than at 100 km/h.',
+          'Lifting in high-speed corners removes downforce and induces catastrophic snap oversteer.'
         ],
         keyPrinciples: [
-          { title: 'The Aero Trap', explanation: 'Lifting in high-speed turns loses both downforce and stability.' },
-          { title: 'Turn-In Velocity Commitment', explanation: 'Enter high-speed corners with confidence to keep wings loaded.' }
+          { title: 'Aero Trust', explanation: 'Commit 100% throttle; do not lift mid-corner.' },
+          { title: 'Single Steering Set', explanation: 'Make one decisive steering input; avoid micro-corrections.' }
         ],
-        drillGoal: 'Carry maximum entry speed through high-speed sweepers with lateral G > 1.8G.',
+        drillGoal: 'Take high-speed sweepers flat-out with zero throttle hesitation.',
         targetMetrics: [
-          { label: 'High-Speed Apex Lateral G', value: '≥ 1.80 G', hint: 'Exploiting aerodynamic load' }
+          { label: 'Aero Commitment', value: '100% Throttle', hint: 'Zero lift through high-speed sectors' }
         ],
         challenge: {
           id: 'ch-11-1',
-          name: 'High-Speed Aero Commitment Challenge',
-          description: 'Maintain lateral G > 1.7G through target high-speed sweepers on 2 consecutive laps.',
+          name: 'High-Speed Aero Trust Challenge',
+          description: 'Achieve a throttle commitment score of ≥ 90/100 across 2 consecutive laps.',
           metric: 'overall_lap_score',
           operator: 'gte',
-          targetValue: 85,
+          targetValue: 90,
           unit: '%',
-          requiredLaps: 2
+          requiredLaps: 2,
+          medals: { bronze: 75, silver: 85, gold: 95 }
         },
         recommendedSetup: {
-          car: 'Mazda Formula Mazda 2015',
+          car: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
+          altCar: 'BMW M8 GTE #1 BMW M Motorsport 2018',
           track: 'Silverstone GP',
-          gameType: 'Test Drive',
+          gameType: 'Circuit Race',
           timeOfDay: 'Afternoon',
           weather: 'Clear',
           laps: 6,
-          drivatars: 0,
-          notes: 'Trust the aero grip through Copse and the Maggotts-Becketts-Chapel sequence.'
+          drivatars: 0
         }
       }
     ],
@@ -1256,290 +916,118 @@ export const SKIP_BARBER_MODULES: Module[] = [
       id: 'gt-11',
       moduleId: 'mod-11',
       title: 'Module 11 Graduation: High-Speed Aero Mastery Exam',
-      examOverview: '3-lap certification navigating high-speed aerodynamic corners at maximum commitment and stability.',
-      trackName: 'Circuit de Spa-Francorchamps',
-      carName: 'Porsche 919 Hybrid #2 Porsche Team 2017',
+      examOverview: 'A 3-lap test of high-speed aerodynamic commitment and single-input steering discipline.',
+      trackName: 'Silverstone GP',
+      carName: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
+      altCarName: 'BMW M8 GTE #1 BMW M Motorsport 2018',
       requiredLaps: 3,
       passingScorePct: 85,
       requirements: [
-        { title: 'Aero Sector Grip', description: 'Maintain maximum high-speed cornering load', metric: 'Aero Lateral G', targetText: '≥ 1.75 G', minScorePct: 85 }
+        { title: 'Aero Commitment', description: 'Zero throttle lifts in high speed sectors', metric: 'Throttle', targetText: '100%', minScorePct: 90 },
+        { title: 'Clean Laps', description: '3 clean laps', metric: 'Clean Laps', targetText: '3/3 Laps', minScorePct: 100 }
       ],
       recommendedSetup: {
-        car: 'Porsche 919 Hybrid #2 Porsche Team 2017',
-        track: 'Circuit de Spa-Francorchamps',
-        gameType: 'Timed Race',
+        car: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
+        altCar: 'BMW M8 GTE #1 BMW M Motorsport 2018',
+        track: 'Silverstone GP',
+        gameType: 'Circuit Race',
         timeOfDay: 'Sunset',
         weather: 'Clear',
         laps: 3,
-        drivatars: 5,
-        notes: 'Extreme aerodynamic prototype downforce exam through Eau Rouge, Raidillon, and Blanchimont.'
+        drivatars: 4
       }
     }
   },
-  {
-    id: 'mod-12',
-    moduleNumber: 12,
-    title: 'Rain Driving & Wet Weather Dynamics',
-    tagline: 'Alternative Wet Lines, Avoiding Polished Rubber, and Deliberate Modulation',
-    bookChapter: 'Chapter 13: Rain & Low-Grip Dynamics',
-    iconName: 'CloudRain',
-    description: 'Learn why the dry racing line becomes ice in the wet, how to run the rim-shot wet line around the outside of corners, and how to manage low-grip traction budgets.',
-    sessions: [
-      {
-        id: 's-12-1',
-        moduleId: 'mod-12',
-        sessionNumber: 1,
-        title: 'The Wet Racing Line & Rim-Shot Technique',
-        subtitle: 'Driving off-line to find gritty unpolished asphalt with maximum wet grip',
-        bookReference: 'Going Faster Chapter 13, pp. 353-370',
-        theorySummary: [
-          'In the wet, embedded rubber on the traditional dry racing line acts like polished glass.',
-          'The fast wet line runs wide on the outside of corners where rough aggregate provides mechanical grip.'
-        ],
-        keyPrinciples: [
-          { title: 'Avoid the Polish', explanation: 'Cross the dry rubber line at right angles; do not corner on it.' },
-          { title: 'Gentle Input Velocity', explanation: 'Reduce input application rates by 50% to prevent breaking wet friction threshold.' }
-        ],
-        drillGoal: 'Execute alternative wet lines with continuous grip retention on wet asphalt.',
-        targetMetrics: [
-          { label: 'Wet Grip Utilization', value: '≥ 82%', hint: 'Maximizing available wet friction budget' }
-        ],
-        challenge: {
-          id: 'ch-12-1',
-          name: 'Wet Line Execution Challenge',
-          description: 'Achieve a wet track score of ≥ 82% with zero hydroplaning spins across 2 laps.',
-          metric: 'overall_lap_score',
-          operator: 'gte',
-          targetValue: 82,
-          unit: '%',
-          requiredLaps: 2
-        },
-        recommendedSetup: {
-          car: 'Porsche 911 GT3 2021',
-          track: 'Silverstone GP',
-          gameType: 'Test Drive',
-          timeOfDay: 'Morning',
-          weather: 'Light Rain',
-          laps: 6,
-          drivatars: 0,
-          notes: 'Run rim-shot wide lines outside the rubbered apexes on wet Silverstone asphalt.'
-        }
-      }
-    ],
-    graduationTest: {
-      id: 'gt-12',
-      moduleId: 'mod-12',
-      title: 'Module 12 Graduation: Low-Grip & Rain Certification',
-      examOverview: '3-lap evaluation on low-grip / wet circuit demonstrating alternative line mastery and smooth control modulation.',
-      trackName: 'Nurburgring GP',
-      carName: 'Porsche 911 GT3 2021',
-      requiredLaps: 3,
-      passingScorePct: 82,
-      requirements: [
-        { title: 'Wet Control Consistency', description: 'Smooth control modulation on low grip surface', metric: 'Control Score', targetText: '≥ 82%', minScorePct: 82 }
-      ],
-      recommendedSetup: {
-        car: 'Porsche 911 GT3 2021',
-        track: 'Nurburgring GP',
-        gameType: 'Circuit Race',
-        timeOfDay: 'Afternoon',
-        weather: 'Moderate Rain',
-        laps: 3,
-        drivatars: 4,
-        notes: 'Wet weather certification in moderate rain conditions.'
-      }
-    }
-  },
+
+  // ==========================================
+  // DRIVER LEVEL: EXPERT (MODULES 13 - 15)
+  // ==========================================
   {
     id: 'mod-13',
+    driverLevel: 'Expert',
     moduleNumber: 13,
-    title: 'Consistency & Mental Focus',
-    tagline: 'Stint Variance Elimination, Reference Resetting, and Flow State Performance',
-    bookChapter: 'Chapter 14: The Mental Game & Consistency',
-    iconName: 'Target',
-    description: 'Eliminate lap-to-lap variance. Learn the mental strategies used by champions to repeat laps within tenths of a second and immediately recover from mistakes without cascading errors.',
+    title: 'Consistency, Mental Focus & Wet Weather Mastery',
+    tagline: '5-Lap Delta Variance Minimization and Low-Grip Line Adaptation',
+    bookChapter: 'Chapters 8 & 11: Rain Driving & Mental Focus',
+    iconName: 'CloudRain',
+    description: 'Learn the wet racing line (rim-shotting around the polished rubber), manage aquaplaning hydrodynamics, and minimize stint lap delta variance to within 0.15s per lap.',
     sessions: [
       {
         id: 's-13-1',
         moduleId: 'mod-13',
         sessionNumber: 1,
-        title: '5-Lap Delta Variance Minimization',
-        subtitle: 'Driving 5 consecutive laps within a tight ±0.25 second window',
-        bookReference: 'Going Faster Chapter 14, pp. 371-388',
+        title: 'The Wet Racing Line & Rim-Shot Technique',
+        subtitle: 'Avoiding the slippery rubbered line in low-grip conditions',
+        bookReference: 'Going Faster Chapter 8, pp. 175-190',
         theorySummary: [
-          'Speed without consistency does not win championships.',
-          'Lock in exact braking markers, turn-in points, and throttle pickup zones on every lap.'
+          'In the wet, the traditional dry rubbered groove becomes as slick as ice.',
+          'Driving off-line (the "Rim-Shot" line) on rough, unrubbered asphalt provides significantly more grip.',
+          'Threshold braking distances increase by 40-70%; initial rise time must be gentler.'
         ],
         keyPrinciples: [
-          { title: 'Repeatability is Speed', explanation: 'Eliminate emotional driving; execute the telemetric plan.' },
-          { title: 'Reference Discipline', explanation: 'Look to the next target marker before completing the current corner.' }
+          { title: 'Cross the Rubber Quick', explanation: 'Only cross the dry racing line at 90° angles; never turn on it.' },
+          { title: 'Search for Grip', explanation: 'Constantly explore alternative lines and camber changes for traction.' }
         ],
-        drillGoal: 'Complete 5 consecutive laps with maximum lap time spread < 0.35s.',
+        drillGoal: 'Complete 5 laps in heavy rain keeping average traction budget above 75% without spinning.',
         targetMetrics: [
-          { label: 'Lap Delta Spread', value: '< 0.35 s', hint: 'Difference between fastest & slowest lap in stint' }
+          { label: 'Wet Grip Retention', value: '≥ 75%', hint: 'Traction budget utilization in low-friction conditions' }
         ],
         challenge: {
           id: 'ch-13-1',
-          name: '5-Lap Precision Consistency Challenge',
-          description: 'Complete 5 clean consecutive laps with a lap time variance of < 0.35 seconds.',
-          metric: 'lap_delta_variance_sec',
-          operator: 'lte',
-          targetValue: 0.35,
-          unit: 'sec',
-          requiredLaps: 5
+          name: 'Wet Weather Rim-Shot Challenge',
+          description: 'Achieve a traction budget score of ≥ 75% in wet conditions across 2 consecutive laps.',
+          metric: 'traction_budget_pct',
+          operator: 'gte',
+          targetValue: 75,
+          unit: '%',
+          requiredLaps: 2,
+          medals: { bronze: 70, silver: 80, gold: 90 }
         },
         recommendedSetup: {
-          car: 'Mazda Formula Mazda 2015',
-          track: 'Watkins Glen Short',
-          gameType: 'Timed Race',
-          timeOfDay: 'Noon',
-          weather: 'Clear',
-          laps: 5,
-          drivatars: 0,
-          notes: 'Maintain identical lap times and marker repeatability across all 5 laps.'
+          car: 'Porsche 911 RSR #92 Porsche GT Team 2017',
+          altCar: 'Ferrari 488 Challenge #25 Corse Clienti 2017',
+          track: 'Circuit de Spa-Francorchamps',
+          gameType: 'Circuit Race',
+          timeOfDay: 'Afternoon',
+          weather: 'Moderate Rain',
+          laps: 6,
+          drivatars: 0
         }
       }
     ],
     graduationTest: {
       id: 'gt-13',
       moduleId: 'mod-13',
-      title: 'Module 13 Graduation: Grand Master Consistency Stint',
-      examOverview: 'A demanding 5-lap endurance benchmark requiring uncompromising lap-time repeatability and zero track limit penalties.',
-      trackName: 'Laguna Seca',
-      carName: 'Mazda Formula Mazda 2015',
-      requiredLaps: 5,
-      passingScorePct: 88,
-      requirements: [
-        { title: 'Stint Lap Spread', description: 'Total variance across 5 laps', metric: 'Delta Variance', targetText: '< 0.30s', minScorePct: 90 },
-        { title: 'Sector Consistency', description: 'Sector time variance across laps', metric: 'Sector Spread', targetText: '< 0.15s', minScorePct: 88 }
-      ],
-      recommendedSetup: {
-        car: 'Mazda Formula Mazda 2015',
-        track: 'Laguna Seca',
-        gameType: 'Timed Race',
-        timeOfDay: 'Afternoon',
-        weather: 'Clear',
-        laps: 5,
-        drivatars: 0,
-        notes: '5-lap precision consistency graduation test with tight delta window.'
-      }
-    }
-  },
-  {
-    id: 'mod-14',
-    moduleNumber: 14,
-    title: 'Racecraft, Overtaking & Defensive Lines',
-    tagline: 'Out-Braking Maneuvers, Switchback Undercuts, and Compromised Line Optimization',
-    bookChapter: 'Chapter 15: Racecraft & Tactics',
-    iconName: 'Trophy',
-    description: 'The pinnacle of the Skip Barber Academy: applying vehicle dynamics under pressure. Master late out-braking on the inside line, executing switchback exit undercuts, and defending lines without losing overall lap time.',
-    sessions: [
-      {
-        id: 's-14-1',
-        moduleId: 'mod-14',
-        sessionNumber: 1,
-        title: 'The Inside Out-Braking Maneuver',
-        subtitle: 'Braking deep on a tight inside entry while still making the apex',
-        bookReference: 'Going Faster Chapter 15, pp. 389-405',
-        theorySummary: [
-          'When overtaking on the inside, the corner radius is tighter, meaning entry speed must be lower.',
-          'Brake later and harder, turn in sharply, and square off the corner to block the line.'
-        ],
-        keyPrinciples: [
-          { title: 'Squaring the Corner', explanation: 'Sacrifice mid-corner radius to control the clipping point.' },
-          { title: 'Braking on Un-rubbered Line', explanation: 'Account for reduced grip off the optimal racing line.' }
-        ],
-        drillGoal: 'Execute inside-line passes without blowing past track limits on exit.',
-        targetMetrics: [
-          { label: 'Inside Line Control', value: '≥ 85/100', hint: 'Full control throughout pass' }
-        ],
-        challenge: {
-          id: 'ch-14-1',
-          name: 'Inside Line Braking Challenge',
-          description: 'Achieve an inside-line execution score of ≥ 85/100 on 2 consecutive simulated passing laps.',
-          metric: 'overall_lap_score',
-          operator: 'gte',
-          targetValue: 85,
-          unit: '%',
-          requiredLaps: 2
-        },
-        recommendedSetup: {
-          car: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
-          track: 'Watkins Glen Full',
-          gameType: 'Circuit Race',
-          timeOfDay: 'Late Afternoon',
-          weather: 'Clear',
-          laps: 6,
-          drivatars: 5,
-          notes: 'Practice inside line dive passes into the Inner Loop and Turn 1.'
-        }
-      },
-      {
-        id: 's-14-2',
-        moduleId: 'mod-14',
-        sessionNumber: 2,
-        title: 'The Switchback (Undercut) Counter-Attack',
-        subtitle: 'Braking early on the outside to cut under an over-shooting opponent',
-        bookReference: 'Going Faster Chapter 15, pp. 406-420',
-        theorySummary: [
-          'If an opponent dives down your inside too fast, let them overshoot.',
-          'Brake early on the outside, take a wide late apex, turn back sharp, and power down the straight under their rear wing.'
-        ],
-        keyPrinciples: [
-          { title: 'Patience Beats Aggression', explanation: 'The car that gets to full throttle first wins down the straight.' },
-          { title: 'Exit Velocity Advantage', explanation: 'Maximize straight-line speed delta.' }
-        ],
-        drillGoal: 'Achieve +8 km/h higher exit speed out of Turn 1 using the switchback line.',
-        targetMetrics: [
-          { label: 'Switchback Exit Delta', value: '+8 km/h', hint: 'Exit speed advantage' }
-        ],
-        challenge: {
-          id: 'ch-14-2',
-          name: 'Switchback Undercut Challenge',
-          description: 'Achieve an exit speed delta of ≥ +6 km/h out of target corner over 2 laps.',
-          metric: 'overall_lap_score',
-          operator: 'gte',
-          targetValue: 85,
-          unit: '%',
-          requiredLaps: 2
-        },
-        recommendedSetup: {
-          car: 'Chevrolet Corvette C8.R #3 Corvette Racing 2020',
-          track: 'Circuit de Spa-Francorchamps',
-          gameType: 'Circuit Race',
-          timeOfDay: 'Sunset',
-          weather: 'Clear',
-          laps: 6,
-          drivatars: 6,
-          notes: 'Brake early at La Source, let aggressive Drivatars overshoot, and exit underneath them.'
-        }
-      }
-    ],
-    graduationTest: {
-      id: 'gt-14',
-      moduleId: 'mod-14',
-      title: 'Module 14 Graduation: Skip Barber Master Race Driver Certification',
-      examOverview: 'The ultimate final exam: 5 laps demonstrating complete mastery of the racing line, traction budget, threshold/trail braking, and tactical racecraft.',
+      title: 'Module 13 Graduation: Expert Pro License Master Exam',
+      examOverview: 'The ultimate 5-lap pro evaluation testing wet weather adaptation, traffic navigation, and sub-0.20s lap consistency.',
       trackName: 'Circuit de Spa-Francorchamps',
-      carName: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
+      carName: 'Porsche 911 RSR #92 Porsche GT Team 2017',
+      altCarName: 'Ferrari 488 Challenge #25 Corse Clienti 2017',
       requiredLaps: 5,
-      passingScorePct: 88,
+      passingScorePct: 85,
       requirements: [
-        { title: 'Overall Telemetry Mastery', description: 'Comprehensive driving score across all sectors', metric: 'Mastery Grade', targetText: '≥ 88%', minScorePct: 88 },
-        { title: 'Traction Budget Average', description: 'Continuous friction circle utilization', metric: 'Traction Budget', targetText: '≥ 85%', minScorePct: 85 },
-        { title: 'Trail-Braking & Apex Score', description: 'Flawless pitch control and rotation', metric: 'Trail Score', targetText: '≥ 88/100', minScorePct: 88 },
-        { title: 'Consistency Spread', description: 'Stint time variance within 0.35s', metric: 'Delta Spread', targetText: '< 0.35s', minScorePct: 90 }
+        { title: 'Stint Variance', description: 'Lap delta variance ≤ 0.20s across 5 laps', metric: 'Consistency', targetText: '≤ 0.20s', minScorePct: 85 },
+        { title: 'Clean Execution', description: '5/5 clean laps in rain traffic', metric: 'Clean Laps', targetText: '5/5 Laps', minScorePct: 100 }
       ],
       recommendedSetup: {
-        car: 'Porsche 911 GT3 R #73 Park Place Motorsport 2018 – RDCP',
+        car: 'Porsche 911 RSR #92 Porsche GT Team 2017',
+        altCar: 'Ferrari 488 Challenge #25 Corse Clienti 2017',
         track: 'Circuit de Spa-Francorchamps',
         gameType: 'Circuit Race',
         timeOfDay: 'Sunset',
-        weather: 'Rain at end',
+        weather: 'Moderate Rain',
         laps: 5,
-        drivatars: 11,
-        notes: 'Final Master Race Driver Exam at Spa in dynamic changing weather with full grid.'
+        drivatars: 5,
+        notes: 'Final Grand Master Certification Exam.'
       }
     }
   }
 ];
+
+export const DRIVER_LEVELS = [
+  { id: 'Beginner', name: 'Beginner', description: 'Foundations of Vision, Apex Geometry, Threshold Braking & Friction Circle', minLevelIndex: 0 },
+  { id: 'Novice', name: 'Novice', description: 'Trail-Braking, Corner Entry Yaw & Dynamic Weight Transfer Control', minLevelIndex: 1 },
+  { id: 'Intermediate', name: 'Intermediate', description: 'Tire Slip Angle Envelopes, Vehicle Balance & Limit-Handling', minLevelIndex: 2 },
+  { id: 'Advanced', name: 'Advanced', description: 'Aerodynamic Downforce, Powertrain Dynamics & Complex Chicanes', minLevelIndex: 3 },
+  { id: 'Expert', name: 'Expert', description: 'Wet Weather Dynamics, Stint Variance Minimization & Pro Racecraft', minLevelIndex: 4 }
+] as const;

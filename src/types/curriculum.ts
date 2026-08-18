@@ -1,5 +1,15 @@
 import { LapAnalysis } from './telemetry';
 
+export type DriverLevel = 'Beginner' | 'Novice' | 'Intermediate' | 'Advanced' | 'Expert';
+
+export interface MedalThresholds {
+  bronze: number;
+  silver: number;
+  gold: number;
+}
+
+export type MedalTier = 'bronze' | 'silver' | 'gold' | 'none';
+
 export interface SessionChallengeCriteria {
   id: string;
   name: string;
@@ -20,6 +30,7 @@ export interface SessionChallengeCriteria {
   maxValue?: number;
   unit: string;
   requiredLaps: number; // e.g. 2 or 3 consecutive laps
+  medals?: MedalThresholds;
 }
 
 export type GameType = 'Circuit Race' | 'Timed Race' | 'Drift' | 'Test Drive';
@@ -59,6 +70,7 @@ export type WeatherCondition =
 
 export interface RecommendedEventSetup {
   car: string;
+  altCar?: string;
   track: string;
   gameType: GameType;
   timeOfDay: TimeOfDay;
@@ -98,14 +110,16 @@ export interface ModuleGraduationTest {
   examOverview: string;
   trackName: string;
   carName: string;
+  altCarName?: string;
   requiredLaps: number;
-  passingScorePct: number; // e.g. 80%
+  passingScorePct: number; // e.g. 80% (Silver)
   requirements: GraduationRequirement[];
   recommendedSetup: RecommendedEventSetup;
 }
 
 export interface Module {
   id: string;
+  driverLevel: DriverLevel;
   moduleNumber: number;
   title: string;
   tagline: string;
@@ -122,6 +136,7 @@ export interface ChallengeResult {
   score: number;
   achievedValue: number;
   targetText: string;
+  medal?: MedalTier;
   lapsCount: number;
   completedAt: string;
   notes: string;
@@ -137,6 +152,8 @@ export interface GraduationResult {
 }
 
 export interface UserProgressState {
+  selectedDriverLevel?: DriverLevel;
+  unlockedDriverLevels?: DriverLevel[];
   unlockedModuleIds: string[];
   unlockedSessionIds: string[];
   completedSessionIds: string[];

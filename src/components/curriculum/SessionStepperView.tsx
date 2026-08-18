@@ -305,6 +305,11 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                       <strong className="text-xs text-white font-semibold truncate block" title={session.recommendedSetup.car}>
                         {session.recommendedSetup.car}
                       </strong>
+                      {session.recommendedSetup.altCar && (
+                        <span className="text-[10px] text-slate-400 font-mono block truncate" title={session.recommendedSetup.altCar}>
+                          Alt: {session.recommendedSetup.altCar}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -659,13 +664,26 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
               <h3 className="text-2xl font-display font-bold text-white">{session.challenge.name}</h3>
               <p className="text-xs text-slate-300 leading-relaxed font-sans">{session.challenge.description}</p>
 
-              <div className="p-4 bg-[#14141E] border border-[#242436] flex items-center justify-between font-mono">
+              <div className="p-4 bg-[#14141E] border border-[#242436] flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono">
                 <div>
-                  <span className="text-xs text-slate-400 block">Required Target</span>
+                  <span className="text-xs text-slate-400 block">Baseline Target</span>
                   <strong className="text-sm text-white">
                     {session.challenge.operator === 'gte' ? '≥' : '≤'} {session.challenge.targetValue} {session.challenge.unit}
                   </strong>
                 </div>
+                {session.challenge.medals && (
+                  <div className="flex items-center space-x-2 text-[11px]">
+                    <span className="px-2 py-0.5 bg-amber-800/30 text-amber-500 border border-amber-800/40">
+                      🥉 {session.challenge.operator === 'gte' ? '≥' : '≤'} {session.challenge.medals.bronze}
+                    </span>
+                    <span className="px-2 py-0.5 bg-slate-400/20 text-slate-200 border border-slate-400/40 font-bold">
+                      🥈 {session.challenge.operator === 'gte' ? '≥' : '≤'} {session.challenge.medals.silver}
+                    </span>
+                    <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                      🥇 {session.challenge.operator === 'gte' ? '≥' : '≤'} {session.challenge.medals.gold}
+                    </span>
+                  </div>
+                )}
                 <div>
                   <span className="text-xs text-slate-400 block">Consecutive Laps</span>
                   <strong className="text-sm text-amber-300">{session.challenge.requiredLaps} Laps</strong>

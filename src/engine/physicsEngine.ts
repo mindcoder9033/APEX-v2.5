@@ -396,16 +396,35 @@ export function evaluateSessionChallenge(criteria: SessionChallengeCriteria, lap
 
   const score = Math.min(100, Math.round((achievedValue / (criteria.targetValue || 1)) * 100));
 
+  // Determine medal tier
+  let medal: 'bronze' | 'silver' | 'gold' | 'none' = 'none';
+  if (criteria.medals) {
+    if (criteria.operator === 'gte') {
+      if (achievedValue >= criteria.medals.gold) medal = 'gold';
+      else if (achievedValue >= criteria.medals.silver) medal = 'silver';
+      else if (achievedValue >= criteria.medals.bronze) medal = 'bronze';
+    } else if (criteria.operator === 'lte') {
+      if (achievedValue <= criteria.medals.gold) medal = 'gold';
+      else if (achievedValue <= criteria.medals.silver) medal = 'silver';
+      else if (achievedValue <= criteria.medals.bronze) medal = 'bronze';
+    }
+  } else if (passed) {
+    if (score >= 90) medal = 'gold';
+    else if (score >= 80) medal = 'silver';
+    else medal = 'bronze';
+  }
+
   return {
     challengeId: criteria.id,
     passed,
     score,
     achievedValue,
+    medal,
     targetText: `${criteria.operator === 'gte' ? '≥' : '≤'} ${criteria.targetValue} ${criteria.unit}`,
     lapsCount: validLaps.length,
     completedAt: new Date().toISOString(),
     notes: passed
-      ? `PASSED! Achieved ${achievedValue} ${criteria.unit} across ${validLaps.length} consecutive laps.`
+      ? `PASSED! (${medal.toUpperCase()} MEDAL) Achieved ${achievedValue} ${criteria.unit} across ${validLaps.length} consecutive laps.`
       : `Challenge Target Not Met: Achieved ${achievedValue} ${criteria.unit} vs target ${criteria.operator === 'gte' ? '≥' : '≤'} ${criteria.targetValue} ${criteria.unit}. Review debrief and retry.`
   };
 }
