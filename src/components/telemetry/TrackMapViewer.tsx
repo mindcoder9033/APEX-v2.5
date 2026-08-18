@@ -1,16 +1,20 @@
 import React, { useRef, useEffect } from 'react';
-import { TelemetryFrame } from '../../types/telemetry';
+import { TelemetryFrame, CornerTelemetryAnalysis } from '../../types/telemetry';
 import { DEFAULT_TRACK_CORNERS } from '../../engine/physicsEngine';
 
 interface TrackMapViewerProps {
   frames: TelemetryFrame[];
   currentDistance: number;
+  corners?: CornerTelemetryAnalysis[];
+  trackName?: string;
   onCornerSelect?: (cornerIndex: number) => void;
 }
 
 export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
   frames,
   currentDistance,
+  corners,
+  trackName = 'Circuit GPS Map',
   onCornerSelect
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -110,32 +114,57 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
         ctx.stroke();
       }
 
-      // Draw Turn Markers
+      // Draw Corner Markers
       const lastFrame = frames[frames.length - 1];
       const maxDist = (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : 3800;
-      DEFAULT_TRACK_CORNERS.forEach((c) => {
-        const cornerApexDist = c.apexPct * maxDist;
-        const closest = frames.reduce((prev, curr) =>
-          Math.abs(curr.distance - cornerApexDist) < Math.abs(prev.distance - cornerApexDist) ? curr : prev
-        , frames[0]);
 
-        if (closest) {
-          const tx = transformX(closest.posX);
-          const ty = transformY(closest.posZ);
+      if (corners && corners.length > 0) {
+        corners.forEach((c) => {
+          const cornerApexDist = c.apexDistance;
+          const closest = frames.reduce((prev, curr) =>
+            Math.abs(curr.distance - cornerApexDist) < Math.abs(prev.distance - cornerApexDist) ? curr : prev
+          , frames[0]);
 
-          // Badge
-          ctx.fillStyle = '#E10600';
-          ctx.beginPath();
-          ctx.arc(tx, ty, 7, 0, Math.PI * 2);
-          ctx.fill();
+          if (closest) {
+            const tx = transformX(closest.posX);
+            const ty = transformY(closest.posZ);
 
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = 'bold 8px Outfit, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(`T${c.index}`, tx, ty);
-        }
-      });
+            ctx.fillStyle = '#E10600';
+            ctx.beginPath();
+            ctx.arc(tx, ty, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 8px Outfit, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`T${c.cornerIndex}`, tx, ty);
+          }
+        });
+      } else {
+        DEFAULT_TRACK_CORNERS.forEach((c) => {
+          const cornerApexDist = c.apexPct * maxDist;
+          const closest = frames.reduce((prev, curr) =>
+            Math.abs(curr.distance - cornerApexDist) < Math.abs(prev.distance - cornerApexDist) ? curr : prev
+          , frames[0]);
+
+          if (closest) {
+            const tx = transformX(closest.posX);
+            const ty = transformY(closest.posZ);
+
+            ctx.fillStyle = '#E10600';
+            ctx.beginPath();
+            ctx.arc(tx, ty, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 8px Outfit, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`T${c.index}`, tx, ty);
+          }
+        });
+      }
 
       // Draw Current Vehicle Position
       if (currentDistance >= 0 && frames.length > 0) {
@@ -165,7 +194,7 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
 
     animId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animId);
-  }, [frames, currentDistance]);
+  }, [frames, currentDistance, corners]);
 
   return (
     <div className="bg-[#0E0E16] border border-[#232332] p-4 flex flex-col items-center shadow-lg hud-bracket">
@@ -174,25 +203,73 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
           <span className="w-1.5 h-1.5 diamond-pip bg-[#00FF66]" />
           <span>Circuit GPS Map</span>
         </h4>
-        <span className="text-[10px] font-tech font-bold uppercase tracking-wider text-slate-400">Watkins Glen GP</span>
+        <span className="text-[10px] font-tech font-bold uppercase tracking-wider text-slate-400 truncate max-w-[130px]" title={trackName}>
+          {trackName}
+        </span>
       </div>
 
       <div className="relative w-48 h-48 flex items-center justify-center">
-        <canvas ref={canvasRef} className="w-full h-full border border-[#1F1F2C]" />
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full block cursor-crosshair"
+          onClick={(e) => {
+            if (!onCornerSelect || !frames.length) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // Find closest frame to click
+            let closestFrame: TelemetryFrame | null = null;
+            let minDist = Infinity;
+            const lastFrame = frames[frames.length - 1];
+            const maxDist = (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : 3800;
+
+            const padding = 28;
+            let minX = 99999, maxX = -99999, minZ = 99999, maxZ = -99999;
+            for (const f of frames) {
+              if (f.posX < minX) minX = f.posX;
+              if (f.posX > maxX) maxX = f.posX;
+              if (f.posZ < minZ) minZ = f.posZ;
+              if (f.posZ > maxZ) maxZ = f.posZ;
+            }
+            const scale = Math.min((rect.width - padding * 2) / (maxX - minX || 1), (rect.height - padding * 2) / (maxZ - minZ || 1));
+
+            for (const f of frames) {
+              const fx = padding + (f.posX - minX) * scale;
+              const fy = padding + (f.posZ - minZ) * scale;
+              const d = Math.hypot(fx - clickX, fy - clickY);
+              if (d < minDist) {
+                minDist = d;
+                closestFrame = f;
+              }
+            }
+
+            if (closestFrame && minDist < 30) {
+              // Find matching corner index
+              const clickDistance = closestFrame.distance;
+              if (corners && corners.length > 0) {
+                const cMatch = corners.reduce((prev, curr) =>
+                  Math.abs(curr.apexDistance - clickDistance) < Math.abs(prev.apexDistance - clickDistance) ? curr : prev
+                , corners[0]);
+                if (cMatch) onCornerSelect(cMatch.cornerIndex);
+              }
+            }
+          }}
+        />
       </div>
 
-      <div className="w-full mt-3 pt-2 border-t border-[#20202E] flex items-center justify-around text-[11px] font-tech font-semibold tracking-wide">
-        <span className="flex items-center space-x-1.5">
-          <span className="w-1.5 h-1.5 diamond-pip bg-[#FF1801]" />
-          <span className="text-slate-400">Braking</span>
+      <div className="w-full flex items-center justify-between mt-2 pt-2 border-t border-[#1C1C28] text-[9px] text-[#6E6E82] font-mono">
+        <span className="flex items-center space-x-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#00FF66]" />
+          <span>Full Throttle</span>
         </span>
-        <span className="flex items-center space-x-1.5">
-          <span className="w-1.5 h-1.5 diamond-pip bg-[#00FF66]" />
-          <span className="text-slate-400">Throttle</span>
+        <span className="flex items-center space-x-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#00F0FF]" />
+          <span>Coast/Turn</span>
         </span>
-        <span className="flex items-center space-x-1.5">
-          <span className="w-1.5 h-1.5 diamond-pip bg-[#00F0FF]" />
-          <span className="text-slate-400">Coast/Turn</span>
+        <span className="flex items-center space-x-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#FF1801]" />
+          <span>Trail Braking</span>
         </span>
       </div>
     </div>

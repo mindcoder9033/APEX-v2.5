@@ -132,6 +132,8 @@ export interface CornerTelemetryAnalysis {
   cornerScore: number; // 0 - 100
   diagnosis: string;
   skipBarberAdvice: string;
+  sector?: 1 | 2 | 3;
+  sectorName?: string;
 }
 
 export interface LapAnalysis {

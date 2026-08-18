@@ -2,33 +2,18 @@ import { TelemetryFrame, CornerTelemetryAnalysis, LapAnalysis } from '../types/t
 import { SessionChallengeCriteria, ChallengeResult, ModuleGraduationTest, GraduationResult } from '../types/curriculum';
 import { resolveForzaCar } from '../data/carMapping';
 import { detectTrackFromFrames } from './trackDetector';
+import { getTrackCorners, DEFAULT_TRACK_CORNERS, PredefinedCornerDef } from '../data/trackCorners';
+import { extractDynamicCorners } from './cornerDetector';
 
-export interface PredefinedCornerDef {
-  index: number;
-  name: string;
-  startPct: number; // 0.0 to 1.0 along track length
-  apexPct: number;
-  endPct: number;
-  type: 'hairpin' | 'medium' | 'fast_sweeper' | 'chicane' | 'kink';
-  targetApexSpeedKph: number;
-  description: string;
-}
-
-export const DEFAULT_TRACK_CORNERS: PredefinedCornerDef[] = [
-  { index: 1, name: 'Turn 1 (Big Bend / Main Entry)', startPct: 0.06, apexPct: 0.11, endPct: 0.16, type: 'medium', targetApexSpeedKph: 115, description: 'Heavy braking zone into 90° right-hander. Exit leads onto long straight.' },
-  { index: 2, name: 'Turn 2 (The Esses Entry)', startPct: 0.22, apexPct: 0.26, endPct: 0.30, type: 'fast_sweeper', targetApexSpeedKph: 165, description: 'High-speed uphill sweeper requiring aero commitment and single-input steering.' },
-  { index: 3, name: 'Turn 3 (The Esses Apex)', startPct: 0.32, apexPct: 0.36, endPct: 0.41, type: 'fast_sweeper', targetApexSpeedKph: 172, description: 'Crest transition requiring throttle maintenance.' },
-  { index: 4, name: 'Turn 4 (Inner Loop / Bus Stop)', startPct: 0.48, apexPct: 0.52, endPct: 0.57, type: 'chicane', targetApexSpeedKph: 95, description: 'Heavy threshold braking into aggressive curb-strike transition.' },
-  { index: 5, name: 'Turn 5 (The Carousel / Long Sweeper)', startPct: 0.62, apexPct: 0.68, endPct: 0.74, type: 'hairpin', targetApexSpeedKph: 108, description: 'Decreasing radius long corner requiring deep trail-braking to rotate car.' },
-  { index: 6, name: 'Turn 6 (Chute Entry)', startPct: 0.78, apexPct: 0.83, endPct: 0.87, type: 'medium', targetApexSpeedKph: 128, description: 'Off-camber downhill turn-in; manage pitch transfer.' },
-  { index: 7, name: 'Turn 7 (Final Turn onto Straight)', startPct: 0.90, apexPct: 0.94, endPct: 0.98, type: 'medium', targetApexSpeedKph: 132, description: 'Crucial exit priority corner. Straighten wheel early for 100% full throttle.' }
-];
+export { DEFAULT_TRACK_CORNERS };
+export type { PredefinedCornerDef };
 
 export function analyzeLapTelemetry(
   frames: TelemetryFrame[],
   trackLengthMeters: number = 3800,
   wasRewound: boolean = false,
-  customLapTimeSec?: number
+  customLapTimeSec?: number,
+  customTrackName?: string
 ): LapAnalysis {
   if (!frames || frames.length < 30) {
     return createEmptyLapAnalysis(1);
@@ -42,6 +27,9 @@ export function analyzeLapTelemetry(
   const rawDuration = (sanitizedFrames[totalFrames - 1].timestamp - sanitizedFrames[0].timestamp) / 1000.0;
   const calculatedDuration = rawDuration > 0 ? rawDuration : (totalFrames * 0.0166);
   const durationSec = (customLapTimeSec && customLapTimeSec > 0) ? customLapTimeSec : calculatedDuration;
+
+  const maxRecordedDist = sanitizedFrames.reduce((max, f) => (f.distance > max ? f.distance : max), 0);
+  const effectiveTrackLength = maxRecordedDist > 500 ? maxRecordedDist : trackLengthMeters;
 
   let maxSpeedKph = 0;
   let sumSpeed = 0;
@@ -60,15 +48,38 @@ export function analyzeLapTelemetry(
   const avgSpeedKph = sumSpeed / totalFrames;
   const avgTractionBudgetPct = sumTractionBudget / totalFrames;
 
-  // Segment corners based on predefined track map or dynamic curvature
-  const corners: CornerTelemetryAnalysis[] = DEFAULT_TRACK_CORNERS.map((cDef) => {
-    const startDist = cDef.startPct * trackLengthMeters;
-    const apexDist = cDef.apexPct * trackLengthMeters;
-    const endDist = cDef.endPct * trackLengthMeters;
+  // Track resolution
+  const detectedTrackResult = detectTrackFromFrames(sanitizedFrames, effectiveTrackLength);
+  const effectiveTrackName = customTrackName || (detectedTrackResult !== 'Unknown Track' ? detectedTrackResult : undefined);
+
+  // 1. Check predefined track corners in FM23 registry
+  let activeCornerDefs = getTrackCorners(effectiveTrackName);
+
+  // 2. If not found in registry, extract dynamically from telemetry curvature and lateral G
+  if (!activeCornerDefs || activeCornerDefs.length === 0) {
+    activeCornerDefs = extractDynamicCorners(sanitizedFrames, effectiveTrackLength);
+  }
+
+  // 3. Fallback to default if telemetry was too minimal to extract
+  if (!activeCornerDefs || activeCornerDefs.length === 0) {
+    activeCornerDefs = DEFAULT_TRACK_CORNERS;
+  }
+
+  // Segment corners based on active corner definitions
+  const corners: CornerTelemetryAnalysis[] = activeCornerDefs.map((cDef) => {
+    const startDist = cDef.startPct * effectiveTrackLength;
+    const apexDist = cDef.apexPct * effectiveTrackLength;
+    const endDist = cDef.endPct * effectiveTrackLength;
+
+    const sector: 1 | 2 | 3 = apexDist <= effectiveTrackLength * 0.33 ? 1 : apexDist <= effectiveTrackLength * 0.66 ? 2 : 3;
 
     const cornerFrames = frames.filter(f => f.distance >= startDist && f.distance <= endDist);
     if (cornerFrames.length === 0) {
-      return createDummyCornerAnalysis(cDef);
+      return {
+        ...createDummyCornerAnalysis(cDef),
+        sector,
+        sectorName: `Sector ${sector}`
+      };
     }
 
     // 1. Braking analysis
@@ -203,7 +214,9 @@ export function analyzeLapTelemetry(
       balanceCategory,
       cornerScore,
       diagnosis,
-      skipBarberAdvice
+      skipBarberAdvice,
+      sector,
+      sectorName: `Sector ${sector}`
     };
   });
 

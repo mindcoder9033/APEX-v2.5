@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CornerTelemetryAnalysis } from '../../types/telemetry';
-import { ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info, Sparkles, Layers } from 'lucide-react';
 
 interface DiagnosticScorecardProps {
   corners: CornerTelemetryAnalysis[];
@@ -12,6 +12,15 @@ export const DiagnosticScorecard: React.FC<DiagnosticScorecardProps> = ({
   onFocusCorner
 }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(corners[0]?.cornerIndex || 1);
+  const [selectedSector, setSelectedSector] = useState<'all' | 1 | 2 | 3>('all');
+
+  const s1Corners = corners.filter(c => (c.sector || 1) === 1);
+  const s2Corners = corners.filter(c => c.sector === 2);
+  const s3Corners = corners.filter(c => c.sector === 3);
+
+  const displayedCorners = selectedSector === 'all' 
+    ? corners 
+    : corners.filter(c => (c.sector || 1) === selectedSector);
 
   const getScoreBadge = (score: number) => {
     if (score >= 90) return <span className="bg-emerald-950 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold px-2 py-0.5 font-mono">A ({score})</span>;
@@ -20,9 +29,16 @@ export const DiagnosticScorecard: React.FC<DiagnosticScorecardProps> = ({
     return <span className="bg-red-950 text-red-300 border border-red-500/40 text-[10px] font-bold px-2 py-0.5 font-mono">D ({score})</span>;
   };
 
+  const getSectorAvg = (cornerList: CornerTelemetryAnalysis[]) => {
+    if (!cornerList.length) return '--';
+    const avg = Math.round(cornerList.reduce((sum, c) => sum + c.cornerScore, 0) / cornerList.length);
+    return `${avg}/100`;
+  };
+
   return (
     <div className="bg-[#0E0E16] border border-[#232332] p-5 shadow-xl flex flex-col space-y-4 hud-bracket">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-bold font-racing uppercase tracking-wider text-white flex items-center space-x-2">
             <span className="w-2 h-2 diamond-pip bg-[#E10600]" />
@@ -30,14 +46,69 @@ export const DiagnosticScorecard: React.FC<DiagnosticScorecardProps> = ({
           </h3>
           <p className="text-xs text-[#8E8E9F] mt-0.5 font-sans">Automated physics scoring derived from 'Going Faster' principles</p>
         </div>
-        <span className="text-[11px] font-tech font-bold uppercase tracking-wider text-slate-400 bg-[#161622] px-2.5 py-1 border border-[#262638]">
-          {corners.length} Corners Analyzed
-        </span>
+        <div className="flex items-center space-x-2">
+          <span className="text-[11px] font-tech font-bold uppercase tracking-wider text-slate-400 bg-[#161622] px-2.5 py-1 border border-[#262638]">
+            {corners.length} Turns Analyzed
+          </span>
+        </div>
       </div>
 
+      {/* Sector Navigation Filters */}
+      <div className="flex items-center space-x-2 pt-1 border-t border-[#1C1C2A] overflow-x-auto pb-1">
+        <button
+          onClick={() => setSelectedSector('all')}
+          className={`px-3 py-1.5 text-xs font-tech font-bold uppercase tracking-wider transition-all flex items-center space-x-1.5 cursor-pointer ${
+            selectedSector === 'all'
+              ? 'bg-[#E10600] text-white shadow-md shadow-red-950/50'
+              : 'bg-[#14141E] text-slate-400 hover:text-white border border-[#222232]'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>All Turns ({corners.length})</span>
+        </button>
+
+        <button
+          onClick={() => setSelectedSector(1)}
+          className={`px-3 py-1.5 text-xs font-tech font-bold uppercase tracking-wider transition-all flex items-center space-x-1.5 cursor-pointer ${
+            selectedSector === 1
+              ? 'bg-[#00F0FF] text-black shadow-md shadow-cyan-950/50 font-black'
+              : 'bg-[#14141E] text-slate-400 hover:text-white border border-[#222232]'
+          }`}
+        >
+          <span>Sector 1 ({s1Corners.length})</span>
+          <span className="text-[10px] font-mono opacity-80">[{getSectorAvg(s1Corners)}]</span>
+        </button>
+
+        <button
+          onClick={() => setSelectedSector(2)}
+          className={`px-3 py-1.5 text-xs font-tech font-bold uppercase tracking-wider transition-all flex items-center space-x-1.5 cursor-pointer ${
+            selectedSector === 2
+              ? 'bg-amber-400 text-black shadow-md shadow-amber-950/50 font-black'
+              : 'bg-[#14141E] text-slate-400 hover:text-white border border-[#222232]'
+          }`}
+        >
+          <span>Sector 2 ({s2Corners.length})</span>
+          <span className="text-[10px] font-mono opacity-80">[{getSectorAvg(s2Corners)}]</span>
+        </button>
+
+        <button
+          onClick={() => setSelectedSector(3)}
+          className={`px-3 py-1.5 text-xs font-tech font-bold uppercase tracking-wider transition-all flex items-center space-x-1.5 cursor-pointer ${
+            selectedSector === 3
+              ? 'bg-emerald-400 text-black shadow-md shadow-emerald-950/50 font-black'
+              : 'bg-[#14141E] text-slate-400 hover:text-white border border-[#222232]'
+          }`}
+        >
+          <span>Sector 3 ({s3Corners.length})</span>
+          <span className="text-[10px] font-mono opacity-80">[{getSectorAvg(s3Corners)}]</span>
+        </button>
+      </div>
+
+      {/* Turn Cards List */}
       <div className="space-y-2">
-        {corners.map((c) => {
+        {displayedCorners.map((c) => {
           const isExpanded = expandedIndex === c.cornerIndex;
+          const sectorColor = c.sector === 1 ? 'text-[#00F0FF]' : c.sector === 2 ? 'text-amber-400' : 'text-emerald-400';
 
           return (
             <div
@@ -61,7 +132,14 @@ export const DiagnosticScorecard: React.FC<DiagnosticScorecardProps> = ({
                     T{c.cornerIndex}
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-200 font-tech uppercase tracking-wide">{c.cornerName}</h4>
+                    <div className="flex items-center space-x-2">
+                      <h4 className="text-xs font-bold text-slate-200 font-tech uppercase tracking-wide">{c.cornerName}</h4>
+                      {c.sector && (
+                        <span className={`text-[9px] font-mono uppercase font-bold ${sectorColor}`}>
+                          S{c.sector}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[10px] font-tech text-[#7E7E92] uppercase font-semibold">{c.type.replace('_', ' ')}</span>
                   </div>
                 </div>

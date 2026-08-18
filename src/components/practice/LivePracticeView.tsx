@@ -2,6 +2,7 @@ import React from 'react';
 import { TelemetryFrame } from '../../types/telemetry';
 import { FrictionCirclePlot } from '../telemetry/FrictionCirclePlot';
 import { TrackMapViewer } from '../telemetry/TrackMapViewer';
+import { detectTrackFromFrames } from '../../engine/trackDetector';
 import { Radio, Square, WifiOff, Play, RotateCcw, CircleDot, Timer, Award, Rewind } from 'lucide-react';
 
 interface LivePracticeViewProps {
@@ -240,6 +241,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
         <TrackMapViewer
           frames={liveFramesBuffer}
           currentDistance={liveFrame?.distance || 0}
+          trackName={detectTrackFromFrames(liveFramesBuffer) !== 'Unknown Track' ? detectTrackFromFrames(liveFramesBuffer) : undefined}
         />
       </div>
     </div>
