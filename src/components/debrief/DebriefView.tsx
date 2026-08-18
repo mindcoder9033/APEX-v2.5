@@ -414,6 +414,11 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                         }`}>
                           {formatLapTime(lap.lapTimeSec)}
                         </span>
+                        {lap.wasRewound && (
+                          <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-500/50 uppercase tracking-wide">
+                            Rewound
+                          </span>
+                        )}
                         {isBest && (
                           <span className="text-[10px] font-sans uppercase font-bold text-amber-300">
                             (Best)
@@ -428,7 +433,12 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
               {/* Summary KPI Strip for Current Selected Lap */}
               <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                 <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
-                  <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Lap Time</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Lap Time</span>
+                    {selectedLap.wasRewound && (
+                      <span className="text-[9px] font-mono font-bold text-amber-400 bg-amber-950/60 px-1 border border-amber-500/40">REWOUND</span>
+                    )}
+                  </div>
                   <strong className="text-base font-mono font-bold text-white tabular-nums">{formatLapTime(selectedLap.lapTimeSec)}</strong>
                 </div>
                 <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">

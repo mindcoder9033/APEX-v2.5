@@ -111,48 +111,53 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
       }
 
       // Draw Turn Markers
-      const maxDist = frames[frames.length - 1].distance || 3800;
+      const lastFrame = frames[frames.length - 1];
+      const maxDist = (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : 3800;
       DEFAULT_TRACK_CORNERS.forEach((c) => {
         const cornerApexDist = c.apexPct * maxDist;
         const closest = frames.reduce((prev, curr) =>
           Math.abs(curr.distance - cornerApexDist) < Math.abs(prev.distance - cornerApexDist) ? curr : prev
-        );
+        , frames[0]);
 
-        const tx = transformX(closest.posX);
-        const ty = transformY(closest.posZ);
+        if (closest) {
+          const tx = transformX(closest.posX);
+          const ty = transformY(closest.posZ);
 
-        // Badge
-        ctx.fillStyle = '#E10600';
-        ctx.beginPath();
-        ctx.arc(tx, ty, 7, 0, Math.PI * 2);
-        ctx.fill();
+          // Badge
+          ctx.fillStyle = '#E10600';
+          ctx.beginPath();
+          ctx.arc(tx, ty, 7, 0, Math.PI * 2);
+          ctx.fill();
 
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 8px Outfit, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`T${c.index}`, tx, ty);
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = 'bold 8px Outfit, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`T${c.index}`, tx, ty);
+        }
       });
 
       // Draw Current Vehicle Position
       if (currentDistance >= 0 && frames.length > 0) {
         const currentPosFrame = frames.reduce((prev, curr) =>
           Math.abs(curr.distance - currentDistance) < Math.abs(prev.distance - currentDistance) ? curr : prev
-        );
+        , frames[0]);
 
-        const vx = transformX(currentPosFrame.posX);
-        const vy = transformY(currentPosFrame.posZ);
+        if (currentPosFrame) {
+          const vx = transformX(currentPosFrame.posX);
+          const vy = transformY(currentPosFrame.posZ);
 
-        // Glow effect
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.beginPath();
-        ctx.arc(vx, vy, 9, 0, Math.PI * 2);
-        ctx.fill();
+          // Glow effect
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+          ctx.beginPath();
+          ctx.arc(vx, vy, 9, 0, Math.PI * 2);
+          ctx.fill();
 
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath();
-        ctx.arc(vx, vy, 4, 0, Math.PI * 2);
-        ctx.fill();
+          ctx.fillStyle = '#FFFFFF';
+          ctx.beginPath();
+          ctx.arc(vx, vy, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
       ctx.restore();

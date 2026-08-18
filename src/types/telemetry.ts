@@ -146,6 +146,7 @@ export interface LapAnalysis {
   corners: CornerTelemetryAnalysis[];
   frames: TelemetryFrame[];
   actionItems: string[];
+  wasRewound?: boolean;
   source?: 'academy' | 'practice';
   moduleNumber?: number;
   moduleTitle?: string;
@@ -166,6 +167,7 @@ export interface StintSession {
   totalLaps: number;
   bestLapTimeSec: number;
   avgScore: number;
+  wasRewound?: boolean;
   laps: LapAnalysis[];
   moduleNumber?: number;
   moduleTitle?: string;

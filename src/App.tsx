@@ -51,6 +51,7 @@ export function App() {
 
   // Multi-Lap Stint Recording State
   const [isRecording, setIsRecording] = useState(false);
+  const [isRewinding, setIsRewinding] = useState(false);
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
   const [recordingDurationSec, setRecordingDurationSec] = useState<number>(0);
   const [activeStintLaps, setActiveStintLaps] = useState<LapAnalysis[]>([]);
@@ -62,6 +63,10 @@ export function App() {
   const currentLapBufferRef = useRef<TelemetryFrame[]>([]);
   const activeStintLapsRef = useRef<LapAnalysis[]>([]);
   const currentLapNumRef = useRef<number | null>(null);
+  const wasCurrentLapRewoundRef = useRef(false);
+  const lastPacketTimestampRef = useRef<number | null>(null);
+  const lastDistanceTraveledRef = useRef<number | null>(null);
+  const rewindDebounceTimerRef = useRef<any>(null);
 
   // High-frequency live buffer and frame refs for throttled UI dispatching
   const latestLiveFrameRef = useRef<TelemetryFrame | null>(null);
@@ -158,6 +163,60 @@ export function App() {
                   ? packet.distanceTraveledMeters % 3500 
                   : 0;
                 const frame = convertPacketToTelemetryFrame(packet, distance);
+                const rawDist = packet.distanceTraveledMeters;
+                const ts = packet.timestampMs;
+
+                // --- Forza Rewind Detection & Real-Time Buffer Rollback ---
+                const isTimeRewound = lastPacketTimestampRef.current !== null && ts < (lastPacketTimestampRef.current - 80);
+                const isDistRewound = lastDistanceTraveledRef.current !== null && rawDist < (lastDistanceTraveledRef.current - 1.5) && rawDist >= 0;
+                const isLapRewound = currentLapNumRef.current !== null && packet.lapNumber < currentLapNumRef.current;
+
+                const isRewindDetected = isTimeRewound || isDistRewound || isLapRewound;
+
+                if (isRewindDetected) {
+                  setIsRewinding(true);
+                  wasCurrentLapRewoundRef.current = true;
+                  if (rewindDebounceTimerRef.current) clearTimeout(rewindDebounceTimerRef.current);
+                  rewindDebounceTimerRef.current = setTimeout(() => {
+                    if (isMounted) setIsRewinding(false);
+                  }, 650);
+
+                  // 1. Multi-lap boundary rewind: pop the previous completed lap and restore its raw frames
+                  if (isLapRewound && activeStintLapsRef.current.length > 0) {
+                    const prevLap = activeStintLapsRef.current[activeStintLapsRef.current.length - 1];
+                    activeStintLapsRef.current = activeStintLapsRef.current.slice(0, -1);
+                    setActiveStintLaps([...activeStintLapsRef.current]);
+                    if (prevLap && prevLap.frames && prevLap.frames.length > 0) {
+                      currentLapBufferRef.current = [...prevLap.frames, ...currentLapBufferRef.current];
+                    }
+                    currentLapNumRef.current = packet.lapNumber;
+                  }
+
+                  // 2. Truncate recording buffer back to the rewound timestamp point
+                  if (isRecordingRef.current) {
+                    const buf = currentLapBufferRef.current;
+                    if (buf.length > 0) {
+                      let cutIdx = -1;
+                      for (let i = buf.length - 1; i >= 0; i--) {
+                        if (buf[i].timestamp <= ts) {
+                          cutIdx = i;
+                          break;
+                        }
+                      }
+                      if (cutIdx >= 0) {
+                        currentLapBufferRef.current = buf.slice(0, cutIdx + 1);
+                      } else {
+                        currentLapBufferRef.current = [];
+                      }
+                    }
+                  }
+
+                  // 3. Also trim live frames window to eliminate reverse-playback zig-zags
+                  liveFramesWindowRef.current = liveFramesWindowRef.current.filter(f => f.timestamp <= ts);
+                }
+
+                lastPacketTimestampRef.current = ts;
+                lastDistanceTraveledRef.current = rawDist;
                 
                 // Store in high-frequency refs without triggering synchronous React re-renders
                 latestLiveFrameRef.current = frame;
@@ -178,7 +237,12 @@ export function App() {
                     packet.lapNumber > currentLapNumRef.current && 
                     currentLapBufferRef.current.length >= 30
                   ) {
-                    const completedLap = analyzeLapTelemetry(currentLapBufferRef.current);
+                    const completedLap = analyzeLapTelemetry(
+                      currentLapBufferRef.current,
+                      3800,
+                      wasCurrentLapRewoundRef.current,
+                      packet.lastLapTimeSeconds > 0 ? packet.lastLapTimeSeconds : undefined
+                    );
                     const lapNumber = activeStintLapsRef.current.length + 1;
                     const analyzedLap: LapAnalysis = {
                       ...completedLap,
@@ -188,8 +252,9 @@ export function App() {
                     };
                     
                     activeStintLapsRef.current = [...activeStintLapsRef.current, analyzedLap];
-                    setActiveStintLaps(activeStintLapsRef.current);
+                    setActiveStintLaps([...activeStintLapsRef.current]);
                     currentLapBufferRef.current = [frame];
+                    wasCurrentLapRewoundRef.current = false;
                   }
                   currentLapNumRef.current = packet.lapNumber;
                 }
@@ -202,6 +267,7 @@ export function App() {
           if (!isMounted) return;
           setIsBridgeConnected(false);
           setIsUdpConnected(false);
+          setIsRewinding(false);
           setLiveFrame(null);
           latestLiveFrameRef.current = null;
           liveFramesWindowRef.current = [];
@@ -212,6 +278,7 @@ export function App() {
           if (!isMounted) return;
           setIsBridgeConnected(false);
           setIsUdpConnected(false);
+          setIsRewinding(false);
           setLiveFrame(null);
           latestLiveFrameRef.current = null;
           liveFramesWindowRef.current = [];
@@ -221,6 +288,7 @@ export function App() {
         if (!isMounted) return;
         setIsBridgeConnected(false);
         setIsUdpConnected(false);
+        setIsRewinding(false);
         setLiveFrame(null);
         latestLiveFrameRef.current = null;
         liveFramesWindowRef.current = [];
@@ -234,6 +302,7 @@ export function App() {
       isMounted = false;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (packetWatchdogTimer) clearTimeout(packetWatchdogTimer);
+      if (rewindDebounceTimerRef.current) clearTimeout(rewindDebounceTimerRef.current);
       if (ws) {
         try { ws.close(); } catch (_) {}
       }
@@ -250,6 +319,9 @@ export function App() {
     currentLapBufferRef.current = [];
     setActiveLapBufferLength(0);
     currentLapNumRef.current = null;
+    wasCurrentLapRewoundRef.current = false;
+    lastPacketTimestampRef.current = null;
+    lastDistanceTraveledRef.current = null;
   };
 
   const handleRequestStopRecording = () => {
@@ -262,7 +334,11 @@ export function App() {
 
     // If there is a trailing in-progress lap with sufficient frames (>= 30) or if 0 laps completed so far
     if (trailingBuffer.length >= 30 || (finalLaps.length === 0 && trailingBuffer.length >= 15)) {
-      const trailingLap = analyzeLapTelemetry(trailingBuffer);
+      const trailingLap = analyzeLapTelemetry(
+        trailingBuffer,
+        3800,
+        wasCurrentLapRewoundRef.current
+      );
       finalLaps.push({
         ...trailingLap,
         lapNumber: finalLaps.length + 1,
@@ -272,7 +348,11 @@ export function App() {
     } else if (finalLaps.length === 0) {
       // Fallback if stopped with minimal data
       const fallbackFrames = liveFramesBuffer.length >= 20 ? liveFramesBuffer : [];
-      const fallbackLap = analyzeLapTelemetry(fallbackFrames);
+      const fallbackLap = analyzeLapTelemetry(
+        fallbackFrames,
+        3800,
+        wasCurrentLapRewoundRef.current
+      );
       finalLaps.push({
         ...fallbackLap,
         lapNumber: 1,
@@ -293,6 +373,7 @@ export function App() {
       ? finalLaps.reduce((sum, l) => sum + (l.overallScore || 0), 0) / finalLaps.length 
       : 75;
 
+    const hasAnyRewind = finalLaps.some(l => l.wasRewound);
     const stintId = `stint-${Date.now()}`;
     const stintNumber = stintHistory.length + 1;
 
@@ -308,6 +389,7 @@ export function App() {
       totalLaps: finalLaps.length,
       bestLapTimeSec,
       avgScore,
+      wasRewound: hasAnyRewind,
       laps: finalLaps.map(l => ({ ...l, stintId }))
     };
 
@@ -491,6 +573,7 @@ export function App() {
             liveFrame={liveFrame}
             liveFramesBuffer={liveFramesBuffer}
             isRecording={isRecording}
+            isRewinding={isRewinding}
             recordingDurationSec={recordingDurationSec}
             recordedLapsCount={activeStintLaps.length}
             activeLapBufferLength={activeLapBufferLength}

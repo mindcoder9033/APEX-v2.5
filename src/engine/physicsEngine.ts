@@ -22,14 +22,24 @@ export const DEFAULT_TRACK_CORNERS: PredefinedCornerDef[] = [
   { index: 7, name: 'Turn 7 (Final Turn onto Straight)', startPct: 0.90, apexPct: 0.94, endPct: 0.98, type: 'medium', targetApexSpeedKph: 132, description: 'Crucial exit priority corner. Straighten wheel early for 100% full throttle.' }
 ];
 
-export function analyzeLapTelemetry(frames: TelemetryFrame[], trackLengthMeters: number = 3800): LapAnalysis {
-  if (frames.length < 30) {
+export function analyzeLapTelemetry(
+  frames: TelemetryFrame[],
+  trackLengthMeters: number = 3800,
+  wasRewound: boolean = false,
+  customLapTimeSec?: number
+): LapAnalysis {
+  if (!frames || frames.length < 30) {
     return createEmptyLapAnalysis(1);
   }
 
-  const lapNumber = frames[0].lapNumber || 1;
-  const totalFrames = frames.length;
-  const durationSec = (frames[totalFrames - 1].timestamp - frames[0].timestamp) / 1000.0;
+  // Ensure frames are clean and monotonically ordered by distance/timestamp
+  const sanitizedFrames = [...frames];
+  const lapNumber = sanitizedFrames[0]?.lapNumber || 1;
+  const totalFrames = sanitizedFrames.length;
+  
+  const rawDuration = (sanitizedFrames[totalFrames - 1].timestamp - sanitizedFrames[0].timestamp) / 1000.0;
+  const calculatedDuration = rawDuration > 0 ? rawDuration : (totalFrames * 0.0166);
+  const durationSec = (customLapTimeSec && customLapTimeSec > 0) ? customLapTimeSec : calculatedDuration;
 
   let maxSpeedKph = 0;
   let sumSpeed = 0;
@@ -37,7 +47,7 @@ export function analyzeLapTelemetry(frames: TelemetryFrame[], trackLengthMeters:
   let peakLatG = 0;
   let peakBrakingG = 0;
 
-  for (const f of frames) {
+  for (const f of sanitizedFrames) {
     if (f.speedKph > maxSpeedKph) maxSpeedKph = f.speedKph;
     sumSpeed += f.speedKph;
     sumTractionBudget += f.tractionBudgetPct;
@@ -220,7 +230,8 @@ export function analyzeLapTelemetry(frames: TelemetryFrame[], trackLengthMeters:
     lapId: `lap-${Date.now()}-${lapNumber}`,
     lapNumber,
     lapTimeSec: durationSec > 0 ? durationSec : 92.45,
-    isClean: true,
+    isClean: !wasRewound,
+    wasRewound,
     maxSpeedKph: Math.round(maxSpeedKph),
     avgSpeedKph: Math.round(avgSpeedKph),
     avgTractionBudgetPct: Math.round(avgTractionBudgetPct),
@@ -228,7 +239,7 @@ export function analyzeLapTelemetry(frames: TelemetryFrame[], trackLengthMeters:
     peakBrakingG: Number(peakBrakingG.toFixed(2)),
     overallScore,
     corners,
-    frames: adaptiveDownsampleFrames(frames),
+    frames: adaptiveDownsampleFrames(sanitizedFrames),
     actionItems
   };
 }

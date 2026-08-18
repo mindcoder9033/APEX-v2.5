@@ -2,13 +2,14 @@ import React from 'react';
 import { TelemetryFrame } from '../../types/telemetry';
 import { FrictionCirclePlot } from '../telemetry/FrictionCirclePlot';
 import { TrackMapViewer } from '../telemetry/TrackMapViewer';
-import { Radio, Square, WifiOff, Play, RotateCcw, CircleDot, Timer, Award } from 'lucide-react';
+import { Radio, Square, WifiOff, Play, RotateCcw, CircleDot, Timer, Award, Rewind } from 'lucide-react';
 
 interface LivePracticeViewProps {
   isUdpConnected: boolean;
   liveFrame: TelemetryFrame | null;
   liveFramesBuffer: TelemetryFrame[];
   isRecording: boolean;
+  isRewinding?: boolean;
   recordingDurationSec: number;
   recordedLapsCount: number;
   activeLapBufferLength: number;
@@ -22,6 +23,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
   liveFrame,
   liveFramesBuffer,
   isRecording,
+  isRewinding = false,
   recordingDurationSec,
   recordedLapsCount,
   activeLapBufferLength,
@@ -43,13 +45,17 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
       <div className="p-5 bg-[#12121A] border border-[#232332] flex flex-wrap items-center justify-between gap-4 shadow-xl hud-bracket">
         <div className="flex items-center space-x-3">
           <div className={`w-11 h-11 flex items-center justify-center border transition-colors ${
-            isRecording
+            isRewinding
+              ? 'bg-amber-950/90 border-amber-500/80 shadow-[0_0_15px_rgba(245,158,11,0.4)]'
+              : isRecording
               ? 'bg-red-950/80 border-[#E10600]/80 shadow-[0_0_15px_rgba(225,6,0,0.3)]'
               : hasLiveData 
               ? 'bg-emerald-950/60 border-emerald-500/40' 
               : 'bg-[#181824] border-[#2E2E40]'
           }`}>
-            {isRecording ? (
+            {isRewinding ? (
+              <Rewind className="w-5 h-5 text-amber-400 animate-pulse" />
+            ) : isRecording ? (
               <CircleDot className="w-5 h-5 text-[#FF1801] animate-pulse" />
             ) : hasLiveData ? (
               <Radio className="w-5 h-5 text-emerald-400 animate-pulse" />
@@ -62,23 +68,31 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
               <h2 className="text-sm font-racing font-bold text-white uppercase tracking-wider">
                 Live Telemetry Ingest & Stint Recorder
               </h2>
-              {isRecording ? (
+              {isRewinding && (
+                <span className="chamfer-badge text-[10px] font-mono font-bold px-2.5 py-0.5 border bg-amber-950/90 text-amber-300 border-amber-500/60 flex items-center space-x-1.5 shadow-[0_0_10px_rgba(245,158,11,0.3)] animate-pulse">
+                  <Rewind className="w-3 h-3 text-amber-400" />
+                  <span>REWINDING BUFFER</span>
+                </span>
+              )}
+              {isRecording && !isRewinding ? (
                 <span className="chamfer-badge text-[10px] font-mono font-bold px-2.5 py-0.5 border bg-red-950/90 text-red-300 border-[#E10600]/60 flex items-center space-x-1.5 shadow-[0_0_10px_rgba(225,6,0,0.25)] animate-pulse">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#E10600]" />
                   <span>RECORDING STINT</span>
                 </span>
-              ) : (
+              ) : !isRecording && (
                 <span className={`chamfer-badge text-[10px] font-mono font-bold px-2.5 py-0.5 border ${
                   hasLiveData
                     ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
-                    : 'bg-[#181822] text-slate-400 border-[#2A2A3C]'
+                    : 'bg-[#181824] text-slate-400 border-[#2A2A3C]'
                 }`}>
                   {hasLiveData ? '60Hz Ingest Active' : 'Waiting for Telemetry Packets'}
                 </span>
               )}
             </div>
             <p className="text-xs text-[#8E8E9F] font-sans mt-0.5">
-              {isRecording 
+              {isRewinding
+                ? `Rewind detected • Rolling buffer back to synchronized state • Frames: ${activeLapBufferLength}`
+                : isRecording 
                 ? `Recording active • Current Lap: #${recordedLapsCount + 1} (${activeLapBufferLength} frames) • Elapsed: ${formatTimer(recordingDurationSec)}`
                 : hasLiveData 
                 ? 'UDP 60Hz stream ready • Click Start Recording when ready to begin stint'

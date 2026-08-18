@@ -1,0 +1,48 @@
+Viewed MEMORY.md:1-7
+Searched for "5300"
+Viewed package.json:1-47
+Viewed udpServer.js:1-120
+Viewed Header.tsx:1-171
+Searched for "WebSocket"
+Viewed App.tsx:1-564
+Viewed README.md:1-157
+Ran command: `npm run udp-server`
+Viewed task-21.log:1-24
+
+🤖 **Applying knowledge of `@[backend-architect]`...**
+📚 **Using skills: `@systematic-debugging` + `@server-management`...**
+
+### Root Cause
+The **Bridge Offline (Port 5300)** status occurred because while the frontend UI (`npm run dev`) was running, the **APEX Node.js UDP Telemetry Bridge** (`npm run udp-server` / [server/udpServer.js](file:///d:/AI%20Workspace/APEX%20v2.5/server/udpServer.js)) had not yet been started.
+
+The frontend connects via WebSocket (`ws://localhost:5301`) to this bridge service, which listens on UDP port `5300` for incoming Forza `CarDash` / `SLED` 60Hz telemetry packets and relays them into the browser.
+
+---
+
+### Status Update: Bridge is Now Online 🏎️⚡
+
+I have started the telemetry bridge process in the background. It is currently connected and actively ingesting data:
+
+* **UDP Ingest Socket:** Listening on `0.0.0.0:5300` (and fallback `20777`)
+* **WebSocket Stream:** Live on `ws://localhost:5301`
+* **Live Ingest Status:**
+  ```
+  🎉 [APEX UDP Ingest] SUCCESS! Live Forza telemetry packet received (331 bytes)
+  📡 Ingesting Forza telemetry at 60.0 pkts/sec
+  🔗 Frontend UI client connected (1 active stream)
+  ```
+
+Your APEX header will now display **"Forza 60Hz Live"** with the green indicator active.
+
+---
+
+### Future Reference
+Whenever you launch APEX in the future, run both commands in separate terminal windows:
+
+```bash
+# Terminal 1: Web UI
+npm run dev
+
+# Terminal 2: Telemetry Ingest Bridge
+npm run udp-server
+```

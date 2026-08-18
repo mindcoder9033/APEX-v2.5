@@ -46,7 +46,8 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
       return;
     }
 
-    const maxDist = frames[frames.length - 1].distance || 3800;
+    const lastFrame = frames[frames.length - 1];
+    const maxDist = Math.max(100, (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : 3800);
 
     // Subdivided channels layout
     const speedH = h * 0.40;
