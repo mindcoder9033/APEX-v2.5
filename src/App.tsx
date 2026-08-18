@@ -220,10 +220,12 @@ export function App() {
                 
                 // Store in high-frequency refs without triggering synchronous React re-renders
                 latestLiveFrameRef.current = frame;
-                const windowBuf = liveFramesWindowRef.current;
-                windowBuf.push(frame);
-                if (windowBuf.length > 250) {
-                  windowBuf.splice(0, windowBuf.length - 250);
+                if (isRecordingRef.current) {
+                  const windowBuf = liveFramesWindowRef.current;
+                  windowBuf.push(frame);
+                  if (windowBuf.length > 250) {
+                    windowBuf.splice(0, windowBuf.length - 250);
+                  }
                 }
                 hasNewDataRef.current = true;
 
@@ -271,6 +273,7 @@ export function App() {
           setLiveFrame(null);
           latestLiveFrameRef.current = null;
           liveFramesWindowRef.current = [];
+          setLiveFramesBuffer([]);
           reconnectTimer = setTimeout(connectBridge, 2000);
         };
 
@@ -282,6 +285,7 @@ export function App() {
           setLiveFrame(null);
           latestLiveFrameRef.current = null;
           liveFramesWindowRef.current = [];
+          setLiveFramesBuffer([]);
           try { ws?.close(); } catch (_) {}
         };
       } catch (e) {
@@ -292,6 +296,7 @@ export function App() {
         setLiveFrame(null);
         latestLiveFrameRef.current = null;
         liveFramesWindowRef.current = [];
+        setLiveFramesBuffer([]);
         reconnectTimer = setTimeout(connectBridge, 2000);
       }
     };
@@ -317,6 +322,8 @@ export function App() {
     setActiveStintLaps([]);
     activeStintLapsRef.current = [];
     currentLapBufferRef.current = [];
+    liveFramesWindowRef.current = [];
+    setLiveFramesBuffer([]);
     setActiveLapBufferLength(0);
     currentLapNumRef.current = null;
     wasCurrentLapRewoundRef.current = false;
@@ -402,13 +409,16 @@ export function App() {
       setCurrentLap(newStint.laps[0]);
     }
 
-    // Reset recording state
+    // Reset recording state and clear all live ingest buffers to clean empty state
     setIsRecording(false);
     isRecordingRef.current = false;
     setRecordingStartTime(null);
+    setRecordingDurationSec(0);
     setActiveStintLaps([]);
     activeStintLapsRef.current = [];
     currentLapBufferRef.current = [];
+    liveFramesWindowRef.current = [];
+    setLiveFramesBuffer([]);
     setActiveLapBufferLength(0);
     setIsSaveModalOpen(false);
 
@@ -429,9 +439,12 @@ export function App() {
     setIsRecording(false);
     isRecordingRef.current = false;
     setRecordingStartTime(null);
+    setRecordingDurationSec(0);
     setActiveStintLaps([]);
     activeStintLapsRef.current = [];
     currentLapBufferRef.current = [];
+    liveFramesWindowRef.current = [];
+    setLiveFramesBuffer([]);
     setActiveLapBufferLength(0);
     setIsSaveModalOpen(false);
   };
