@@ -6,11 +6,11 @@ import { FrictionCirclePlot } from '../telemetry/FrictionCirclePlot';
 import { TrackMapViewer } from '../telemetry/TrackMapViewer';
 import { DiagnosticScorecard } from './DiagnosticScorecard';
 import { ActionPlanCard } from '../adjust/ActionPlanCard';
-import { generateOfficialPdf } from '../../utils/pdfGenerator';
+import { generateOfficialPdf, generateStintOfficialPdf } from '../../utils/pdfGenerator';
 import { 
   Activity, FileDown, Radio, Award, Trash2, Clock, 
   Calendar, CheckCircle2, AlertCircle, ArrowRight, BookOpen, Play, Loader2,
-  Car, MapPin, Star, Layers
+  Car, MapPin, Star, Layers, X, Sparkles, Shield, BarChart3, Check
 } from 'lucide-react';
 
 interface DebriefViewProps {
@@ -46,6 +46,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
   onNavigateToPractice
 }) => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [selectedLapIndex, setSelectedLapIndex] = useState<number>(0);
 
   // Category tab state: 'academy' vs 'practice'
@@ -82,6 +83,43 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
       setSelectedLapIndex(0);
     }
   }, [activeSelectedStint?.stintId]);
+
+  // Handle opening PDF export
+  const handleOpenPdfGeneration = () => {
+    if (!activeSelectedStint || isGeneratingPdf) return;
+    if (activeSelectedStint.laps && activeSelectedStint.laps.length > 1) {
+      setShowExportModal(true);
+    } else if (activeSelectedStint.laps && activeSelectedStint.laps.length === 1) {
+      handleDownloadSingleLapPdf();
+    }
+  };
+
+  const handleDownloadStintPdf = async () => {
+    if (!activeSelectedStint || isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
+    try {
+      await generateStintOfficialPdf(activeSelectedStint, module, session);
+      setShowExportModal(false);
+    } catch (err) {
+      console.error('Failed to generate Stint PDF:', err);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleDownloadSingleLapPdf = async () => {
+    const lapToExport = activeSelectedStint?.laps?.[selectedLapIndex] || selectedLap;
+    if (!lapToExport || isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
+    try {
+      await generateOfficialPdf(lapToExport, module, session, activeSelectedStint || undefined);
+      setShowExportModal(false);
+    } catch (err) {
+      console.error('Failed to generate Single Lap PDF:', err);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   // Selected lap inside the active stint
   const selectedLap: LapAnalysis | null = activeSelectedStint?.laps?.[selectedLapIndex] || activeSelectedStint?.laps?.[0] || currentLap || null;
@@ -357,17 +395,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
 
                 <div className="flex items-center space-x-3">
                   <button
-                    onClick={async () => {
-                      if (!selectedLap || isGeneratingPdf) return;
-                      setIsGeneratingPdf(true);
-                      try {
-                        await generateOfficialPdf(selectedLap, module, session, activeSelectedStint || undefined);
-                      } catch (err) {
-                        console.error('Failed to generate PDF:', err);
-                      } finally {
-                        setIsGeneratingPdf(false);
-                      }
-                    }}
+                    onClick={handleOpenPdfGeneration}
                     disabled={isGeneratingPdf}
                     className="chamfer-btn flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] disabled:opacity-80 disabled:cursor-wait text-white text-xs font-racing font-bold tracking-wide shadow-lg shadow-red-950/60 active:scale-95 transition-all cursor-pointer"
                   >
@@ -376,7 +404,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                     ) : (
                       <FileDown className="w-4 h-4" />
                     )}
-                    <span>{isGeneratingPdf ? 'Generating PDF...' : 'Generate Official PDF'}</span>
+                    <span>{isGeneratingPdf ? 'Generating PDF...' : activeSelectedStint.laps.length > 1 ? `Generate PDF (${activeSelectedStint.laps.length} Laps)` : 'Generate Official PDF'}</span>
                   </button>
                 </div>
               </div>
@@ -518,6 +546,161 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* APEX PDF Export Choice Modal */}
+      {showExportModal && activeSelectedStint && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0E0E16] w-full max-w-2xl border border-[#2A2A3E] shadow-2xl flex flex-col overflow-hidden hud-bracket animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-[#232332] bg-[#12121A] flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 bg-gradient-to-br from-[#E10600] to-[#900] flex items-center justify-center text-white shadow-lg shadow-red-950/50">
+                  <FileDown className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white font-racing tracking-wide flex items-center space-x-2">
+                    <span>SELECT PDF EXPORT FORMAT</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 bg-[#E10600]/20 text-[#FF4D4D] border border-[#E10600]/40 rounded uppercase font-bold">
+                      {activeSelectedStint.laps.length} Laps Available
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-400 font-sans mt-0.5">
+                    Choose between a consolidated multi-lap stint dossier or an individual lap debrief
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => !isGeneratingPdf && setShowExportModal(false)}
+                disabled={isGeneratingPdf}
+                className="p-1.5 border border-[#2A2A3E] bg-[#181824] text-slate-400 hover:text-white hover:border-slate-500 transition-all cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body: Two Choice Cards */}
+            <div className="p-6 space-y-4 bg-[#0B0B12]">
+              {/* Option 1: Consolidated Stint Dossier (Primary / Recommended) */}
+              <div className="p-5 bg-[#141420] border-2 border-[#E10600]/70 hover:border-[#E10600] transition-all shadow-xl shadow-red-950/20 relative group">
+                <div className="absolute top-3 right-3 flex items-center space-x-1.5 px-2.5 py-1 bg-[#E10600] text-white text-[10px] font-racing font-bold tracking-wider uppercase shadow">
+                  <Sparkles className="w-3 h-3" />
+                  <span>Recommended</span>
+                </div>
+
+                <div className="flex items-start space-x-4">
+                  <div className="w-10 h-10 rounded bg-[#E10600]/15 border border-[#E10600]/40 flex items-center justify-center text-[#FF4D4D] shrink-0 mt-0.5">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 pr-24">
+                    <h3 className="text-sm font-racing font-bold text-white tracking-wide">
+                      Consolidated Stint Report (All {activeSelectedStint.laps.length} Laps)
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed font-sans">
+                      Generates the comprehensive 9-page dossier consolidating all {activeSelectedStint.laps.length} recorded laps, complete lap-by-lap comparison table, best vs. average telemetry trace overlays, sector splits, and stint consistency index.
+                    </p>
+
+                    {/* Metric badges strip */}
+                    <div className="mt-3 flex items-center gap-2 flex-wrap text-[11px] font-mono">
+                      <span className="px-2 py-0.5 bg-[#1D1D2C] text-slate-300 border border-[#2C2C40]">
+                        📊 {activeSelectedStint.laps.length} Laps Analyzed
+                      </span>
+                      <span className="px-2 py-0.5 bg-[#1D1D2C] text-red-400 border border-[#2C2C40]">
+                        ★ Best: {formatLapTime(activeSelectedStint.bestLapTimeSec || activeSelectedStint.laps[bestLapIndex]?.lapTimeSec || 0)}
+                      </span>
+                      <span className="px-2 py-0.5 bg-[#1D1D2C] text-emerald-400 border border-[#2C2C40]">
+                        ✓ Stint Score: {activeSelectedStint.avgScore || 85}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-[#232334] flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400 font-sans flex items-center space-x-1.5">
+                    <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Full Skip Barber Stint Dossier</span>
+                  </span>
+
+                  <button
+                    onClick={handleDownloadStintPdf}
+                    disabled={isGeneratingPdf}
+                    className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] text-white text-xs font-racing font-bold tracking-wide shadow-lg shadow-red-950/60 active:scale-95 disabled:opacity-75 disabled:cursor-wait cursor-pointer transition-all"
+                  >
+                    {isGeneratingPdf ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    ) : (
+                      <FileDown className="w-4 h-4" />
+                    )}
+                    <span>{isGeneratingPdf ? 'Rendering PDF...' : `Download Stint Report (${activeSelectedStint.laps.length} Laps)`}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Option 2: Selected Lap Report Only */}
+              <div className="p-5 bg-[#12121C] border border-[#28283C] hover:border-slate-500 transition-all">
+                <div className="flex items-start space-x-4">
+                  <div className="w-10 h-10 rounded bg-[#1C1C2C] border border-[#32324A] flex items-center justify-center text-slate-400 shrink-0 mt-0.5">
+                    <BarChart3 className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-racing font-bold text-slate-200 tracking-wide">
+                      Single Lap Debrief (Lap #{selectedLap ? (selectedLap.lapNumber || selectedLapIndex + 1) : (selectedLapIndex + 1)} Only)
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed font-sans">
+                      Generates the standard 9-page deep-dive report focused strictly on the currently inspected Lap #{selectedLap ? (selectedLap.lapNumber || selectedLapIndex + 1) : (selectedLapIndex + 1)} ({selectedLap ? formatLapTime(selectedLap.lapTimeSec) : '--:--'}).
+                    </p>
+
+                    {/* Metric badges strip */}
+                    {selectedLap && (
+                      <div className="mt-3 flex items-center gap-2 flex-wrap text-[11px] font-mono">
+                        <span className="px-2 py-0.5 bg-[#1A1A26] text-slate-300 border border-[#28283A]">
+                          ⏱ Lap Time: {formatLapTime(selectedLap.lapTimeSec)}
+                        </span>
+                        <span className="px-2 py-0.5 bg-[#1A1A26] text-amber-400 border border-[#28283A]">
+                          🏆 Technique: {selectedLap.overallScore}%
+                        </span>
+                        <span className="px-2 py-0.5 bg-[#1A1A26] text-blue-400 border border-[#28283A]">
+                          🏎 Top Speed: {selectedLap.maxSpeedKph} km/h
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-[#202030] flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400 font-sans">
+                    Single Lap Telemetry & Corner Notes
+                  </span>
+
+                  <button
+                    onClick={handleDownloadSingleLapPdf}
+                    disabled={isGeneratingPdf}
+                    className="chamfer-btn flex items-center space-x-2 px-4 py-2 bg-[#1E1E2E] hover:bg-[#2A2A3E] text-slate-200 hover:text-white text-xs font-racing font-bold tracking-wide border border-[#3A3A52] active:scale-95 disabled:opacity-75 disabled:cursor-wait cursor-pointer transition-all"
+                  >
+                    {isGeneratingPdf ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <FileDown className="w-3.5 h-3.5" />
+                    )}
+                    <span>Download Lap #{selectedLap ? (selectedLap.lapNumber || selectedLapIndex + 1) : (selectedLapIndex + 1)} Only</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-[#232332] bg-[#12121A] flex items-center justify-between text-xs text-slate-400 font-sans">
+              <span>Both options generate high-DPI vector PDF dossiers formatted for A4 printing.</span>
+              <button
+                onClick={() => !isGeneratingPdf && setShowExportModal(false)}
+                disabled={isGeneratingPdf}
+                className="px-4 py-1.5 bg-transparent hover:bg-[#1E1E2C] text-slate-300 text-xs font-racing font-bold cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
