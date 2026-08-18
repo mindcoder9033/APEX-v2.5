@@ -88,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="font-racing font-bold text-xl tracking-wider text-white">APEX</span>
             <span className="chamfer-badge bg-[#E10600]/20 text-[#FF4D4D] text-[10px] font-mono font-bold px-2 py-0.5 border border-[#E10600]/40">v2.5</span>
           </div>
-          <p className="text-[11px] text-[#8E8E9F] font-medium tracking-tight font-sans">Analytical Simracing Coach • Skip Barber Curriculum</p>
+          <p className="text-[11px] text-[#8E8E9F] font-medium tracking-tight font-sans">Analytical Simracing Coach</p>
         </div>
       </div>
 
@@ -96,11 +96,10 @@ export const Header: React.FC<HeaderProps> = ({
       <nav className="flex items-center space-x-1 bg-[#14141E] p-1 border border-[#232332]">
         <button
           onClick={() => setCurrentView('curriculum')}
-          className={`flex items-center space-x-2 px-4 py-2 text-xs font-semibold transition-all ${
-            currentView === 'curriculum'
+          className={`flex items-center space-x-2 px-4 py-2 text-xs font-semibold transition-all ${currentView === 'curriculum'
               ? 'bg-[#E10600] text-white chamfer-tab shadow-md shadow-red-900/40'
               : 'text-slate-400 hover:text-slate-200 hover:bg-[#1C1C28]'
-          }`}
+            }`}
         >
           <Award className="w-4 h-4" />
           <span>Curriculum Academy</span>
@@ -113,11 +112,10 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={() => setCurrentView('practice')}
-          className={`flex items-center space-x-2 px-4 py-2 text-xs font-semibold transition-all ${
-            currentView === 'practice'
+          className={`flex items-center space-x-2 px-4 py-2 text-xs font-semibold transition-all ${currentView === 'practice'
               ? 'bg-[#E10600] text-white chamfer-tab shadow-md shadow-red-900/40'
               : 'text-slate-400 hover:text-slate-200 hover:bg-[#1C1C28]'
-          }`}
+            }`}
         >
           <Radio className="w-4 h-4" />
           <span>Live Ingest & Practice</span>
@@ -128,11 +126,10 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={() => setCurrentView('debrief')}
-          className={`flex items-center space-x-2 px-4 py-2 text-xs font-semibold transition-all ${
-            currentView === 'debrief'
+          className={`flex items-center space-x-2 px-4 py-2 text-xs font-semibold transition-all ${currentView === 'debrief'
               ? 'bg-[#E10600] text-white chamfer-tab shadow-md shadow-red-900/40'
               : 'text-slate-400 hover:text-slate-200 hover:bg-[#1C1C28]'
-          }`}
+            }`}
         >
           <Activity className="w-4 h-4" />
           <span>Telemetry & Debrief</span>
@@ -140,11 +137,10 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={() => setCurrentView('history')}
-          className={`flex items-center space-x-2 px-4 py-2 text-xs font-semibold transition-all ${
-            currentView === 'history'
+          className={`flex items-center space-x-2 px-4 py-2 text-xs font-semibold transition-all ${currentView === 'history'
               ? 'bg-[#E10600] text-white chamfer-tab shadow-md shadow-red-900/40'
               : 'text-slate-400 hover:text-slate-200 hover:bg-[#1C1C28]'
-          }`}
+            }`}
         >
           <BarChart3 className="w-4 h-4" />
           <span>Driver History</span>
@@ -154,26 +150,24 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Right Controls: Ingest Status, Network Info & Actions */}
       <div className="flex items-center space-x-2.5">
         {/* UDP Connection Status Pill */}
-        <div className={`flex items-center space-x-2 px-3 py-1.5 border text-xs font-mono font-medium ${
-          isUdpConnected
+        <div className={`flex items-center space-x-2 px-3 py-1.5 border text-xs font-mono font-medium ${isUdpConnected
             ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
             : isBridgeConnected
-            ? 'bg-amber-950/40 border-amber-500/40 text-amber-300'
-            : 'bg-[#181822] border-[#2A2A3C] text-slate-400'
-        }`}>
-          <div className={`w-2 h-2 diamond-pip ${
-            isUdpConnected
+              ? 'bg-amber-950/40 border-amber-500/40 text-amber-300'
+              : 'bg-[#181822] border-[#2A2A3C] text-slate-400'
+          }`}>
+          <div className={`w-2 h-2 diamond-pip ${isUdpConnected
               ? 'bg-emerald-400 animate-ping'
               : isBridgeConnected
-              ? 'bg-amber-400 animate-pulse'
-              : 'bg-slate-500'
-          }`} />
+                ? 'bg-amber-400 animate-pulse'
+                : 'bg-slate-500'
+            }`} />
           <span>
             {isUdpConnected
               ? 'Forza 60Hz Live'
               : isBridgeConnected
-              ? 'Bridge Ready • Waiting for Forza'
-              : 'Bridge Offline (Port 5300)'}
+                ? 'Bridge Ready • Waiting for Forza'
+                : 'Bridge Offline (Port 5300)'}
           </span>
         </div>
 
@@ -188,7 +182,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Hover Tooltip Card */}
-          <div className="absolute right-0 top-full mt-2 w-84 bg-[#101018]/95 backdrop-blur-md border border-[#2E2E42] shadow-2xl p-4 hidden group-hover:block z-50 transition-all pointer-events-none">
+          <div className="absolute right-0 top-full mt-2 w-80 bg-[#101018]/95 backdrop-blur-md border border-[#2E2E42] shadow-2xl p-4 hidden group-hover:block z-50 transition-all pointer-events-none">
             <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-[#232332]">
               <div className="flex items-center space-x-2">
                 <Wifi className="w-3.5 h-3.5 text-[#00F0FF]" />
@@ -196,11 +190,10 @@ export const Header: React.FC<HeaderProps> = ({
                   Forza Telemetry Config
                 </span>
               </div>
-              <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 border ${
-                isBridgeConnected
+              <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 border ${isBridgeConnected
                   ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300'
                   : 'bg-red-950/60 border-red-500/50 text-red-300'
-              }`}>
+                }`}>
                 {isBridgeConnected ? 'BRIDGE ONLINE' : 'BRIDGE STANDBY'}
               </span>
             </div>
@@ -245,11 +238,10 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={toggleFullscreen}
           title={isFullscreen ? 'Exit Fullscreen (Esc)' : 'Enter Fullscreen (F11)'}
           aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-          className={`p-2 border text-xs transition-all flex items-center justify-center ${
-            isFullscreen
+          className={`p-2 border text-xs transition-all flex items-center justify-center ${isFullscreen
               ? 'bg-[#E10600]/15 border-[#E10600]/40 text-[#FF5C5C] hover:bg-[#E10600]/25 shadow-sm shadow-red-950/40'
               : 'bg-[#14141E] border-[#232332] text-slate-400 hover:text-white hover:bg-[#1C1C28] hover:border-slate-600'
-          }`}
+            }`}
         >
           {isFullscreen ? (
             <Minimize2 className="w-4 h-4 transition-transform active:scale-95" />

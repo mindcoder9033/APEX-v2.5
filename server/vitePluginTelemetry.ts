@@ -91,8 +91,25 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
         res.end(JSON.stringify(freshNetworkInfo));
       });
 
-      // 2. Setup WebSocket Server attached to Vite's HTTP server
+      // 2. Setup WebSocket Server attached to Vite's HTTP server + dedicated port 5301
       wss = new WebSocketServer({ noServer: true });
+      let standaloneWss: WebSocketServer | null = null;
+
+      try {
+        standaloneWss = new WebSocketServer({ port: 5301 });
+        standaloneWss.on('connection', (ws) => {
+          connectedClients.add(ws);
+          try {
+            ws.send(JSON.stringify({
+              type: 'APEX_BRIDGE_INFO',
+              network: getActiveNetworkInfo(udpPort, secondaryUdpPort),
+              timestamp: Date.now()
+            }));
+          } catch (_) {}
+          ws.on('close', () => connectedClients.delete(ws));
+        });
+        standaloneWss.on('error', () => {});
+      } catch (_) {}
 
       wss.on('connection', (ws) => {
         connectedClients.add(ws);
@@ -124,6 +141,7 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
           }
         });
       }
+
 
       // 3. UDP Packet Forwarding Handler
       const handlePacket = (msg: Buffer, rinfo: dgram.RemoteInfo) => {
@@ -196,8 +214,10 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
         try { primaryUdp?.close(); } catch (_) {}
         try { secondaryUdp?.close(); } catch (_) {}
         try { wss?.close(); } catch (_) {}
+        try { standaloneWss?.close(); } catch (_) {}
         connectedClients.clear();
       });
+
     }
   };
 }
