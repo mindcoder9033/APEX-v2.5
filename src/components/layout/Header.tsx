@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Award, BarChart3, Radio, Maximize2, Minimize2 } from 'lucide-react';
+import { Activity, Award, BarChart3, Radio, Maximize2, Minimize2, Clock } from 'lucide-react';
 
 export type AppView = 'curriculum' | 'practice' | 'debrief' | 'history';
 
@@ -21,6 +21,18 @@ export const Header: React.FC<HeaderProps> = ({
   const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
     return typeof document !== 'undefined' ? Boolean(document.fullscreenElement) : false;
   });
+
+  const [timeStr, setTimeStr] = useState<string>(() => {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+  });
+
+  useEffect(() => {
+    const updateClock = () => {
+      setTimeStr(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+    };
+    const timer = setInterval(updateClock, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -144,6 +156,12 @@ export const Header: React.FC<HeaderProps> = ({
               ? 'Bridge Ready • Waiting for Forza'
               : 'Bridge Offline (Port 5300)'}
           </span>
+        </div>
+
+        {/* 12-Hour Real-Time Clock */}
+        <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#14141E] border border-[#232332] text-xs font-mono font-medium text-slate-200 shadow-sm" title="System Local Time">
+          <Clock className="w-3.5 h-3.5 text-[#00F0FF]" />
+          <span className="tabular-nums tracking-wide">{timeStr}</span>
         </div>
 
         {/* Fullscreen Toggle Button */}
