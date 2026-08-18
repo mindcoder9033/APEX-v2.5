@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Module, Session, UserProgressState, ChallengeResult, ChallengeAttempt } from '../../types/curriculum';
-import { LapAnalysis, TelemetryFrame } from '../../types/telemetry';
-import { evaluateSessionChallenge, analyzeLapTelemetry } from '../../engine/physicsEngine';
+import { LapAnalysis, TelemetryFrame, StintSession } from '../../types/telemetry';
+import { evaluateSessionChallenge, analyzeLapTelemetry, segmentFramesIntoLaps } from '../../engine/physicsEngine';
 import { TelemetryTraces } from '../telemetry/TelemetryTraces';
 import { FrictionCirclePlot } from '../telemetry/FrictionCirclePlot';
 import { TrackMapViewer } from '../telemetry/TrackMapViewer';
@@ -25,6 +25,7 @@ interface SessionStepperViewProps {
   onBack: () => void;
   onChallengePassed: (result: ChallengeResult, nextSessionId: string | null, attempt?: ChallengeAttempt) => void;
   onSaveLap: (lap: LapAnalysis) => void;
+  onSaveStint?: (stint: StintSession) => void;
 }
 
 export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
@@ -36,7 +37,8 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
   liveFramesBuffer,
   onBack,
   onChallengePassed,
-  onSaveLap
+  onSaveLap,
+  onSaveStint
 }) => {
   const [activeStage, setActiveStage] = useState<'teach' | 'practice' | 'analyze' | 'adjust' | 'challenge'>('teach');
   const [cursorDist, setCursorDist] = useState<number>(850);
@@ -121,19 +123,52 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
       : [];
 
     if (framesToAnalyze.length >= 20) {
-      const baseLap = analyzeLapTelemetry(framesToAnalyze);
-      const analyzedLap: LapAnalysis = {
-        ...baseLap,
+      const segmentedLaps = segmentFramesIntoLaps(framesToAnalyze, 3800);
+      const stintId = `stint-acad-${Date.now()}`;
+      
+      const analyzedLaps: LapAnalysis[] = segmentedLaps.map((lap, idx) => ({
+        ...lap,
+        lapNumber: idx + 1,
         source: 'academy',
         moduleNumber: module.moduleNumber,
         moduleTitle: module.title,
         sessionId: session.id,
         sessionTitle: `${session.title} (Practice)`,
-        recordedAt: new Date().toISOString()
+        recordedAt: new Date().toISOString(),
+        stintId
+      }));
+
+      const bestLap = analyzedLaps.reduce((best, l) => (best.lapTimeSec < l.lapTimeSec ? best : l), analyzedLaps[0]);
+      const bestLapTimeSec = analyzedLaps.reduce((best, l) => (best === 0 || l.lapTimeSec < best ? l.lapTimeSec : best), 0);
+      const avgScore = Math.round(analyzedLaps.reduce((sum, l) => sum + (l.overallScore || 0), 0) / analyzedLaps.length);
+
+      const acadStint: StintSession = {
+        stintId,
+        stintNumber: Date.now(),
+        title: `${session.title} (Academy Practice)`,
+        carName: 'Formula Skip Barber 2000',
+        trackName: 'Lime Rock Park - Full Circuit',
+        source: 'academy',
+        recordedAt: new Date().toISOString(),
+        durationSec: Math.max(1, recordingSeconds),
+        totalLaps: analyzedLaps.length,
+        bestLapTimeSec,
+        avgScore,
+        laps: analyzedLaps,
+        moduleNumber: module.moduleNumber,
+        moduleTitle: module.title,
+        sessionId: session.id,
+        sessionTitle: session.title
       };
-      setSessionLaps(prev => [...prev, analyzedLap]);
-      setLastSavedStintLap(analyzedLap);
-      onSaveLap(analyzedLap);
+
+      setSessionLaps(analyzedLaps);
+      setLastSavedStintLap(bestLap);
+
+      if (onSaveStint) {
+        onSaveStint(acadStint);
+      } else {
+        onSaveLap(bestLap);
+      }
     }
   };
 
@@ -166,31 +201,64 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
       : [];
 
     if (framesToAnalyze.length >= 20) {
-      const baseLap = analyzeLapTelemetry(framesToAnalyze);
-      const analyzedLap: LapAnalysis = {
-        ...baseLap,
+      const segmentedLaps = segmentFramesIntoLaps(framesToAnalyze, 3800);
+      const attemptNum = sessionAttempts.length + 1;
+      const stintId = `stint-acad-exam-${Date.now()}`;
+
+      const analyzedLaps: LapAnalysis[] = segmentedLaps.map((lap, idx) => ({
+        ...lap,
+        lapNumber: idx + 1,
         source: 'academy',
         moduleNumber: module.moduleNumber,
         moduleTitle: module.title,
         sessionId: session.id,
-        sessionTitle: `${session.title} (Official Challenge Attempt #${sessionAttempts.length + 1})`,
-        recordedAt: new Date().toISOString()
-      };
+        sessionTitle: `${session.title} (Official Challenge Attempt #${attemptNum})`,
+        recordedAt: new Date().toISOString(),
+        stintId
+      }));
 
-      // Evaluate challenge strictly using this challenge stint telemetry
-      const challengeLaps = [analyzedLap];
-      const result = evaluateSessionChallenge(session.challenge, challengeLaps);
+      // Find best lap in the attempt stint to evaluate challenge criteria
+      const bestLap = analyzedLaps.reduce((best, l) => (best.lapTimeSec < l.lapTimeSec ? best : l), analyzedLaps[0]);
+      const bestLapTimeSec = analyzedLaps.reduce((best, l) => (best === 0 || l.lapTimeSec < best ? l.lapTimeSec : best), 0);
+      const avgScore = Math.round(analyzedLaps.reduce((sum, l) => sum + (l.overallScore || 0), 0) / analyzedLaps.length);
+
+      // Evaluate challenge strictly using best lap from this challenge stint
+      const result = evaluateSessionChallenge(session.challenge, [bestLap]);
 
       const newAttempt: ChallengeAttempt = {
         id: `att-${session.id}-${Date.now()}`,
-        attemptNumber: sessionAttempts.length + 1,
+        attemptNumber: attemptNum,
         timestamp: new Date().toISOString(),
         result,
-        laps: challengeLaps
+        laps: analyzedLaps
+      };
+
+      const challengeStint: StintSession = {
+        stintId,
+        stintNumber: Date.now(),
+        title: `${session.title} (Challenge Attempt #${attemptNum})`,
+        carName: 'Formula Skip Barber 2000',
+        trackName: 'Lime Rock Park - Full Circuit',
+        source: 'academy',
+        recordedAt: new Date().toISOString(),
+        durationSec: Math.max(1, challengeRecordingSeconds),
+        totalLaps: analyzedLaps.length,
+        bestLapTimeSec,
+        avgScore,
+        laps: analyzedLaps,
+        moduleNumber: module.moduleNumber,
+        moduleTitle: module.title,
+        sessionId: session.id,
+        sessionTitle: session.title
       };
 
       setSelectedAttemptId(newAttempt.id);
-      onSaveLap(analyzedLap);
+
+      if (onSaveStint) {
+        onSaveStint(challengeStint);
+      } else {
+        onSaveLap(bestLap);
+      }
 
       if (result.passed) {
         confetti({

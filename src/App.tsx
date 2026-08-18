@@ -460,6 +460,27 @@ export function App() {
   };
 
   // --- Academy Lap Handlers ---
+  const handleSaveAcademyStint = (stint: StintSession) => {
+    setStintHistory(prev => {
+      const filtered = prev.filter(s => s.stintId !== stint.stintId);
+      const updated = [stint, ...filtered];
+      saveStintHistory(updated);
+      return updated;
+    });
+    setCurrentStint(stint);
+
+    if (stint.laps && stint.laps.length > 0) {
+      const bestLap = stint.laps.reduce((best, l) => (best.lapTimeSec < l.lapTimeSec ? best : l), stint.laps[0]);
+      setCurrentLap(bestLap);
+      setSavedLaps(prev => {
+        const filtered = prev.filter(l => !stint.laps.some(sl => sl.lapId === l.lapId));
+        const updated = [...stint.laps, ...filtered];
+        saveLapHistory(updated);
+        return updated;
+      });
+    }
+  };
+
   const handleSaveLap = (lap: LapAnalysis) => {
     setCurrentLap(lap);
     setSavedLaps(prev => {
@@ -558,6 +579,7 @@ export function App() {
               onBack={() => setActiveSessionSelection(null)}
               onChallengePassed={handleChallengePassed}
               onSaveLap={handleSaveLap}
+              onSaveStint={handleSaveAcademyStint}
             />
           ) : graduatingModule ? (
             <GraduationExamView

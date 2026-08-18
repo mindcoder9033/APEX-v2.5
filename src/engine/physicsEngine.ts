@@ -245,6 +245,87 @@ export function analyzeLapTelemetry(
 }
 
 /**
+ * Segments a multi-lap telemetry frame stream into discrete LapAnalysis records
+ * based on Forza lapNumber transitions, track distance resets, or repeating circuit loops.
+ */
+export function segmentFramesIntoLaps(
+  frames: TelemetryFrame[],
+  trackLengthMeters: number = 3800,
+  wasRewound: boolean = false
+): LapAnalysis[] {
+  if (!frames || frames.length < 20) {
+    return [analyzeLapTelemetry(frames, trackLengthMeters, wasRewound)];
+  }
+
+  const lapSegments: TelemetryFrame[][] = [];
+  let currentSegment: TelemetryFrame[] = [frames[0]];
+
+  for (let i = 1; i < frames.length; i++) {
+    const prev = frames[i - 1];
+    const curr = frames[i];
+
+    // Check lap boundary indicators:
+    // 1. Explicit lapNumber transition from Forza
+    const lapNumChanged = curr.lapNumber > prev.lapNumber && curr.lapNumber > 0;
+    
+    // 2. Track distance wrap-around (e.g. from >60% of track length back down to <35%)
+    const distanceReset = prev.distance > (trackLengthMeters * 0.55) && curr.distance < (trackLengthMeters * 0.35);
+
+    // 3. Significant timestamp jump or negative distance jump (> 1000m drop)
+    const largeDistanceDrop = (prev.distance - curr.distance) > (trackLengthMeters * 0.4);
+
+    if ((lapNumChanged || distanceReset || largeDistanceDrop) && currentSegment.length >= 20) {
+      lapSegments.push(currentSegment);
+      currentSegment = [curr];
+    } else {
+      currentSegment.push(curr);
+    }
+  }
+
+  if (currentSegment.length >= 15) {
+    lapSegments.push(currentSegment);
+  } else if (lapSegments.length > 0 && currentSegment.length > 0) {
+    lapSegments[lapSegments.length - 1].push(...currentSegment);
+  } else if (lapSegments.length === 0) {
+    lapSegments.push(currentSegment);
+  }
+
+  // Fallback: If only 1 segment was detected but total duration is > 150s (e.g. 6 mins = ~360s)
+  // and frames are plentiful, partition by equal time slices (~70-90s per lap)
+  if (lapSegments.length === 1 && frames.length >= 100) {
+    const startTs = frames[0].timestamp;
+    const endTs = frames[frames.length - 1].timestamp;
+    const totalDurationSec = (endTs - startTs) / 1000;
+    
+    if (totalDurationSec > 150) {
+      // Estimate lap count: approx 72s per Lime Rock Park lap
+      const estimatedLaps = Math.max(2, Math.round(totalDurationSec / 72));
+      const framesPerLap = Math.floor(frames.length / estimatedLaps);
+      
+      lapSegments.length = 0;
+      for (let l = 0; l < estimatedLaps; l++) {
+        const start = l * framesPerLap;
+        const end = (l === estimatedLaps - 1) ? frames.length : (l + 1) * framesPerLap;
+        const slice = frames.slice(start, end);
+        if (slice.length >= 15) {
+          lapSegments.push(slice);
+        }
+      }
+    }
+  }
+
+  // Analyze each discrete lap
+  return lapSegments.map((seg, idx) => {
+    const analyzed = analyzeLapTelemetry(seg, trackLengthMeters, wasRewound);
+    return {
+      ...analyzed,
+      lapNumber: idx + 1,
+      lapId: `lap-${Date.now()}-${idx + 1}-${Math.random().toString(36).substring(2, 6)}`
+    };
+  });
+}
+
+/**
  * Adaptively downsamples telemetry frames to reduce memory and storage footprint by ~75%
  * while strictly preserving critical dynamics extrema (peak braking, apex speed, peak lateral G, start/finish).
  */

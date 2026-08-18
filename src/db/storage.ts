@@ -1,6 +1,6 @@
 import { UserProgressState, ChallengeResult, GraduationResult } from '../types/curriculum';
 import { LapAnalysis, StintSession } from '../types/telemetry';
-import { adaptiveDownsampleFrames } from '../engine/physicsEngine';
+import { adaptiveDownsampleFrames, segmentFramesIntoLaps } from '../engine/physicsEngine';
 
 const STORAGE_KEY_PROGRESS = 'apex_user_progress_v2_5';
 const STORAGE_KEY_SESSIONS = 'apex_saved_sessions_v2_5';
@@ -82,9 +82,68 @@ export function loadStintHistory(): StintSession[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_STINTS);
     if (raw) {
-      const parsed = JSON.parse(raw);
+      const parsed: StintSession[] = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((s, idx) => sanitizeStintSession(s, idx >= 5));
+        let hasRepaired = false;
+        
+        const processedStints = parsed.map((s, idx) => {
+          // Check if stint needs multi-lap re-segmentation
+          // (e.g. stint claims 1 lap, but duration > 150s or its frames span multiple laps)
+          if (
+            s.laps && 
+            s.laps.length === 1 && 
+            s.laps[0].frames && 
+            s.laps[0].frames.length >= 20
+          ) {
+            const firstLap = s.laps[0];
+            const frames = firstLap.frames;
+            const hasAdvancingLapNums = frames.some((f, i) => i > 0 && f.lapNumber > frames[i - 1].lapNumber && f.lapNumber > 0);
+            const hasDistanceResets = frames.some((f, i) => i > 0 && frames[i - 1].distance > 2200 && f.distance < 1200);
+            const isLongDuration = (s.durationSec > 150) || (firstLap.lapTimeSec > 150);
+
+            if (hasAdvancingLapNums || hasDistanceResets || isLongDuration) {
+              const segmented = segmentFramesIntoLaps(frames, 3800, firstLap.wasRewound);
+              if (segmented.length > 1) {
+                hasRepaired = true;
+                const formattedLaps: LapAnalysis[] = segmented.map((l, lIdx) => ({
+                  ...l,
+                  source: s.source,
+                  moduleNumber: s.moduleNumber,
+                  moduleTitle: s.moduleTitle,
+                  sessionId: s.sessionId,
+                  sessionTitle: s.sessionTitle,
+                  recordedAt: s.recordedAt,
+                  stintId: s.stintId,
+                  lapNumber: lIdx + 1
+                }));
+
+                const bestLapTimeSec = formattedLaps.reduce(
+                  (best, l) => (best === 0 || l.lapTimeSec < best ? l.lapTimeSec : best),
+                  0
+                );
+                const avgScore = Math.round(
+                  formattedLaps.reduce((sum, l) => sum + (l.overallScore || 0), 0) / formattedLaps.length
+                );
+
+                return sanitizeStintSession({
+                  ...s,
+                  totalLaps: formattedLaps.length,
+                  bestLapTimeSec,
+                  avgScore,
+                  laps: formattedLaps
+                }, idx >= 5);
+              }
+            }
+          }
+
+          return sanitizeStintSession(s, idx >= 5);
+        });
+
+        if (hasRepaired) {
+          saveStintHistory(processedStints);
+        }
+
+        return processedStints;
       }
     }
     
