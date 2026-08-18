@@ -459,6 +459,56 @@ export function App() {
     }
   };
 
+  const handleDeleteLapFromStint = (stintId: string, lapIndex: number) => {
+    setStintHistory(prev => {
+      const stintIndex = prev.findIndex(s => s.stintId === stintId);
+      if (stintIndex === -1) return prev;
+
+      const targetStint = prev[stintIndex];
+      if (!targetStint.laps || targetStint.laps.length <= 1) return prev;
+
+      const lapToDelete = targetStint.laps[lapIndex];
+      const remainingLaps = targetStint.laps
+        .filter((_, idx) => idx !== lapIndex)
+        .map((l, idx) => ({ ...l, lapNumber: idx + 1 }));
+
+      const bestLapTimeSec = Math.min(...remainingLaps.map(l => l.lapTimeSec));
+      const avgScore = Math.round(remainingLaps.reduce((acc, l) => acc + (l.overallScore || 0), 0) / remainingLaps.length);
+      const durationSec = remainingLaps.reduce((acc, l) => acc + l.lapTimeSec, 0);
+
+      const updatedStint: StintSession = {
+        ...targetStint,
+        totalLaps: remainingLaps.length,
+        bestLapTimeSec,
+        avgScore,
+        durationSec,
+        laps: remainingLaps
+      };
+
+      const updatedStints = [...prev];
+      updatedStints[stintIndex] = updatedStint;
+      saveStintHistory(updatedStints);
+
+      // Update currentStint and currentLap if active
+      if (currentStint?.stintId === stintId) {
+        setCurrentStint(updatedStint);
+        const newSelectedIdx = Math.min(lapIndex, remainingLaps.length - 1);
+        setCurrentLap(remainingLaps[newSelectedIdx]);
+      }
+
+      // Also remove from savedLaps if lapId matched
+      if (lapToDelete?.lapId) {
+        setSavedLaps(prevLaps => {
+          const filteredLaps = prevLaps.filter(l => l.lapId !== lapToDelete.lapId);
+          saveLapHistory(filteredLaps);
+          return filteredLaps;
+        });
+      }
+
+      return updatedStints;
+    });
+  };
+
   // --- Academy Lap Handlers ---
   const handleSaveAcademyStint = (stint: StintSession) => {
     setStintHistory(prev => {
@@ -634,6 +684,7 @@ export function App() {
               }
             }}
             onDeleteStint={handleDeleteStint}
+            onDeleteLapFromStint={handleDeleteLapFromStint}
             savedLaps={savedLaps}
             currentLap={currentLap}
             onSelectLap={setCurrentLap}

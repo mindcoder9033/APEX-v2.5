@@ -18,6 +18,7 @@ interface DebriefViewProps {
   currentStint: StintSession | null;
   onSelectStint: (stint: StintSession) => void;
   onDeleteStint?: (stintId: string) => void;
+  onDeleteLapFromStint?: (stintId: string, lapIndex: number) => void;
   // Legacy / fallback props
   savedLaps?: LapAnalysis[];
   currentLap?: LapAnalysis | null;
@@ -35,6 +36,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
   currentStint,
   onSelectStint,
   onDeleteStint,
+  onDeleteLapFromStint,
   savedLaps = [],
   currentLap = null,
   onSelectLap,
@@ -118,6 +120,33 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
       console.error('Failed to generate Single Lap PDF:', err);
     } finally {
       setIsGeneratingPdf(false);
+    }
+  };
+
+  // Lap deletion state & auto-timeout
+  const [confirmingDeleteLapIdx, setConfirmingDeleteLapIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (confirmingDeleteLapIdx !== null) {
+      const timer = setTimeout(() => {
+        setConfirmingDeleteLapIdx(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [confirmingDeleteLapIdx]);
+
+  const handleDeleteLapClick = (e: React.MouseEvent, idx: number) => {
+    e.stopPropagation();
+    if (confirmingDeleteLapIdx === idx) {
+      if (onDeleteLapFromStint && activeSelectedStint) {
+        onDeleteLapFromStint(activeSelectedStint.stintId, idx);
+        setConfirmingDeleteLapIdx(null);
+        if (selectedLapIndex >= idx && selectedLapIndex > 0) {
+          setSelectedLapIndex(prev => prev - 1);
+        }
+      }
+    } else {
+      setConfirmingDeleteLapIdx(idx);
     }
   };
 
@@ -422,19 +451,25 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                   {activeSelectedStint.laps.map((lap, idx) => {
                     const isSelected = selectedLapIndex === idx;
                     const isBest = idx === bestLapIndex;
+                    const isConfirming = confirmingDeleteLapIdx === idx;
 
                     return (
-                      <button
+                      <div
                         key={lap.lapId || idx}
-                        onClick={() => setSelectedLapIndex(idx)}
-                        className={`chamfer-tab flex items-center space-x-2 px-3.5 py-1.5 text-xs font-racing font-bold tracking-wider transition-all cursor-pointer border ${
+                        onClick={() => {
+                          setSelectedLapIndex(idx);
+                          if (confirmingDeleteLapIdx !== null && confirmingDeleteLapIdx !== idx) {
+                            setConfirmingDeleteLapIdx(null);
+                          }
+                        }}
+                        className={`chamfer-tab flex items-center space-x-1.5 px-3 py-1.5 text-xs font-racing font-bold tracking-wider transition-all cursor-pointer border select-none ${
                           isSelected
                             ? 'bg-[#E10600] text-white border-red-500 shadow-md shadow-red-950/50'
                             : 'bg-[#181824] text-slate-300 hover:text-white hover:bg-[#222234] border-[#2A2A3E]'
                         }`}
                       >
                         {isBest && (
-                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                          <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
                         )}
                         <span>Lap {lap.lapNumber || idx + 1}</span>
                         <span className={`text-[11px] font-mono px-1.5 py-0.2 rounded ${
@@ -452,7 +487,32 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                             (Best)
                           </span>
                         )}
-                      </button>
+
+                        {/* Inline Delete Button (Active when 2 or more laps exist) */}
+                        {activeSelectedStint.laps.length > 1 && onDeleteLapFromStint && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteLapClick(e, idx)}
+                            title={isConfirming ? 'Click again to confirm lap removal' : `Remove Lap ${lap.lapNumber || idx + 1} from stint`}
+                            className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all flex items-center space-x-1 cursor-pointer ${
+                              isConfirming
+                                ? 'bg-red-950 text-red-200 border border-red-500 shadow-md animate-pulse'
+                                : isSelected
+                                ? 'bg-black/30 text-white/70 hover:text-white hover:bg-black/60'
+                                : 'bg-black/20 text-slate-400 hover:text-red-400 hover:bg-red-950/40'
+                            }`}
+                          >
+                            {isConfirming ? (
+                              <>
+                                <Check className="w-2.5 h-2.5 text-red-400" />
+                                <span>Confirm?</span>
+                              </>
+                            ) : (
+                              <Trash2 className="w-2.5 h-2.5" />
+                            )}
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
