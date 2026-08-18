@@ -151,19 +151,51 @@ export function loadLapHistory(): LapAnalysis[] {
   }
 }
 
+const MEDAL_RANK: Record<string, number> = {
+  gold: 3,
+  silver: 2,
+  bronze: 1,
+  none: 0
+};
+
 export function recordChallengeCompletion(
   currentProgress: UserProgressState,
   sessionId: string,
   nextSessionId: string | null,
-  result: ChallengeResult
+  result: ChallengeResult,
+  attempt?: import('../types/curriculum').ChallengeAttempt
 ): UserProgressState {
+  const existingResult = currentProgress.challengeResults[result.challengeId];
+  const existingAttempts = currentProgress.challengeAttempts?.[sessionId] || [];
+
+  // High-water mark for medals
+  let bestResult = result;
+  if (existingResult && existingResult.passed) {
+    const existingRank = MEDAL_RANK[existingResult.medal || 'none'] || 0;
+    const newRank = MEDAL_RANK[result.medal || 'none'] || 0;
+    if (existingRank > newRank) {
+      bestResult = {
+        ...existingResult,
+        lapsCount: Math.max(existingResult.lapsCount, result.lapsCount)
+      };
+    }
+  }
+
+  const updatedAttempts = attempt ? [...existingAttempts, attempt] : existingAttempts;
+
   const updated: UserProgressState = {
     ...currentProgress,
     challengeResults: {
       ...currentProgress.challengeResults,
-      [result.challengeId]: result
+      [result.challengeId]: bestResult
     },
-    completedSessionIds: Array.from(new Set([...currentProgress.completedSessionIds, sessionId])),
+    challengeAttempts: {
+      ...(currentProgress.challengeAttempts || {}),
+      [sessionId]: updatedAttempts
+    },
+    completedSessionIds: result.passed
+      ? Array.from(new Set([...currentProgress.completedSessionIds, sessionId]))
+      : currentProgress.completedSessionIds,
     sessionBestScores: {
       ...currentProgress.sessionBestScores,
       [sessionId]: Math.max(currentProgress.sessionBestScores[sessionId] || 0, result.score)

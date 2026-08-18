@@ -142,6 +142,14 @@ export interface ChallengeResult {
   notes: string;
 }
 
+export interface ChallengeAttempt {
+  id: string;
+  attemptNumber: number;
+  timestamp: string;
+  result: ChallengeResult;
+  laps: LapAnalysis[];
+}
+
 export interface GraduationResult {
   testId: string;
   passed: boolean;
@@ -160,6 +168,7 @@ export interface UserProgressState {
   graduatedModuleIds: string[];
   sessionBestScores: Record<string, number>; // sessionId -> score
   challengeResults: Record<string, ChallengeResult>;
+  challengeAttempts?: Record<string, ChallengeAttempt[]>; // sessionId -> ChallengeAttempt[]
   graduationResults: Record<string, GraduationResult>;
   totalLapsDriven: number;
   totalTimeMinutes: number;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Module, Session, UserProgressState, ChallengeResult } from '../../types/curriculum';
+import { Module, Session, UserProgressState, ChallengeResult, ChallengeAttempt } from '../../types/curriculum';
 import { LapAnalysis, TelemetryFrame } from '../../types/telemetry';
 import { evaluateSessionChallenge, analyzeLapTelemetry } from '../../engine/physicsEngine';
 import { TelemetryTraces } from '../telemetry/TelemetryTraces';
@@ -11,7 +11,8 @@ import confetti from 'canvas-confetti';
 import { 
   ArrowLeft, BookOpen, Play, CheckCircle2, AlertCircle, Trophy, 
   ArrowRight, Activity, Target, Zap, Radio, Info,
-  Car, MapPin, Flag, Sun, CloudRain, RotateCw, Square, WifiOff
+  Car, MapPin, Flag, Sun, CloudRain, RotateCw, Square, WifiOff,
+  History, ChevronDown, ChevronUp, Eye, Sparkles
 } from 'lucide-react';
 
 interface SessionStepperViewProps {
@@ -22,7 +23,7 @@ interface SessionStepperViewProps {
   liveFrame: TelemetryFrame | null;
   liveFramesBuffer: TelemetryFrame[];
   onBack: () => void;
-  onChallengePassed: (result: ChallengeResult, nextSessionId: string | null) => void;
+  onChallengePassed: (result: ChallengeResult, nextSessionId: string | null, attempt?: ChallengeAttempt) => void;
   onSaveLap: (lap: LapAnalysis) => void;
 }
 
@@ -39,28 +40,36 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 }) => {
   const [activeStage, setActiveStage] = useState<'teach' | 'practice' | 'analyze' | 'adjust' | 'challenge'>('teach');
   const [cursorDist, setCursorDist] = useState<number>(850);
+  
+  // Step 2 Practice Stint Recording State
   const [sessionLaps, setSessionLaps] = useState<LapAnalysis[]>([]);
-  const [challengeResult, setChallengeResult] = useState<ChallengeResult | null>(
-    progress.challengeResults[session.challenge.id] || null
-  );
-
-  // Manual Stint Recording State
   const [isRecording, setIsRecording] = useState(false);
   const [recordedFrames, setRecordedFrames] = useState<TelemetryFrame[]>([]);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [lastSavedStintLap, setLastSavedStintLap] = useState<LapAnalysis | null>(null);
-
-  // Ref to track live buffer snapshot when recording starts
   const recordingTimerRef = useRef<any>(null);
 
-  // Capture incoming live frames when recording is active
+  // Step 5 Dedicated Challenge Recording & Attempt State
+  const [isChallengeRecording, setIsChallengeRecording] = useState(false);
+  const [challengeRecordedFrames, setChallengeRecordedFrames] = useState<TelemetryFrame[]>([]);
+  const [challengeRecordingSeconds, setChallengeRecordingSeconds] = useState(0);
+  const challengeTimerRef = useRef<any>(null);
+
+  // Selected attempt for detailed telemetry inspection inside Step 5
+  const sessionAttempts: ChallengeAttempt[] = progress.challengeAttempts?.[session.id] || [];
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
+  const [showTelemetryDrawer, setShowTelemetryDrawer] = useState<boolean>(false);
+
+  const activeChallengeResult = progress.challengeResults[session.challenge.id] || null;
+
+  // Capture incoming live frames when Step 2 practice recording is active
   useEffect(() => {
     if (isRecording && liveFrame) {
       setRecordedFrames(prev => [...prev, liveFrame]);
     }
   }, [isRecording, liveFrame]);
 
-  // Recording timer
+  // Practice recording timer
   useEffect(() => {
     if (isRecording) {
       recordingTimerRef.current = setInterval(() => {
@@ -74,6 +83,28 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
     };
   }, [isRecording]);
 
+  // Capture incoming live frames when Step 5 challenge recording is active
+  useEffect(() => {
+    if (isChallengeRecording && liveFrame) {
+      setChallengeRecordedFrames(prev => [...prev, liveFrame]);
+    }
+  }, [isChallengeRecording, liveFrame]);
+
+  // Challenge recording timer
+  useEffect(() => {
+    if (isChallengeRecording) {
+      challengeTimerRef.current = setInterval(() => {
+        setChallengeRecordingSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (challengeTimerRef.current) clearInterval(challengeTimerRef.current);
+    }
+    return () => {
+      if (challengeTimerRef.current) clearInterval(challengeTimerRef.current);
+    };
+  }, [isChallengeRecording]);
+
+  // Practice Handlers (Step 2)
   const handleStartRecording = () => {
     setRecordedFrames(liveFrame ? [liveFrame] : []);
     setRecordingSeconds(0);
@@ -83,7 +114,6 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
   const handleStopRecording = () => {
     setIsRecording(false);
-    // Use recorded frames if available; fallback to current buffer if frames were accumulating
     const framesToAnalyze = recordedFrames.length >= 20 
       ? recordedFrames 
       : liveFramesBuffer.length >= 20 
@@ -98,7 +128,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
         moduleNumber: module.moduleNumber,
         moduleTitle: module.title,
         sessionId: session.id,
-        sessionTitle: session.title,
+        sessionTitle: `${session.title} (Practice)`,
         recordedAt: new Date().toISOString()
       };
       setSessionLaps(prev => [...prev, analyzedLap]);
@@ -107,30 +137,85 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
     }
   };
 
-  const currentLap = sessionLaps.length > 0 
-    ? sessionLaps[sessionLaps.length - 1] 
-    : lastSavedStintLap;
+  const handleResetRecording = () => {
+    setIsRecording(false);
+    setRecordedFrames([]);
+    setRecordingSeconds(0);
+    setLastSavedStintLap(null);
+  };
 
-  const closestFrame = currentLap?.frames.find(f => Math.abs(f.distance - cursorDist) < 15) || currentLap?.frames[0] || null;
+  // Step 5 Dedicated Challenge Handlers
+  const handleStartChallengeRecording = () => {
+    setChallengeRecordedFrames(liveFrame ? [liveFrame] : []);
+    setChallengeRecordingSeconds(0);
+    setIsChallengeRecording(true);
+  };
 
-  const handleEvaluateChallenge = () => {
-    const result = evaluateSessionChallenge(session.challenge, sessionLaps);
-    setChallengeResult(result);
+  const handleResetChallengeRecording = () => {
+    setIsChallengeRecording(false);
+    setChallengeRecordedFrames([]);
+    setChallengeRecordingSeconds(0);
+  };
 
-    if (result.passed) {
-      confetti({
-        particleCount: 120,
-        spread: 80,
-        origin: { y: 0.6 }
-      });
+  const handleStopChallengeRecording = () => {
+    setIsChallengeRecording(false);
+    const framesToAnalyze = challengeRecordedFrames.length >= 20 
+      ? challengeRecordedFrames 
+      : liveFramesBuffer.length >= 20 
+      ? liveFramesBuffer 
+      : [];
+
+    if (framesToAnalyze.length >= 20) {
+      const baseLap = analyzeLapTelemetry(framesToAnalyze);
+      const analyzedLap: LapAnalysis = {
+        ...baseLap,
+        source: 'academy',
+        moduleNumber: module.moduleNumber,
+        moduleTitle: module.title,
+        sessionId: session.id,
+        sessionTitle: `${session.title} (Official Challenge Attempt #${sessionAttempts.length + 1})`,
+        recordedAt: new Date().toISOString()
+      };
+
+      // Evaluate challenge strictly using this challenge stint telemetry
+      const challengeLaps = [analyzedLap];
+      const result = evaluateSessionChallenge(session.challenge, challengeLaps);
+
+      const newAttempt: ChallengeAttempt = {
+        id: `att-${session.id}-${Date.now()}`,
+        attemptNumber: sessionAttempts.length + 1,
+        timestamp: new Date().toISOString(),
+        result,
+        laps: challengeLaps
+      };
+
+      setSelectedAttemptId(newAttempt.id);
+      onSaveLap(analyzedLap);
+
+      if (result.passed) {
+        confetti({
+          particleCount: 150,
+          spread: 90,
+          origin: { y: 0.5 }
+        });
+      }
 
       // Find next session in module
       const currentIdx = module.sessions.findIndex(s => s.id === session.id);
       const nextSession = module.sessions[currentIdx + 1] || null;
 
-      onChallengePassed(result, nextSession ? nextSession.id : null);
+      onChallengePassed(result, nextSession ? nextSession.id : null, newAttempt);
     }
   };
+
+  const currentLap = sessionLaps.length > 0 
+    ? sessionLaps[sessionLaps.length - 1] 
+    : lastSavedStintLap;
+
+  // Selected attempt laps for deep inspection
+  const selectedAttempt = sessionAttempts.find(a => a.id === selectedAttemptId) || sessionAttempts[sessionAttempts.length - 1] || null;
+  const inspectedLap = selectedAttempt?.laps[0] || null;
+  const closestFrame = (inspectedLap || currentLap)?.frames.find(f => Math.abs(f.distance - cursorDist) < 15) || (inspectedLap || currentLap)?.frames[0] || null;
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -138,12 +223,23 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const hasLiveData = isUdpConnected && liveFrame !== null;
+  const getMedalBadge = (medal?: string) => {
+    if (medal === 'gold') {
+      return <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-mono font-bold">🥇 GOLD MEDAL</span>;
+    }
+    if (medal === 'silver') {
+      return <span className="px-2 py-0.5 bg-slate-400/20 text-slate-200 border border-slate-400/40 text-[11px] font-mono font-bold">🥈 SILVER MEDAL</span>;
+    }
+    if (medal === 'bronze') {
+      return <span className="px-2 py-0.5 bg-amber-800/30 text-amber-500 border border-amber-800/40 text-[11px] font-mono font-bold">🥉 BRONZE MEDAL</span>;
+    }
+    return <span className="px-2 py-0.5 bg-red-950/40 text-red-400 border border-red-900/40 text-[11px] font-mono font-bold">❌ FAILED</span>;
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#0A0A0E] overflow-hidden">
-      {/* Top Header & Breadcrumb Bar */}
-      <div className="px-6 py-4 border-b border-[#232332] bg-[#0E0E14] flex items-center justify-between shrink-0 shadow-lg">
+      {/* Top Session Breadcrumb Bar */}
+      <div className="px-6 py-3.5 border-b border-[#232332] bg-[#0E0E14] flex items-center justify-between shrink-0 shadow-lg">
         <div className="flex items-center space-x-4">
           <button
             onClick={onBack}
@@ -156,96 +252,93 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
           <div className="h-5 w-[1px] bg-[#2A2A3C]" />
 
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#E10600] to-[#880400] flex items-center justify-center font-display font-black text-white text-xs shadow-md shadow-red-950">
+            <div className="w-7 h-7 bg-[#E10600] text-white flex items-center justify-center font-display font-black text-xs shadow-md shadow-red-950/60">
               {module.moduleNumber}.{session.sessionNumber}
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-[11px] font-mono font-bold text-[#E10600] uppercase tracking-wider">
-                  Module {module.moduleNumber}: {module.title}
-                </span>
-              </div>
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#FF2E2E]">
+                Module {module.moduleNumber}: {module.title}
+              </span>
               <h1 className="text-sm font-bold text-white tracking-wide">{session.title}</h1>
             </div>
           </div>
         </div>
 
-        {/* Right Status Badges */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2 px-3 py-1 bg-[#14141E] border border-[#232332] text-xs font-mono">
-            <span className="text-[#8E8E9F]">Stint Laps:</span>
-            <strong className="text-emerald-400 font-bold">{sessionLaps.length}</strong>
-          </div>
-          {progress.completedSessionIds.includes(session.id) && (
-            <span className="flex items-center space-x-1.5 px-3 py-1 bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Session Completed</span>
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* 5-Stage Stepper Navigation Bar */}
-      <div className="px-6 py-2.5 bg-[#12121A] border-b border-[#20202E] flex items-center justify-between shrink-0">
-        <div className="flex items-center space-x-2 overflow-x-auto">
+        {/* 5-Stage Step Navigation Pills */}
+        <div className="flex items-center space-x-1.5 bg-[#12121A] p-1 border border-[#252535]">
           {[
-            { key: 'teach', label: '1. Teach (Target)', icon: BookOpen },
-            { key: 'practice', label: '2. Practice (Ingest)', icon: Play },
-            { key: 'analyze', label: '3. Analyze (Debrief)', icon: Activity },
-            { key: 'adjust', label: '4. Adjust (Plan)', icon: Zap },
-            { key: 'challenge', label: '5. Challenge (Pass/Unlock)', icon: Trophy },
+            { id: 'teach', label: '1. Teach (Target)', icon: BookOpen },
+            { id: 'practice', label: '2. Practice (Ingest)', icon: Play },
+            { id: 'analyze', label: '3. Analyze (Debrief)', icon: Activity },
+            { id: 'adjust', label: '4. Adjust (Plan)', icon: Zap },
+            { id: 'challenge', label: '5. Challenge (Pass/Unlock)', icon: Trophy }
           ].map((stage) => {
             const Icon = stage.icon;
-            const isActive = activeStage === stage.key;
+            const isActive = activeStage === stage.id;
             return (
               <button
-                key={stage.key}
-                onClick={() => setActiveStage(stage.key as any)}
-                className={`flex items-center space-x-2 px-4 py-2 text-xs font-bold transition-all ${
+                key={stage.id}
+                onClick={() => setActiveStage(stage.id as any)}
+                className={`flex items-center space-x-2 px-3 py-1.5 text-xs font-mono font-bold transition-all ${
                   isActive
-                    ? 'bg-[#E10600] text-white chamfer-tab shadow-md shadow-red-950/60 border border-red-400/40'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#1A1A28] border border-transparent'
+                    ? 'bg-[#E10600] text-white shadow-md shadow-red-950/40'
+                    : 'text-slate-400 hover:text-white hover:bg-[#1C1C28]'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
                 <span>{stage.label}</span>
               </button>
             );
           })}
         </div>
-
-        <div className="hidden lg:flex items-center space-x-2 text-xs font-mono text-[#8E8E9F]">
-          <span className="w-1.5 h-1.5 diamond-pip bg-emerald-400 animate-pulse" />
-          <span>Skip Barber 5-Stage Coaching Framework</span>
-        </div>
       </div>
 
-      {/* Main Workspace Stage Content */}
+      {/* Main Stepper Stage View */}
       <div className="flex-1 overflow-y-auto p-6 lg:p-8 bg-[#0A0A0E]">
         {/* STAGE 1: TEACH */}
         {activeStage === 'teach' && (
-          <div className="max-w-5xl mx-auto space-y-6">
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Book Reference Strip */}
+            <div className="p-4 bg-[#14141E] border-l-4 border-l-[#E10600] border border-[#232332] flex items-center justify-between shadow-lg">
+              <div className="flex items-center space-x-3">
+                <BookOpen className="w-5 h-5 text-[#E10600]" />
+                <div>
+                  <span className="text-[10px] font-mono uppercase text-[#8E8E9F] tracking-wider block">Official Curriculum Literature</span>
+                  <strong className="text-sm font-semibold text-white">{session.bookReference}</strong>
+                </div>
+              </div>
+              <span className="text-[11px] font-mono text-slate-400 bg-[#1A1A28] px-2.5 py-1 border border-[#2A2A3E]">
+                Skip Barber Racing School
+              </span>
+            </div>
+
+            {/* Theory Summary */}
             <div className="p-6 bg-[#14141E] border border-[#262638] space-y-4 shadow-xl hud-bracket">
-              <div className="flex items-center space-x-2 text-[#E10600] text-xs font-mono font-bold uppercase tracking-wider">
-                <BookOpen className="w-4 h-4" />
-                <span>Skip Barber Theoretical Foundation</span>
-              </div>
-              <h2 className="text-xl font-bold text-white">{session.subtitle}</h2>
-
-              <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
-                {session.theorySummary.map((para, pIdx) => (
-                  <p key={pIdx} className="bg-[#101018] p-4 border border-[#1E1E2C]">{para}</p>
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300 flex items-center space-x-2">
+                <Info className="w-4 h-4 text-[#E10600]" />
+                <span>Core Theory & Physical Mechanics</span>
+              </h2>
+              <ul className="space-y-2.5">
+                {session.theorySummary.map((theory, idx) => (
+                  <li key={idx} className="text-xs text-slate-300 leading-relaxed flex items-start space-x-2.5">
+                    <span className="text-[#E10600] font-bold font-mono">0{idx + 1}.</span>
+                    <span>{theory}</span>
+                  </li>
                 ))}
-              </div>
+              </ul>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                {session.keyPrinciples.map((kp, kpIdx) => (
-                  <div key={kpIdx} className="p-4 bg-[#181826] border border-[#2D2D40]">
-                    <h3 className="text-xs font-bold text-[#FF4D4D] uppercase tracking-wider font-mono">{kp.title}</h3>
-                    <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">{kp.explanation}</p>
-                  </div>
-                ))}
-              </div>
+            {/* Key Principles Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {session.keyPrinciples.map((kp, kIdx) => (
+                <div key={kIdx} className="p-5 bg-[#12121C] border border-[#232334] space-y-2 hud-bracket">
+                  <span className="text-xs font-bold text-white font-display uppercase tracking-wide flex items-center space-x-2">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{kp.title}</span>
+                  </span>
+                  <p className="text-xs text-slate-300 leading-relaxed font-sans">{kp.explanation}</p>
+                </div>
+              ))}
             </div>
 
             {/* Target Metrics */}
@@ -383,142 +476,94 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
               </div>
             )}
 
-            {/* Live Telemetry Ingest & Stint Recording Control */}
-            <div className="p-6 bg-[#14141E] border border-[#262638] space-y-6 shadow-xl hud-bracket">
+            {/* Practice Ingest HUD & Controls */}
+            <div className="p-6 bg-[#14141E] border border-[#262638] space-y-5 shadow-xl hud-bracket">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 flex items-center justify-center border ${
-                    isRecording 
-                      ? 'bg-red-950/60 border-red-500/60' 
-                      : hasLiveData 
-                      ? 'bg-emerald-950/60 border-emerald-500/40' 
-                      : 'bg-[#181824] border-[#2E2E40]'
-                  }`}>
-                    {isRecording ? (
-                      <Radio className="w-5 h-5 text-[#FF1801] animate-ping" />
-                    ) : hasLiveData ? (
-                      <Radio className="w-5 h-5 text-emerald-400 animate-pulse" />
-                    ) : (
-                      <WifiOff className="w-5 h-5 text-slate-500" />
-                    )}
+                <div>
+                  <h3 className="text-base font-bold text-white font-display uppercase tracking-wide">
+                    Live Telemetry Ingestion & Stint Recording
+                  </h3>
+                  <p className="text-xs text-[#8E8E9F]">
+                    Launch Forza Motorsport, drive the recommended setup, and click record to capture telemetry
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2.5 h-2.5 rounded-full ${isUdpConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-500'}`} />
+                  <span className="text-xs font-mono text-slate-300">
+                    {isUdpConnected ? 'UDP 5300 Telemetry Active' : 'Waiting for Telemetry Feed'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Recording Status & Action Buttons */}
+              <div className="p-4 bg-[#0E0E14] border border-[#222232] flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center space-x-4 font-mono text-xs">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-slate-400">Duration:</span>
+                    <strong className="text-white text-sm tabular-nums">{formatTime(recordingSeconds)}</strong>
                   </div>
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <h3 className="text-sm font-bold text-white uppercase tracking-wider font-racing">
-                        Practice Telemetry Ingestion & Stint Recorder
-                      </h3>
-                      <span className={`chamfer-badge text-[10px] font-mono font-bold px-2 py-0.5 border ${
-                        isRecording
-                          ? 'bg-red-950 text-red-300 border-red-500/50 animate-pulse'
-                          : hasLiveData
-                          ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
-                          : 'bg-[#181822] text-slate-400 border-[#2A2A3C]'
-                      }`}>
-                        {isRecording ? `RECORDING STINT (${formatTime(recordingSeconds)})` : hasLiveData ? '60Hz UDP Connected' : 'Waiting for Telemetry'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#8E8E9F] font-sans">
-                      {isRecording 
-                        ? `Recording telemetry frames: ${recordedFrames.length} captured`
-                        : 'Port 5300 listening. Click "Start Recording Stint" when ready to drive.'}
-                    </p>
+                  <div className="h-4 w-[1px] bg-[#222232]" />
+                  <div className="flex items-center space-x-2">
+                    <span className="text-slate-400">Frames Captured:</span>
+                    <strong className="text-[#00F0FF] text-sm tabular-nums">{recordedFrames.length}</strong>
                   </div>
                 </div>
 
-                {/* Stint Recording Action Buttons */}
-                <div>
+                <div className="flex items-center space-x-3">
                   {!isRecording ? (
                     <button
                       onClick={handleStartRecording}
-                      className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-[#E10600] to-[#B30400] hover:from-[#FF1801] hover:to-[#E10600] text-white text-xs font-racing font-bold tracking-wide shadow-xl shadow-red-950/60 border border-red-400/40 active:scale-95 cursor-pointer transition-all"
+                      disabled={!isUdpConnected}
+                      className={`chamfer-btn flex items-center space-x-2 px-5 py-2.5 text-xs font-racing font-bold tracking-wide transition-all ${
+                        isUdpConnected
+                          ? 'bg-[#E10600] hover:bg-[#FF1801] text-white shadow-lg shadow-red-950/60 active:scale-95 cursor-pointer'
+                          : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'
+                      }`}
                     >
-                      <Play className="w-4 h-4 fill-white" />
+                      <Play className="w-4 h-4 fill-current" />
                       <span>Start Recording Stint</span>
                     </button>
                   ) : (
                     <button
                       onClick={handleStopRecording}
-                      className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-[#E10600] hover:bg-[#FF1801] text-white text-xs font-racing font-bold tracking-wide shadow-xl shadow-red-950/60 border border-red-400/50 active:scale-95 cursor-pointer transition-all"
+                      className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-racing font-bold tracking-wide shadow-lg shadow-amber-950/60 active:scale-95 cursor-pointer"
                     >
-                      <Square className="w-4 h-4 fill-white" />
-                      <span>Stop Recording Stint ({recordedFrames.length} frames)</span>
+                      <Square className="w-4 h-4 fill-current" />
+                      <span>Stop & Analyze Stint</span>
                     </button>
                   )}
+
+                  <button
+                    onClick={handleResetRecording}
+                    disabled={isRecording || recordedFrames.length === 0}
+                    className="px-3.5 py-2.5 bg-[#181824] hover:bg-[#222232] text-slate-400 hover:text-white border border-[#28283C] text-xs font-mono transition-all disabled:opacity-40 cursor-pointer"
+                  >
+                    Reset
+                  </button>
                 </div>
               </div>
 
-              {/* Live Gauges Strip */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 bg-[#0F0F17] border border-[#222232] flex flex-col items-center justify-center hud-bracket">
-                  <span className="text-[10px] font-tech font-bold text-[#8E8E9F] uppercase tracking-widest">Speed</span>
-                  <div className="flex items-baseline space-x-1 my-1">
-                    <span className="text-3xl font-hud font-black text-[#00F0FF] tabular-nums">
-                      {liveFrame ? liveFrame.speedKph.toFixed(0) : '0'}
-                    </span>
-                    <span className="text-xs font-tech text-slate-400">km/h</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-slate-500 tabular-nums">
-                    {liveFrame ? `${liveFrame.speedMph.toFixed(0)} mph` : '0 mph'}
-                  </span>
-                </div>
-
-                <div className="p-4 bg-[#0F0F17] border border-[#222232] flex flex-col items-center justify-center hud-bracket">
-                  <span className="text-[10px] font-tech font-bold text-[#8E8E9F] uppercase tracking-widest">Gear & RPM</span>
-                  <div className="flex items-baseline space-x-1.5 my-1">
-                    <span className="text-3xl font-hud font-black text-amber-400 tabular-nums">
-                      {liveFrame ? (liveFrame.gear === 0 ? 'R' : liveFrame.gear === 11 ? 'N' : liveFrame.gear) : 'N'}
-                    </span>
-                    <span className="text-xs font-mono text-slate-300 tabular-nums">
-                      {liveFrame ? `${Math.round(liveFrame.rpm)}` : '0'}
-                    </span>
-                  </div>
-                  <div className="w-full bg-[#1F1F2E] h-1.5 border border-[#28283C] overflow-hidden mt-1">
-                    <div
-                      className="bg-gradient-to-r from-emerald-400 via-amber-400 to-[#E10600] h-full"
-                      style={{ width: `${Math.min(100, ((liveFrame?.rpm || 0) / 8000) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="p-4 bg-[#0F0F17] border border-[#222232] flex flex-col items-center justify-center hud-bracket">
-                  <span className="text-[10px] font-tech font-bold text-[#8E8E9F] uppercase tracking-widest">Traction Usage</span>
-                  <span className="text-3xl font-hud font-black text-emerald-400 my-1 tabular-nums">
-                    {liveFrame ? `${liveFrame.tractionBudgetPct.toFixed(0)}%` : '0%'}
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-500">Peak Budget</span>
-                </div>
-
-                <div className="p-4 bg-[#0F0F17] border border-[#222232] flex flex-col items-center justify-center hud-bracket">
-                  <span className="text-[10px] font-tech font-bold text-[#8E8E9F] uppercase tracking-widest">Lateral G</span>
-                  <span className="text-3xl font-hud font-black text-purple-400 my-1 tabular-nums">
-                    {liveFrame ? `${Math.abs(liveFrame.latG).toFixed(2)}G` : '0.00G'}
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-500">Cornering Load</span>
-                </div>
-              </div>
-
-              {/* Stint Recorded Success Banner */}
+              {/* Last Saved Stint Result */}
               {lastSavedStintLap && (
-                <div className="p-5 bg-gradient-to-r from-emerald-950/40 via-[#121820] to-[#12121C] border border-emerald-500/50 shadow-xl space-y-3 hud-bracket">
+                <div className="p-4 bg-[#101018] border border-emerald-900/40 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2.5 text-emerald-400">
-                      <CheckCircle2 className="w-5 h-5" />
-                      <h4 className="text-sm font-bold uppercase tracking-wider font-racing">
-                        Stint Telemetry Successfully Captured & Saved
-                      </h4>
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <span className="text-xs font-bold text-white">Stint Telemetry Successfully Ingested & Evaluated</span>
                     </div>
-                    <span className="text-xs font-mono font-bold text-emerald-300 bg-emerald-950 px-2.5 py-1 border border-emerald-500/40">
-                      Lap Grade: {lastSavedStintLap.overallScore}%
+                    <span className="text-xs font-mono font-bold text-emerald-400">
+                      Grade: {lastSavedStintLap.overallScore}%
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono pt-1">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
                     <div className="bg-[#0C0C12] p-2.5 border border-[#202030]">
                       <span className="text-slate-400 block text-[10px]">Lap Time:</span>
                       <strong className="text-white text-sm">{lastSavedStintLap.lapTimeSec.toFixed(2)}s</strong>
                     </div>
                     <div className="bg-[#0C0C12] p-2.5 border border-[#202030]">
-                      <span className="text-slate-400 block text-[10px]">Max Velocity:</span>
+                      <span className="text-slate-400 block text-[10px]">Top Speed:</span>
                       <strong className="text-[#00F0FF] text-sm">{lastSavedStintLap.maxSpeedKph} km/h</strong>
                     </div>
                     <div className="bg-[#0C0C12] p-2.5 border border-[#202030]">
@@ -652,18 +697,28 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
           </div>
         )}
 
-        {/* STAGE 5: CHALLENGE */}
+        {/* STAGE 5: CHALLENGE (DEDICATED TELEMETRY RECORDER & MULTI-ATTEMPT TRACKER) */}
         {activeStage === 'challenge' && (
-          <div className="max-w-3xl mx-auto space-y-6">
-            <div className="p-8 bg-gradient-to-br from-[#1A1520] via-[#12121A] to-[#0E0E14] border border-amber-500/40 shadow-2xl space-y-5 hud-bracket">
-              <div className="flex items-center space-x-2 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider">
-                <Trophy className="w-5 h-5" />
-                <span>Session Challenge Gate</span>
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Main Challenge Briefing Banner */}
+            <div className="p-6 sm:p-8 bg-gradient-to-br from-[#1A1520] via-[#12121A] to-[#0E0E14] border border-amber-500/40 shadow-2xl space-y-5 hud-bracket">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider">
+                  <Trophy className="w-5 h-5" />
+                  <span>Session Official Challenge Gate</span>
+                </div>
+                {activeChallengeResult && activeChallengeResult.passed && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-mono text-slate-400">Current Session Record:</span>
+                    {getMedalBadge(activeChallengeResult.medal)}
+                  </div>
+                )}
               </div>
 
               <h3 className="text-2xl font-display font-bold text-white">{session.challenge.name}</h3>
               <p className="text-xs text-slate-300 leading-relaxed font-sans">{session.challenge.description}</p>
 
+              {/* Baseline & Medal Targets Matrix */}
               <div className="p-4 bg-[#14141E] border border-[#242436] flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono">
                 <div>
                   <span className="text-xs text-slate-400 block">Baseline Target</span>
@@ -674,13 +729,13 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                 {session.challenge.medals && (
                   <div className="flex items-center space-x-2 text-[11px]">
                     <span className="px-2 py-0.5 bg-amber-800/30 text-amber-500 border border-amber-800/40">
-                      🥉 {session.challenge.operator === 'gte' ? '≥' : '≤'} {session.challenge.medals.bronze}
+                      🥉 Bronze: {session.challenge.operator === 'gte' ? '≥' : '≤'} {session.challenge.medals.bronze}
                     </span>
                     <span className="px-2 py-0.5 bg-slate-400/20 text-slate-200 border border-slate-400/40 font-bold">
-                      🥈 {session.challenge.operator === 'gte' ? '≥' : '≤'} {session.challenge.medals.silver}
+                      🥈 Silver: {session.challenge.operator === 'gte' ? '≥' : '≤'} {session.challenge.medals.silver}
                     </span>
                     <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
-                      🥇 {session.challenge.operator === 'gte' ? '≥' : '≤'} {session.challenge.medals.gold}
+                      🥇 Gold: {session.challenge.operator === 'gte' ? '≥' : '≤'} {session.challenge.medals.gold}
                     </span>
                   </div>
                 )}
@@ -690,40 +745,204 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                 </div>
               </div>
 
-              {/* Challenge Result Status */}
-              {challengeResult && (
-                <div className={`p-4 border ${
-                  challengeResult.passed
+              {/* DEDICATED CHALLENGE TELEMETRY RECORDER */}
+              <div className="p-5 bg-[#0C0C12] border border-[#26263A] space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2.5 h-2.5 rounded-full ${isChallengeRecording ? 'bg-red-500 animate-ping' : isUdpConnected ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-200">
+                      {isChallengeRecording ? 'Recording Challenge Stint...' : 'Challenge Telemetry Recorder'}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    Attempts Recorded: <strong className="text-white">{sessionAttempts.length}</strong>
+                  </span>
+                </div>
+
+                <div className="p-4 bg-[#14141E] border border-[#20202E] flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center space-x-4 font-mono text-xs">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-slate-400">Stint Timer:</span>
+                      <strong className={`text-sm tabular-nums ${isChallengeRecording ? 'text-amber-400' : 'text-white'}`}>
+                        {formatTime(challengeRecordingSeconds)}
+                      </strong>
+                    </div>
+                    <div className="h-4 w-[1px] bg-[#222232]" />
+                    <div className="flex items-center space-x-2">
+                      <span className="text-slate-400">Frames Captured:</span>
+                      <strong className="text-[#00F0FF] text-sm tabular-nums">{challengeRecordedFrames.length}</strong>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    {!isChallengeRecording ? (
+                      <button
+                        onClick={handleStartChallengeRecording}
+                        disabled={!isUdpConnected}
+                        className={`chamfer-btn flex items-center space-x-2 px-5 py-2.5 text-xs font-racing font-bold tracking-wide transition-all ${
+                          isUdpConnected
+                            ? 'bg-gradient-to-r from-amber-500 to-[#E10600] hover:from-amber-400 hover:to-[#FF1801] text-white shadow-xl shadow-red-950/60 active:scale-95 cursor-pointer'
+                            : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'
+                        }`}
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                        <span>Start Official Challenge Attempt #{sessionAttempts.length + 1}</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleStopChallengeRecording}
+                        className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-black text-xs font-racing font-bold tracking-wide shadow-lg shadow-amber-950/60 active:scale-95 cursor-pointer animate-pulse"
+                      >
+                        <Square className="w-4 h-4 fill-current" />
+                        <span>Stop & Evaluate Challenge Stint</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={handleResetChallengeRecording}
+                      disabled={isChallengeRecording || challengeRecordedFrames.length === 0}
+                      className="px-3.5 py-2.5 bg-[#181824] hover:bg-[#222232] text-slate-400 hover:text-white border border-[#28283C] text-xs font-mono transition-all disabled:opacity-40 cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* LATEST ATTEMPT RESULT BANNER */}
+              {selectedAttempt && (
+                <div className={`p-5 border ${
+                  selectedAttempt.result.passed
                     ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-300'
                     : 'bg-red-950/40 border-red-500/50 text-red-300'
                 }`}>
-                  <div className="flex items-center space-x-2 font-bold text-sm font-racing">
-                    {challengeResult.passed ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-                    <span>{challengeResult.passed ? 'CHALLENGE PASSED!' : 'CHALLENGE ATTEMPT FAILED'}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center space-x-3">
+                      {selectedAttempt.result.passed ? <CheckCircle2 className="w-6 h-6 text-emerald-400" /> : <AlertCircle className="w-6 h-6 text-red-400" />}
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <h4 className="text-sm font-bold text-white font-racing">
+                            Attempt #{selectedAttempt.attemptNumber}: {selectedAttempt.result.passed ? 'PASSED' : 'NOT MET'}
+                          </h4>
+                          {getMedalBadge(selectedAttempt.result.medal)}
+                        </div>
+                        <p className="text-xs text-slate-200 font-sans mt-0.5">{selectedAttempt.result.notes}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setShowTelemetryDrawer(!showTelemetryDrawer)}
+                      className="chamfer-btn flex items-center space-x-1.5 px-3 py-1.5 bg-[#161622] hover:bg-[#1E1E2E] text-slate-200 text-xs font-mono border border-[#2D2D42] cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-[#00F0FF]" />
+                      <span>{showTelemetryDrawer ? 'Hide Attempt Telemetry' : 'Inspect Attempt Telemetry'}</span>
+                      {showTelemetryDrawer ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </button>
                   </div>
-                  <p className="text-xs mt-1 text-slate-200 font-sans">{challengeResult.notes}</p>
                 </div>
               )}
-
-              <div className="pt-2 flex justify-between items-center">
-                <span className="text-xs font-mono text-slate-400">
-                  Recorded Laps in Stint: <strong className="text-white">{sessionLaps.length}</strong>
-                </span>
-
-                <button
-                  onClick={handleEvaluateChallenge}
-                  disabled={sessionLaps.length === 0}
-                  className={`chamfer-btn flex items-center space-x-2 px-6 py-3 text-xs font-racing font-bold tracking-wide transition-all ${
-                    sessionLaps.length > 0
-                      ? 'bg-gradient-to-r from-amber-500 to-[#E10600] hover:from-amber-400 hover:to-[#FF1801] text-white shadow-xl shadow-red-950/60 active:scale-95 cursor-pointer'
-                      : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'
-                  }`}
-                >
-                  <Trophy className="w-4 h-4" />
-                  <span>Evaluate Challenge from Stint Telemetry</span>
-                </button>
-              </div>
             </div>
+
+            {/* EXPANDABLE TELEMETRY DRAWER FOR ATTEMPT */}
+            {showTelemetryDrawer && inspectedLap && (
+              <div className="p-6 bg-[#14141E] border border-[#28283C] space-y-6 shadow-2xl hud-bracket animate-fadeIn">
+                <div className="flex items-center justify-between border-b border-[#222232] pb-3">
+                  <div className="flex items-center space-x-2">
+                    <Activity className="w-4 h-4 text-[#00F0FF]" />
+                    <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-white">
+                      Telemetric Diagnostics — Attempt #{selectedAttempt?.attemptNumber}
+                    </h4>
+                  </div>
+                  <span className="text-xs font-mono text-slate-400">
+                    Lap Time: <strong className="text-white">{inspectedLap.lapTimeSec.toFixed(2)}s</strong> • Overall Score: <strong className="text-amber-400">{inspectedLap.overallScore}%</strong>
+                  </span>
+                </div>
+
+                <TelemetryTraces
+                  frames={inspectedLap.frames}
+                  cursorDistance={cursorDist}
+                  onCursorChange={setCursorDist}
+                  height={240}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FrictionCirclePlot frames={inspectedLap.frames} currentFrame={closestFrame} />
+                  <TrackMapViewer frames={inspectedLap.frames} currentDistance={cursorDist} />
+                </div>
+
+                <DiagnosticScorecard corners={inspectedLap.corners} onFocusCorner={setCursorDist} />
+              </div>
+            )}
+
+            {/* ATTEMPTS HISTORY LOG TABLE */}
+            {sessionAttempts.length > 0 && (
+              <div className="p-6 bg-[#14141E] border border-[#262638] space-y-4 shadow-xl hud-bracket">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-white text-xs font-mono font-bold uppercase tracking-wider">
+                    <History className="w-4 h-4 text-amber-400" />
+                    <span>Challenge Attempts History Log ({sessionAttempts.length} Total)</span>
+                  </div>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    Highest Medal Retained
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead>
+                      <tr className="border-b border-[#232334] text-slate-400 uppercase text-[10px] bg-[#0E0E14]">
+                        <th className="p-3">Attempt</th>
+                        <th className="p-3">Recorded Time</th>
+                        <th className="p-3">Score</th>
+                        <th className="p-3">Achieved Value</th>
+                        <th className="p-3">Medal Result</th>
+                        <th className="p-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1C1C28]">
+                      {sessionAttempts.map((att) => {
+                        const isSelected = att.id === selectedAttemptId;
+                        return (
+                          <tr
+                            key={att.id}
+                            className={`transition-colors ${
+                              isSelected ? 'bg-[#1C1C2C]' : 'hover:bg-[#12121A]'
+                            }`}
+                          >
+                            <td className="p-3 font-bold text-white">
+                              Attempt #{att.attemptNumber}
+                            </td>
+                            <td className="p-3 text-slate-400">
+                              {new Date(att.timestamp).toLocaleTimeString()}
+                            </td>
+                            <td className="p-3 font-bold text-amber-300">
+                              {att.result.score}%
+                            </td>
+                            <td className="p-3 text-slate-200">
+                              {att.result.achievedValue} {session.challenge.unit}
+                            </td>
+                            <td className="p-3">
+                              {getMedalBadge(att.result.medal)}
+                            </td>
+                            <td className="p-3 text-right">
+                              <button
+                                onClick={() => {
+                                  setSelectedAttemptId(att.id);
+                                  setShowTelemetryDrawer(true);
+                                }}
+                                className="px-2.5 py-1 bg-[#181824] hover:bg-[#252538] text-slate-300 hover:text-white border border-[#2E2E42] text-[11px] font-mono transition-all cursor-pointer"
+                              >
+                                Inspect Telemetry
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

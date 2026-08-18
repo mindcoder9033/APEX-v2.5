@@ -499,13 +499,18 @@ export function App() {
     setCurrentStint(acadStint);
   };
 
-  const handleChallengePassed = (result: ChallengeResult, nextSessionId: string | null) => {
+  const handleChallengePassed = (
+    result: ChallengeResult,
+    nextSessionId: string | null,
+    attempt?: import('./types/curriculum').ChallengeAttempt
+  ) => {
     if (!activeSessionSelection) return;
     const updated = recordChallengeCompletion(
       progress,
       activeSessionSelection.session.id,
       nextSessionId,
-      result
+      result,
+      attempt
     );
     setProgress(updated);
   };
