@@ -443,13 +443,13 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
 
                 <div className="flex items-center space-x-3">
                   {/* Mode Switcher: AI Coach vs Telemetry Traces vs Split View */}
-                  <div className="flex items-center bg-[#14141E] p-1 border border-[#262638] rounded-lg">
+                  <div className="flex items-center bg-[#14141E] p-1 border border-[#262638]">
                     <button
                       onClick={() => setWorkspaceMode('coach')}
-                      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                      className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-tech font-bold uppercase tracking-wider transition-all cursor-pointer ${
                         workspaceMode === 'coach'
-                          ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-950/40'
-                          : 'text-slate-400 hover:text-slate-200'
+                          ? 'bg-[#00F0FF] text-black shadow-md shadow-cyan-950/40 font-black'
+                          : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       <Bot className="w-3.5 h-3.5" />
@@ -457,10 +457,10 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                     </button>
                     <button
                       onClick={() => setWorkspaceMode('telemetry')}
-                      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                      className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-tech font-bold uppercase tracking-wider transition-all cursor-pointer ${
                         workspaceMode === 'telemetry'
-                          ? 'bg-[#E10600] text-white shadow-md shadow-red-950/40'
-                          : 'text-slate-400 hover:text-slate-200'
+                          ? 'bg-[#E10600] text-white shadow-md shadow-red-950/40 font-black'
+                          : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       <LineChart className="w-3.5 h-3.5" />
@@ -468,10 +468,10 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                     </button>
                     <button
                       onClick={() => setWorkspaceMode('both')}
-                      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                      className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-tech font-bold uppercase tracking-wider transition-all cursor-pointer ${
                         workspaceMode === 'both'
-                          ? 'bg-slate-700 text-white shadow-md'
-                          : 'text-slate-400 hover:text-slate-200'
+                          ? 'bg-[#222234] text-white border border-[#3A3A52] font-black'
+                          : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       <Layers className="w-3.5 h-3.5" />

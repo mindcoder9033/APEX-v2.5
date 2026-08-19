@@ -11,18 +11,17 @@ import {
   AlertTriangle, 
   BookOpen, 
   TrendingUp, 
-  Award, 
   ChevronRight, 
   ChevronDown, 
-  Gauge, 
   Compass, 
   Layers, 
   Target, 
   Zap, 
-  Info,
   Flame,
   Activity,
-  Car
+  Car,
+  ShieldAlert,
+  Award
 } from 'lucide-react';
 
 interface AICoachPanelProps {
@@ -71,49 +70,45 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 font-sans text-[#F3F4F6]">
       {/* ========================================================================= */}
-      {/* 1. EXECUTIVE COACH HEADER & PROFILE BANNER */}
+      {/* 1. EXECUTIVE COACH HEADER & PROFILE BANNER (APEX HUD BRACKET STYLE) */}
       {/* ========================================================================= */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/90 to-indigo-950/50 border border-slate-800/80 p-6 shadow-2xl backdrop-blur-xl">
-        {/* Glow accents */}
-        <div className="absolute -top-24 -right-24 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+      <div className="bg-[#0E0E16] border border-[#232332] p-5 shadow-xl hud-bracket">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
           {/* Left: Overall Stint Grade & Persona */}
-          <div className="flex items-center gap-5">
-            <div className="relative flex-shrink-0 flex flex-col items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-950 border border-slate-700/60 shadow-inner">
-              <span className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-cyan-400 via-teal-300 to-emerald-400">
+          <div className="flex items-center gap-4">
+            {/* Sharp Score Box */}
+            <div className="relative flex-shrink-0 flex flex-col items-center justify-center w-24 h-24 bg-[#14141E] border border-[#2A2A3E]">
+              <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-[#00F0FF]" />
+              <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-[#00F0FF]" />
+              <span className="text-3xl font-racing font-bold text-[#00F0FF] tracking-tight">
                 {stintGrade}
               </span>
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mt-0.5">
+              <span className="text-[10px] font-tech font-bold uppercase tracking-widest text-[#8E8E9F] mt-0.5">
                 {overallScore}/100 Score
               </span>
-              <div className="absolute -bottom-1 -right-1 p-1 bg-cyan-500 rounded-full text-slate-950 shadow-md">
-                <Sparkles className="w-3.5 h-3.5" />
-              </div>
             </div>
 
             <div>
-              <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                  <Flame className="w-3 h-3 text-cyan-400" />
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-tech font-bold uppercase tracking-wider bg-[#00F0FF]/10 text-[#00F0FF] border border-[#00F0FF]/30">
+                  <span className="w-1.5 h-1.5 diamond-pip bg-[#00F0FF]" />
                   Skip Barber AI Coach
                 </span>
-                <span className="text-xs text-slate-400 font-medium">
-                  {currentStint?.trackName || activeLap?.detectedTrackName || 'Track Analysis'} • {currentStint?.carName || activeLap?.detectedCarName || 'Telemetry Run'}
+                <span className="text-xs text-[#8E8E9F] font-tech font-semibold">
+                  {currentStint?.trackName || activeLap?.detectedTrackName || 'Track Telemetry'} • {currentStint?.carName || activeLap?.detectedCarName || 'Vehicle Profile'}
                 </span>
                 {currentStint && currentStint.totalLaps > 1 && (
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                  <span className="px-2 py-0.5 text-[11px] font-mono font-bold bg-[#181826] text-slate-300 border border-[#262638]">
                     {currentStint.totalLaps} Laps Analyzed
                   </span>
                 )}
               </div>
-              <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+              <h2 className="text-lg font-racing font-bold text-white flex items-center gap-2">
                 {driverProfileTag}
               </h2>
-              <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
+              <p className="text-xs text-[#8E8E9F] mt-1 max-w-2xl leading-relaxed">
                 {driverProfileDescription}
               </p>
             </div>
@@ -121,25 +116,25 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
 
           {/* Right: Quick Stint Consistency Summary */}
           {stintConsistencySummary && (
-            <div className="flex items-center gap-3 bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 backdrop-blur-md">
-              <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <div className="flex items-center gap-3 bg-[#14141E] border border-[#232332] p-3.5 hud-bracket-cyan">
+              <div className="p-2.5 bg-[#1C1C2C] text-[#00F0FF] border border-[#2A2A3E]">
                 <TrendingUp className="w-5 h-5" />
               </div>
               <div className="text-left">
-                <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                <div className="text-[10px] font-tech font-bold text-[#8E8E9F] uppercase tracking-wider">
                   Lap Delta Variance
                 </div>
-                <div className="text-base font-bold text-slate-100 flex items-center gap-1.5">
+                <div className="text-base font-mono font-bold text-white flex items-center gap-2">
                   ±{stintConsistencySummary.lapDeltaStdDevSec}s
-                  <span className={`text-[11px] font-medium px-1.5 py-0.2 rounded ${
-                    stintConsistencySummary.paceTrend === 'improving' ? 'bg-emerald-500/20 text-emerald-300' :
-                    stintConsistencySummary.paceTrend === 'fading' ? 'bg-amber-500/20 text-amber-300' :
-                    'bg-slate-700 text-slate-300'
+                  <span className={`text-[10px] font-tech font-bold px-1.5 py-0.5 uppercase border ${
+                    stintConsistencySummary.paceTrend === 'improving' ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40' :
+                    stintConsistencySummary.paceTrend === 'fading' ? 'bg-amber-950 text-amber-300 border-amber-500/40' :
+                    'bg-[#1C1C2C] text-slate-300 border-[#2A2A3E]'
                   }`}>
-                    {stintConsistencySummary.paceTrend.toUpperCase()}
+                    {stintConsistencySummary.paceTrend}
                   </span>
                 </div>
-                <div className="text-[10px] text-slate-400">
+                <div className="text-[10px] font-mono text-[#8E8E9F]">
                   Marker variance: ±{stintConsistencySummary.brakingMarkerVarianceMeters}m
                 </div>
               </div>
@@ -147,40 +142,40 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
           )}
         </div>
 
-        {/* 5-Pillar Horizontal Meters */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        {/* 5-Pillar Score Meters (APEX HUD Strips) */}
+        <div className="mt-5 pt-4 border-t border-[#1C1C2A] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {pillarScores.map((p) => {
             const isTop = p.score >= 88;
             const isLow = p.score < 75;
             return (
               <div 
                 key={p.id} 
-                className="bg-slate-950/40 border border-slate-800/60 rounded-xl p-3 flex flex-col justify-between hover:border-slate-700 transition-colors"
+                className="bg-[#12121A] border border-[#20202E] p-3 flex flex-col justify-between hover:border-[#2C2C3E] transition-colors"
               >
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="font-semibold text-slate-300 truncate" title={p.name}>
+                  <span className="font-tech font-bold uppercase tracking-wider text-slate-300 truncate" title={p.name}>
                     {p.name.split('&')[0].trim()}
                   </span>
-                  <span className={`font-bold px-1.5 py-0.2 rounded text-[11px] ${
-                    isTop ? 'bg-emerald-500/20 text-emerald-300' :
-                    isLow ? 'bg-amber-500/20 text-amber-300' :
-                    'bg-cyan-500/20 text-cyan-300'
+                  <span className={`font-mono font-bold px-1.5 py-0.2 text-[11px] border ${
+                    isTop ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40' :
+                    isLow ? 'bg-amber-950 text-amber-300 border-amber-500/40' :
+                    'bg-cyan-950 text-cyan-300 border-cyan-500/40'
                   }`}>
                     {p.grade} ({p.score})
                   </span>
                 </div>
-                {/* Progress bar */}
-                <div className="w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden my-1">
+                {/* Progress bar with sharp 0px corners */}
+                <div className="w-full bg-[#1A1A26] h-1.5 overflow-hidden my-1">
                   <div 
-                    className={`h-full rounded-full transition-all duration-700 ${
-                      isTop ? 'bg-gradient-to-r from-emerald-500 to-teal-400' :
-                      isLow ? 'bg-gradient-to-r from-amber-500 to-rose-400' :
-                      'bg-gradient-to-r from-cyan-500 to-blue-400'
+                    className={`h-full transition-all duration-500 ${
+                      isTop ? 'bg-[#00FF66]' :
+                      isLow ? 'bg-amber-400' :
+                      'bg-[#00F0FF]'
                     }`}
                     style={{ width: `${p.score}%` }}
                   />
                 </div>
-                <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                <div className="text-[10px] text-[#8E8E9F] font-mono mt-0.5">
                   {p.bookChapter}
                 </div>
               </div>
@@ -190,15 +185,15 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. NAVIGATION TABS */}
+      {/* 2. NAVIGATION TABS (CHAMFERED TACTICAL TABS) */}
       {/* ========================================================================= */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-        <div className="flex items-center gap-2 overflow-x-auto">
+      <div className="flex items-center justify-between border-b border-[#232332] pb-1">
+        <div className="flex items-center space-x-1.5 overflow-x-auto">
           {[
             { id: 'overview', label: 'Full Debrief', count: null, icon: Layers },
             { id: 'strengths', label: 'What Went Right', count: whatWentRight.length, icon: CheckCircle2, color: 'text-emerald-400' },
             { id: 'weaknesses', label: 'Where You Left Time', count: whatWentWrong.length, icon: AlertTriangle, color: 'text-amber-400' },
-            { id: 'drills', label: 'Skip Barber Drills', count: howToImprove.length, icon: Target, color: 'text-cyan-400' },
+            { id: 'drills', label: 'Skip Barber Drills', count: howToImprove.length, icon: Target, color: 'text-[#00F0FF]' },
             { id: 'corners', label: 'Corner Matrix', count: cornerAnalyses.length, icon: Compass }
           ].map((tab) => {
             const Icon = tab.icon;
@@ -207,17 +202,17 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                className={`flex items-center space-x-2 px-3.5 py-1.5 text-xs font-tech font-bold uppercase tracking-wider transition-all cursor-pointer ${
                   isActive 
-                    ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-md' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                    ? 'bg-[#E10600] text-white shadow-md shadow-red-950/60' 
+                    : 'bg-[#14141E] text-slate-400 hover:text-white border border-[#222232]'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${tab.color || 'text-slate-400'}`} />
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : tab.color || 'text-slate-400'}`} />
                 <span>{tab.label}</span>
                 {tab.count !== null && (
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                    isActive ? 'bg-slate-700 text-slate-200' : 'bg-slate-800/80 text-slate-400'
+                  <span className={`px-1.5 py-0.2 text-[10px] font-mono font-bold ${
+                    isActive ? 'bg-black/30 text-white' : 'bg-[#1A1A28] text-slate-400'
                   }`}>
                     {tab.count}
                   </span>
@@ -229,50 +224,50 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. TAB PANELS CONTENT */}
+      {/* 3. TAB PANELS CONTENT (SHARP RECTANGULAR CARDS) */}
       {/* ========================================================================= */}
 
-      {/* OVERVIEW / EXECUTIVE SUMMARY TAB */}
+      {/* OVERVIEW / STRENGTHS TAB */}
       {(activeTab === 'overview' || activeTab === 'strengths') && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
-            <CheckCircle2 className="w-4 h-4" />
-            What You Did Right (Key Strengths)
+        <div className="space-y-3">
+          <div className="flex items-center space-x-2 text-xs font-racing font-bold uppercase tracking-wider text-emerald-400">
+            <span className="w-2 h-2 diamond-pip bg-emerald-400" />
+            <span>What You Did Right (Key Strengths)</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {whatWentRight.map((item) => (
               <div 
                 key={item.id}
-                className="bg-slate-900/80 border border-emerald-500/20 hover:border-emerald-500/40 rounded-xl p-4 transition-all shadow-sm flex flex-col justify-between"
+                className="bg-[#12121A] border-l-2 border-l-emerald-500 border border-[#222230] p-4 flex flex-col justify-between shadow-md"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                    <span className="text-[10px] font-tech font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-500/40">
                       Strength
                     </span>
                     {item.cornerName && (
-                      <span className="text-xs font-semibold text-slate-400">
+                      <span className="text-xs font-tech font-bold text-slate-400">
                         {item.cornerName}
                       </span>
                     )}
                   </div>
-                  <h4 className="text-sm font-bold text-slate-100 mb-1.5">
+                  <h4 className="text-sm font-racing font-bold text-white mb-1.5">
                     {item.title}
                   </h4>
-                  <p className="text-xs text-slate-300 leading-relaxed">
+                  <p className="text-xs text-slate-300 leading-relaxed font-sans">
                     {item.description}
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-1.5">
+                <div className="mt-4 pt-3 border-t border-[#1F1F2C] space-y-1">
                   {item.metricEvidence && (
-                    <div className="text-[11px] text-emerald-400/90 font-mono font-medium flex items-center gap-1.5">
+                    <div className="text-[11px] text-emerald-400 font-mono font-medium flex items-center gap-1.5">
                       <Zap className="w-3 h-3 text-emerald-400" />
                       {item.metricEvidence}
                     </div>
                   )}
-                  <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                    <BookOpen className="w-3 h-3 text-slate-400" />
+                  <div className="text-[10px] text-[#8E8E9F] flex items-center gap-1.5 font-sans">
+                    <BookOpen className="w-3 h-3 text-[#8E8E9F]" />
                     {item.bookCitation}
                   </div>
                 </div>
@@ -284,45 +279,45 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
 
       {/* WEAKNESSES / TIME LOSS TAB */}
       {(activeTab === 'overview' || activeTab === 'weaknesses') && (
-        <div className="space-y-4 pt-2">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400">
-            <AlertTriangle className="w-4 h-4" />
-            Where You Left Time (Critical Mistakes & Time Loss)
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center space-x-2 text-xs font-racing font-bold uppercase tracking-wider text-amber-400">
+            <span className="w-2 h-2 diamond-pip bg-amber-400" />
+            <span>Where You Left Time (Critical Mistakes & Time Loss)</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {whatWentWrong.map((item) => (
               <div 
                 key={item.id}
-                className="bg-slate-900/80 border border-amber-500/20 hover:border-amber-500/40 rounded-xl p-4 transition-all shadow-sm flex flex-col justify-between"
+                className="bg-[#12121A] border-l-2 border-l-amber-500 border border-[#222230] p-4 flex flex-col justify-between shadow-md"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                    <span className="text-[10px] font-tech font-bold uppercase tracking-wider px-2 py-0.5 bg-amber-950 text-amber-300 border border-amber-500/40">
                       Time Loss
                     </span>
                     {item.cornerName && (
-                      <span className="text-xs font-semibold text-slate-400">
+                      <span className="text-xs font-tech font-bold text-slate-400">
                         {item.cornerName}
                       </span>
                     )}
                   </div>
-                  <h4 className="text-sm font-bold text-slate-100 mb-1.5">
+                  <h4 className="text-sm font-racing font-bold text-white mb-1.5">
                     {item.title}
                   </h4>
-                  <p className="text-xs text-slate-300 leading-relaxed">
+                  <p className="text-xs text-slate-300 leading-relaxed font-sans">
                     {item.description}
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-1.5">
+                <div className="mt-4 pt-3 border-t border-[#1F1F2C] space-y-1">
                   {item.metricEvidence && (
-                    <div className="text-[11px] text-amber-400/90 font-mono font-medium flex items-center gap-1.5">
+                    <div className="text-[11px] text-amber-400 font-mono font-medium flex items-center gap-1.5">
                       <Activity className="w-3 h-3 text-amber-400" />
                       {item.metricEvidence}
                     </div>
                   )}
-                  <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                    <BookOpen className="w-3 h-3 text-slate-400" />
+                  <div className="text-[10px] text-[#8E8E9F] flex items-center gap-1.5 font-sans">
+                    <BookOpen className="w-3 h-3 text-[#8E8E9F]" />
                     {item.bookCitation}
                   </div>
                 </div>
@@ -334,38 +329,38 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
 
       {/* DRILLS / HOW TO IMPROVE TAB */}
       {(activeTab === 'overview' || activeTab === 'drills') && (
-        <div className="space-y-4 pt-2">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400">
-            <Target className="w-4 h-4" />
-            How To Improve Next Stint (Prescribed Skip Barber Drills)
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center space-x-2 text-xs font-racing font-bold uppercase tracking-wider text-[#00F0FF]">
+            <span className="w-2 h-2 diamond-pip bg-[#00F0FF]" />
+            <span>How To Improve Next Stint (Prescribed Skip Barber Drills)</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {howToImprove.map((item, idx) => (
               <div 
                 key={item.id}
-                className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-950 border border-cyan-500/20 hover:border-cyan-500/40 rounded-xl p-5 shadow-lg flex flex-col justify-between"
+                className="relative bg-[#12121A] border-l-2 border-l-[#00F0FF] border border-[#222230] p-4 flex flex-col justify-between shadow-md"
               >
-                <div className="absolute top-2 right-3 text-5xl font-black text-slate-800/40 pointer-events-none">
+                <div className="absolute top-2 right-3 text-4xl font-racing font-black text-[#1E1E2C] select-none pointer-events-none">
                   #{idx + 1}
                 </div>
 
                 <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-tech font-bold uppercase tracking-wider px-2 py-0.5 bg-cyan-950 text-cyan-300 border border-cyan-500/40">
                       Step {idx + 1} Drill
                     </span>
                   </div>
-                  <h4 className="text-sm font-bold text-slate-100 mb-2">
+                  <h4 className="text-sm font-racing font-bold text-white mb-1.5">
                     {item.title}
                   </h4>
-                  <p className="text-xs text-slate-300 leading-relaxed">
+                  <p className="text-xs text-slate-300 leading-relaxed font-sans">
                     {item.description}
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-800 relative z-10">
-                  <div className="text-[10px] text-cyan-300/80 font-medium flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
+                <div className="mt-4 pt-3 border-t border-[#1F1F2C] relative z-10">
+                  <div className="text-[10px] text-cyan-300 font-sans flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-[#00F0FF]" />
                     {item.bookCitation}
                   </div>
                 </div>
@@ -377,23 +372,23 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
 
       {/* CORNER MATRIX TAB (Detailed Turn-by-Turn Matrix) */}
       {(activeTab === 'overview' || activeTab === 'corners') && (
-        <div className="space-y-4 pt-2">
+        <div className="space-y-3 pt-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-200">
-              <Compass className="w-4 h-4 text-cyan-400" />
-              Corner-by-Corner Skip Barber Telemetry Breakdown
+            <div className="flex items-center space-x-2 text-xs font-racing font-bold uppercase tracking-wider text-white">
+              <span className="w-2 h-2 diamond-pip bg-[#E10600]" />
+              <span>Corner-by-Corner Skip Barber Telemetry Breakdown</span>
             </div>
 
             {/* Filter buttons */}
-            <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-lg border border-slate-800">
+            <div className="flex items-center space-x-1 bg-[#14141E] p-1 border border-[#232332]">
               {(['all', 'Type 1', 'Type 2', 'Type 3'] as const).map((type) => (
                 <button
                   key={type}
                   onClick={() => setFilterType(type)}
-                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-all ${
+                  className={`px-2.5 py-1 text-[11px] font-tech font-bold uppercase tracking-wider transition-all cursor-pointer ${
                     filterType === type 
-                      ? 'bg-cyan-500 text-slate-950 font-semibold shadow-sm' 
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-[#E10600] text-white shadow-sm' 
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   {type === 'all' ? 'All Corners' : `${type}s`}
@@ -402,7 +397,7 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
             </div>
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {filteredCorners.map((c) => {
               const isExpanded = expandedCornerIdx === c.cornerIndex;
               const isGood = c.score >= 85;
@@ -411,60 +406,60 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
               return (
                 <div 
                   key={c.cornerIndex}
-                  className={`rounded-xl border transition-all ${
+                  className={`border transition-all ${
                     isExpanded 
-                      ? 'bg-slate-900 border-cyan-500/40 shadow-lg' 
-                      : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
+                      ? 'bg-[#141420] border-[#00F0FF]/60 shadow-lg' 
+                      : 'bg-[#101018] border-[#20202E] hover:border-[#2A2A3E]'
                   }`}
                 >
                   {/* Header Row */}
                   <div 
                     onClick={() => handleCornerClick(c.cornerIndex)}
-                    className="p-4 flex items-center justify-between cursor-pointer select-none"
+                    className="p-3.5 flex items-center justify-between cursor-pointer select-none"
                   >
-                    <div className="flex items-center gap-3.5">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                        isGood ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
-                        isNeedsWork ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-                        'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 flex items-center justify-center font-mono font-bold text-xs border ${
+                        isGood ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40' :
+                        isNeedsWork ? 'bg-amber-950 text-amber-300 border-amber-500/40' :
+                        'bg-cyan-950 text-cyan-300 border-cyan-500/40'
                       }`}>
                         {c.grade}
                       </div>
 
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-slate-100">
+                          <span className="text-sm font-racing font-bold text-white">
                             {c.cornerName}
                           </span>
-                          <span className={`text-[10px] font-semibold px-2 py-0.2 rounded-full ${
-                            c.priorityType.startsWith('Type 1') ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' :
-                            c.priorityType.startsWith('Type 2') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-                            'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+                          <span className={`text-[10px] font-tech font-bold uppercase tracking-wider px-2 py-0.2 border ${
+                            c.priorityType.startsWith('Type 1') ? 'bg-indigo-950 text-indigo-300 border-indigo-500/40' :
+                            c.priorityType.startsWith('Type 2') ? 'bg-amber-950 text-amber-300 border-amber-500/40' :
+                            'bg-teal-950 text-teal-300 border-teal-500/40'
                           }`}>
                             {c.priorityType}
                           </span>
                         </div>
-                        <div className="text-xs text-slate-400 flex items-center gap-3 mt-0.5">
-                          <span>Min Apex: <strong className="text-slate-200">{c.metrics.apexMinSpeedKph} km/h</strong></span>
-                          <span>Trail Decay: <strong className="text-slate-200">{c.metrics.trailDecayMs}ms</strong></span>
-                          <span>Coasting Pause: <strong className={c.metrics.coastingHesitationMs > 200 ? 'text-amber-400' : 'text-slate-200'}>{c.metrics.coastingHesitationMs}ms</strong></span>
+                        <div className="text-xs text-[#8E8E9F] font-mono flex items-center gap-3 mt-0.5">
+                          <span>Min Apex: <strong className="text-white font-bold">{c.metrics.apexMinSpeedKph} km/h</strong></span>
+                          <span>Trail Decay: <strong className="text-white font-bold">{c.metrics.trailDecayMs}ms</strong></span>
+                          <span>Coasting: <strong className={c.metrics.coastingHesitationMs > 200 ? 'text-amber-400 font-bold' : 'text-white'}>{c.metrics.coastingHesitationMs}ms</strong></span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-4">
-                      <div className="hidden md:flex items-center gap-6 text-xs text-slate-400">
+                      <div className="hidden md:flex items-center gap-5 text-xs text-[#8E8E9F] font-mono">
                         <div className="text-right">
-                          <div className="text-[10px] text-slate-400">Throttle Unwind</div>
-                          <div className="font-semibold text-slate-200">{c.metrics.throttleUnwindScore}%</div>
+                          <div className="text-[10px] uppercase font-tech text-[#8E8E9F]">Throttle Unwind</div>
+                          <div className="font-bold text-white">{c.metrics.throttleUnwindScore}%</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-[10px] text-slate-400">Grip Budget</div>
-                          <div className="font-semibold text-slate-200">{c.metrics.gripUtilizationPct}%</div>
+                          <div className="text-[10px] uppercase font-tech text-[#8E8E9F]">Grip Budget</div>
+                          <div className="font-bold text-white">{c.metrics.gripUtilizationPct}%</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-[10px] text-slate-400">Balance</div>
-                          <div className={`font-semibold uppercase ${
+                          <div className="text-[10px] uppercase font-tech text-[#8E8E9F]">Balance</div>
+                          <div className={`font-bold uppercase ${
                             c.metrics.balance === 'neutral' ? 'text-emerald-400' :
                             c.metrics.balance === 'understeer' ? 'text-amber-400' : 'text-rose-400'
                           }`}>
@@ -474,17 +469,17 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
                       </div>
 
                       <div className="text-slate-400 p-1">
-                        {isExpanded ? <ChevronDown className="w-4 h-4 text-cyan-400" /> : <ChevronRight className="w-4 h-4" />}
+                        {isExpanded ? <ChevronDown className="w-4 h-4 text-[#00F0FF]" /> : <ChevronRight className="w-4 h-4" />}
                       </div>
                     </div>
                   </div>
 
                   {/* Expanded Detailed Breakdown */}
                   {isExpanded && (
-                    <div className="px-5 pb-5 pt-2 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div className="px-4 pb-4 pt-2 border-t border-[#1C1C2A] grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-sans">
                       {/* What went right */}
-                      <div className="bg-slate-950/60 border border-emerald-500/20 rounded-xl p-3.5">
-                        <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <div className="bg-[#0E0E16] border-l-2 border-l-emerald-500 border border-[#20202E] p-3">
+                        <div className="text-[10px] font-tech font-bold text-emerald-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           What Went Right
                         </div>
@@ -494,8 +489,8 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
                       </div>
 
                       {/* What went wrong */}
-                      <div className="bg-slate-950/60 border border-amber-500/20 rounded-xl p-3.5">
-                        <div className="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <div className="bg-[#0E0E16] border-l-2 border-l-amber-500 border border-[#20202E] p-3">
+                        <div className="text-[10px] font-tech font-bold text-amber-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
                           <AlertTriangle className="w-3.5 h-3.5" />
                           Where Time Was Lost
                         </div>
@@ -505,9 +500,9 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
                       </div>
 
                       {/* Skip Barber advice & quote */}
-                      <div className="bg-slate-950/60 border border-cyan-500/20 rounded-xl p-3.5 flex flex-col justify-between">
+                      <div className="bg-[#0E0E16] border-l-2 border-l-[#00F0FF] border border-[#20202E] p-3 flex flex-col justify-between">
                         <div>
-                          <div className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                          <div className="text-[10px] font-tech font-bold text-[#00F0FF] uppercase tracking-wider mb-1 flex items-center gap-1.5">
                             <Target className="w-3.5 h-3.5" />
                             Skip Barber Prescription
                           </div>
@@ -515,8 +510,8 @@ export const AICoachPanel: React.FC<AICoachPanelProps> = ({
                             {c.howToImprove}
                           </p>
                         </div>
-                        <div className="mt-3 pt-2 border-t border-slate-800 text-[10px] text-cyan-300/80 italic flex items-start gap-1.5">
-                          <BookOpen className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                        <div className="mt-2.5 pt-2 border-t border-[#1A1A26] text-[10px] text-cyan-300 font-sans italic flex items-start gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5 text-[#00F0FF] flex-shrink-0 mt-0.5" />
                           <span>{c.bookCitation}</span>
                         </div>
                       </div>
