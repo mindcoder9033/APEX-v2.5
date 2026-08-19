@@ -131,30 +131,32 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
             </div>
 
             {/* Turn-by-Turn Telemetry Table */}
-            <div className="space-y-2">
+            <div className="space-y-2 overflow-x-auto">
               <h3 className="text-xs font-bold font-display uppercase tracking-wider text-white">
                 Turn-by-Turn Sector Breakdown
               </h3>
-              <table className="w-full text-left text-xs font-mono border-collapse">
+              <table className="w-full table-fixed text-left text-xs font-mono border-collapse">
                 <thead>
                   <tr className="border-b border-[#232332] text-slate-400 text-[10px] uppercase">
-                    <th className="py-2">Corner</th>
-                    <th className="py-2">Type</th>
-                    <th className="py-2">Brake Decay</th>
-                    <th className="py-2">Apex Min Speed</th>
-                    <th className="py-2">Grip Util</th>
-                    <th className="py-2 text-right">Score</th>
+                    <th className="py-2 w-[30%]">Corner</th>
+                    <th className="py-2 w-[15%]">Type</th>
+                    <th className="py-2 w-[15%]">Brake Decay</th>
+                    <th className="py-2 w-[18%]">Apex Min Speed</th>
+                    <th className="py-2 w-[12%]">Grip Util</th>
+                    <th className="py-2 w-[10%] text-right">Score</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1B1B26]">
                   {lap.corners.map((c) => (
                     <tr key={c.cornerIndex} className="hover:bg-[#14141E]">
-                      <td className="py-2.5 font-bold text-white">T{c.cornerIndex} - {c.cornerName.split('(')[0]}</td>
-                      <td className="py-2.5 text-[#8E8E9F] uppercase text-[10px]">{c.type}</td>
+                      <td className="py-2.5 font-bold text-white truncate pr-2" title={c.cornerName}>
+                        T{c.cornerIndex} - {c.cornerName ? c.cornerName.split('(')[0].trim() : `Turn ${c.cornerIndex}`}
+                      </td>
+                      <td className="py-2.5 text-[#8E8E9F] uppercase text-[10px] truncate">{c.type || 'medium'}</td>
                       <td className="py-2.5 text-slate-300">{c.trailBrakingDecayDurationSec.toFixed(2)}s</td>
-                      <td className="py-2.5 text-emerald-400">{c.apexMinSpeedKph} km/h</td>
-                      <td className="py-2.5 text-purple-400">{c.apexGripUtilizationPct}%</td>
-                      <td className="py-2.5 text-right font-bold text-amber-400">{c.cornerScore}%</td>
+                      <td className="py-2.5 text-emerald-400">{Math.round(c.apexMinSpeedKph)} km/h</td>
+                      <td className="py-2.5 text-purple-400">{Math.round(c.apexGripUtilizationPct)}%</td>
+                      <td className="py-2.5 text-right font-bold text-amber-400">{Math.round(c.cornerScore)}%</td>
                     </tr>
                   ))}
                 </tbody>
