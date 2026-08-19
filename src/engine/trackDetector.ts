@@ -151,3 +151,18 @@ export function detectTrackFromFrames(frames: TelemetryFrame[] = [], customDista
 
   return 'Unknown Track';
 }
+
+/**
+ * Returns the track length in meters for a given track name or layout ID.
+ */
+export function getTrackLength(trackName?: string, fallback: number = 3800): number {
+  if (!trackName) return fallback;
+  const normalized = trackName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const match = TRACK_SIGNATURES.find(s => {
+    const sNorm = s.layoutName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const tNorm = s.trackName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return normalized.includes(sNorm) || sNorm.includes(normalized) || normalized.includes(tNorm) || tNorm.includes(normalized);
+  });
+  return match ? match.lengthMeters : fallback;
+}
+

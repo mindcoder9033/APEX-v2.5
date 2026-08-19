@@ -1,7 +1,7 @@
 import { TelemetryFrame, CornerTelemetryAnalysis, LapAnalysis } from '../types/telemetry';
 import { SessionChallengeCriteria, ChallengeResult, ModuleGraduationTest, GraduationResult } from '../types/curriculum';
 import { resolveForzaCar } from '../data/carMapping';
-import { detectTrackFromFrames } from './trackDetector';
+import { detectTrackFromFrames, getTrackLength } from './trackDetector';
 import { getTrackCorners, DEFAULT_TRACK_CORNERS, PredefinedCornerDef } from '../data/trackCorners';
 import { extractDynamicCorners } from './cornerDetector';
 
@@ -10,12 +10,12 @@ export type { PredefinedCornerDef };
 
 export function analyzeLapTelemetry(
   frames: TelemetryFrame[],
-  trackLengthMeters: number = 3800,
+  trackLengthMeters?: number,
   wasRewound: boolean = false,
   customLapTimeSec?: number,
   customTrackName?: string
 ): LapAnalysis {
-  if (!frames || frames.length < 30) {
+  if (!frames || frames.length < 15) {
     return createEmptyLapAnalysis(1);
   }
 
@@ -29,7 +29,13 @@ export function analyzeLapTelemetry(
   const durationSec = (customLapTimeSec && customLapTimeSec > 0) ? customLapTimeSec : calculatedDuration;
 
   const maxRecordedDist = sanitizedFrames.reduce((max, f) => (f.distance > max ? f.distance : max), 0);
-  const effectiveTrackLength = maxRecordedDist > 500 ? maxRecordedDist : trackLengthMeters;
+  
+  // Track resolution
+  const detectedTrackResult = detectTrackFromFrames(sanitizedFrames, maxRecordedDist > 500 ? maxRecordedDist : trackLengthMeters);
+  const effectiveTrackName = customTrackName || (detectedTrackResult !== 'Unknown Track' ? detectedTrackResult : undefined);
+  
+  const resolvedTrackLength = trackLengthMeters || (effectiveTrackName ? getTrackLength(effectiveTrackName) : (maxRecordedDist > 500 ? maxRecordedDist : 3800));
+  const effectiveTrackLength = maxRecordedDist > 500 ? maxRecordedDist : resolvedTrackLength;
 
   let maxSpeedKph = 0;
   let sumSpeed = 0;
@@ -47,10 +53,6 @@ export function analyzeLapTelemetry(
 
   const avgSpeedKph = sumSpeed / totalFrames;
   const avgTractionBudgetPct = sumTractionBudget / totalFrames;
-
-  // Track resolution
-  const detectedTrackResult = detectTrackFromFrames(sanitizedFrames, effectiveTrackLength);
-  const effectiveTrackName = customTrackName || (detectedTrackResult !== 'Unknown Track' ? detectedTrackResult : undefined);
 
   // 1. Check predefined track corners in FM23 registry
   let activeCornerDefs = getTrackCorners(effectiveTrackName);
@@ -247,7 +249,7 @@ export function analyzeLapTelemetry(
     ? resolveForzaCar(sampleFrameWithCar.carOrdinal, sampleFrameWithCar.carClass, sampleFrameWithCar.carPI)
     : undefined;
 
-  const detectedTrackName = detectTrackFromFrames(sanitizedFrames, trackLengthMeters);
+  const detectedTrackName = detectTrackFromFrames(sanitizedFrames, effectiveTrackLength);
 
   return {
     lapId: `lap-${Date.now()}-${lapNumber}`,
@@ -265,7 +267,77 @@ export function analyzeLapTelemetry(
     frames: adaptiveDownsampleFrames(sanitizedFrames),
     actionItems,
     detectedCarName,
-    detectedTrackName: detectedTrackName !== 'Unknown Track' ? detectedTrackName : undefined
+    detectedTrackName: effectiveTrackName || (detectedTrackName !== 'Unknown Track' ? detectedTrackName : undefined)
+  };
+}
+
+/**
+ * Rebinds an existing LapAnalysis to the canonical corner definitions and length of a specified track layout.
+ * Ensures consistent turn numbering, diagnoses, and scores without losing raw telemetry frames.
+ */
+export function rebindLapToTrack(
+  lap: LapAnalysis,
+  trackName: string,
+  customTrackLength?: number
+): LapAnalysis {
+  if (!lap || !trackName) return lap;
+
+  const targetCornerDefs = getTrackCorners(trackName);
+  const resolvedLength = customTrackLength || getTrackLength(trackName, 3800);
+
+  // If frames exist, re-analyze telemetry with the exact canonical track corners and length
+  if (lap.frames && lap.frames.length >= 10) {
+    const reanalyzed = analyzeLapTelemetry(
+      lap.frames,
+      resolvedLength,
+      lap.wasRewound,
+      lap.lapTimeSec,
+      trackName
+    );
+    return {
+      ...reanalyzed,
+      lapId: lap.lapId,
+      lapNumber: lap.lapNumber,
+      source: lap.source,
+      moduleNumber: lap.moduleNumber,
+      moduleTitle: lap.moduleTitle,
+      sessionId: lap.sessionId,
+      sessionTitle: lap.sessionTitle,
+      recordedAt: lap.recordedAt,
+      stintId: lap.stintId,
+      detectedTrackName: trackName
+    };
+  }
+
+  // If targetCornerDefs exist but frames are minimal, generate canonical corners directly
+  if (targetCornerDefs && targetCornerDefs.length > 0) {
+    const canonicalCorners: CornerTelemetryAnalysis[] = targetCornerDefs.map((cDef) => {
+      const startDist = cDef.startPct * resolvedLength;
+      const apexDist = cDef.apexPct * resolvedLength;
+      const endDist = cDef.endPct * resolvedLength;
+      const sector: 1 | 2 | 3 = apexDist <= resolvedLength * 0.33 ? 1 : apexDist <= resolvedLength * 0.66 ? 2 : 3;
+
+      const dummy = createDummyCornerAnalysis(cDef);
+      return {
+        ...dummy,
+        startDistance: startDist,
+        apexDistance: apexDist,
+        endDistance: endDist,
+        sector,
+        sectorName: `Sector ${sector}`
+      };
+    });
+
+    return {
+      ...lap,
+      corners: canonicalCorners,
+      detectedTrackName: trackName
+    };
+  }
+
+  return {
+    ...lap,
+    detectedTrackName: trackName
   };
 }
 
@@ -276,11 +348,15 @@ export function analyzeLapTelemetry(
 export function segmentFramesIntoLaps(
   frames: TelemetryFrame[],
   trackLengthMeters: number = 3800,
-  wasRewound: boolean = false
+  wasRewound: boolean = false,
+  customTrackName?: string
 ): LapAnalysis[] {
   if (!frames || frames.length < 20) {
-    return [analyzeLapTelemetry(frames, trackLengthMeters, wasRewound)];
+    return [analyzeLapTelemetry(frames, trackLengthMeters, wasRewound, undefined, customTrackName)];
   }
+
+  const maxRecorded = frames.reduce((max, f) => (f.distance > max ? f.distance : max), 0);
+  const effectiveTrackLen = maxRecorded > 500 ? maxRecorded : (customTrackName ? getTrackLength(customTrackName, trackLengthMeters) : trackLengthMeters);
 
   const lapSegments: TelemetryFrame[][] = [];
   let currentSegment: TelemetryFrame[] = [frames[0]];
@@ -294,10 +370,10 @@ export function segmentFramesIntoLaps(
     const lapNumChanged = curr.lapNumber > prev.lapNumber && curr.lapNumber > 0;
     
     // 2. Track distance wrap-around (e.g. from >60% of track length back down to <35%)
-    const distanceReset = prev.distance > (trackLengthMeters * 0.55) && curr.distance < (trackLengthMeters * 0.35);
+    const distanceReset = prev.distance > (effectiveTrackLen * 0.60) && curr.distance < (effectiveTrackLen * 0.30);
 
-    // 3. Significant timestamp jump or negative distance jump (> 1000m drop)
-    const largeDistanceDrop = (prev.distance - curr.distance) > (trackLengthMeters * 0.4);
+    // 3. Significant timestamp jump or negative distance jump (> 45% of track drop)
+    const largeDistanceDrop = (prev.distance - curr.distance) > (effectiveTrackLen * 0.45);
 
     if ((lapNumChanged || distanceReset || largeDistanceDrop) && currentSegment.length >= 20) {
       lapSegments.push(currentSegment);
@@ -315,33 +391,9 @@ export function segmentFramesIntoLaps(
     lapSegments.push(currentSegment);
   }
 
-  // Fallback: If only 1 segment was detected but total duration is > 150s (e.g. 6 mins = ~360s)
-  // and frames are plentiful, partition by equal time slices (~70-90s per lap)
-  if (lapSegments.length === 1 && frames.length >= 100) {
-    const startTs = frames[0].timestamp;
-    const endTs = frames[frames.length - 1].timestamp;
-    const totalDurationSec = (endTs - startTs) / 1000;
-    
-    if (totalDurationSec > 150) {
-      // Estimate lap count: approx 72s per Lime Rock Park lap
-      const estimatedLaps = Math.max(2, Math.round(totalDurationSec / 72));
-      const framesPerLap = Math.floor(frames.length / estimatedLaps);
-      
-      lapSegments.length = 0;
-      for (let l = 0; l < estimatedLaps; l++) {
-        const start = l * framesPerLap;
-        const end = (l === estimatedLaps - 1) ? frames.length : (l + 1) * framesPerLap;
-        const slice = frames.slice(start, end);
-        if (slice.length >= 15) {
-          lapSegments.push(slice);
-        }
-      }
-    }
-  }
-
   // Analyze each discrete lap
   return lapSegments.map((seg, idx) => {
-    const analyzed = analyzeLapTelemetry(seg, trackLengthMeters, wasRewound);
+    const analyzed = analyzeLapTelemetry(seg, effectiveTrackLen, wasRewound, undefined, customTrackName);
     return {
       ...analyzed,
       lapNumber: idx + 1,

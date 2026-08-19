@@ -9,22 +9,22 @@ export function extractDynamicCorners(
   frames: TelemetryFrame[],
   trackLengthMeters: number = 3800
 ): PredefinedCornerDef[] {
-  if (!frames || frames.length < 30) {
+  if (!frames || frames.length < 15) {
     return [];
   }
 
-  const maxDist = frames.reduce((max, f) => (f.distance > max ? f.distance : max), trackLengthMeters);
+  const maxDist = frames.reduce((max, f) => (f.distance > max ? f.distance : max), 0);
   const effectiveTrackLength = maxDist > 500 ? maxDist : trackLengthMeters;
 
   // 1. Identify cornering regions where lateral load or steering exceeds threshold
-  const LAT_G_THRESHOLD = 0.55;
+  const LAT_G_THRESHOLD = 0.50;
   const inCorner: boolean[] = new Array(frames.length).fill(false);
 
   for (let i = 0; i < frames.length; i++) {
     const f = frames[i];
     const absLatG = Math.abs(f.latG || 0);
     const absSteer = Math.abs(f.steering || 0);
-    if (absLatG >= LAT_G_THRESHOLD || (absSteer >= 0.15 && f.speedKph > 40)) {
+    if (absLatG >= LAT_G_THRESHOLD || (absSteer >= 0.12 && f.speedKph > 35)) {
       inCorner[i] = true;
     }
   }
@@ -48,9 +48,9 @@ export function extractDynamicCorners(
     if (inCorner[i] && currentStart === -1) {
       currentStart = i;
     } else if (!inCorner[i] && currentStart !== -1) {
-      const segLength = frames[i - 1].distance - frames[currentStart].distance;
-      // Filter out micro-blips (< 40m)
-      if (segLength >= 35 || (i - currentStart) >= 8) {
+      const segLength = Math.abs(frames[i - 1].distance - frames[currentStart].distance);
+      // Pure distance-based threshold (>= 25m) so downsampled frames detect the exact same turns
+      if (segLength >= 25) {
         // Find apex (point of minimum speed or peak lateral G)
         let minSpeed = Infinity;
         let apexIdx = currentStart;
@@ -85,31 +85,34 @@ export function extractDynamicCorners(
   // Close trailing segment if active
   if (currentStart !== -1) {
     const i = frames.length - 1;
-    let minSpeed = Infinity;
-    let apexIdx = currentStart;
-    let peakLat = 0;
-    for (let j = currentStart; j <= i; j++) {
-      if (frames[j].speedKph < minSpeed) {
-        minSpeed = frames[j].speedKph;
-        apexIdx = j;
+    const segLength = Math.abs(frames[i].distance - frames[currentStart].distance);
+    if (segLength >= 25) {
+      let minSpeed = Infinity;
+      let apexIdx = currentStart;
+      let peakLat = 0;
+      for (let j = currentStart; j <= i; j++) {
+        if (frames[j].speedKph < minSpeed) {
+          minSpeed = frames[j].speedKph;
+          apexIdx = j;
+        }
+        if (Math.abs(frames[j].latG) > peakLat) {
+          peakLat = Math.abs(frames[j].latG);
+        }
       }
-      if (Math.abs(frames[j].latG) > peakLat) {
-        peakLat = Math.abs(frames[j].latG);
-      }
+      rawSegments.push({
+        startIndex: currentStart,
+        endIndex: i,
+        startDist: frames[currentStart].distance,
+        endDist: frames[i].distance,
+        apexIndex: apexIdx,
+        apexDist: frames[apexIdx].distance,
+        minSpeedKph: minSpeed < 999 ? minSpeed : 100,
+        peakLatG: peakLat
+      });
     }
-    rawSegments.push({
-      startIndex: currentStart,
-      endIndex: i,
-      startDist: frames[currentStart].distance,
-      endDist: frames[i].distance,
-      apexIndex: apexIdx,
-      apexDist: frames[apexIdx].distance,
-      minSpeedKph: minSpeed < 999 ? minSpeed : 100,
-      peakLatG: peakLat
-    });
   }
 
-  // 3. Merge segments that are very close together (< 60 meters apart)
+  // 3. Merge segments that are close together (< 50 meters apart)
   const mergedSegments: RawSegment[] = [];
   for (let i = 0; i < rawSegments.length; i++) {
     const cur = rawSegments[i];
@@ -121,7 +124,7 @@ export function extractDynamicCorners(
     const prev = mergedSegments[mergedSegments.length - 1];
     const gap = cur.startDist - prev.endDist;
 
-    if (gap < 60) {
+    if (gap < 50 && gap >= 0) {
       // Merge
       prev.endIndex = cur.endIndex;
       prev.endDist = cur.endDist;
@@ -140,8 +143,8 @@ export function extractDynamicCorners(
 
   // 4. Convert merged segments into PredefinedCornerDef
   const dynamicCorners: PredefinedCornerDef[] = mergedSegments.map((seg, idx) => {
-    const startPct = Math.max(0.01, Math.min(0.98, seg.startDist / effectiveTrackLength));
-    const endPct = Math.max(startPct + 0.02, Math.min(0.999, seg.endDist / effectiveTrackLength));
+    const startPct = Math.max(0.005, Math.min(0.98, seg.startDist / effectiveTrackLength));
+    const endPct = Math.max(startPct + 0.015, Math.min(0.999, seg.endDist / effectiveTrackLength));
     const apexPct = Math.max(startPct + 0.005, Math.min(endPct - 0.005, seg.apexDist / effectiveTrackLength));
 
     // Corner classification based on apex speed and lateral load

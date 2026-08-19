@@ -123,7 +123,8 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
       : [];
 
     if (framesToAnalyze.length >= 20) {
-      const segmentedLaps = segmentFramesIntoLaps(framesToAnalyze, 3800);
+      const trackName = 'Lime Rock Park - Full Circuit';
+      const segmentedLaps = segmentFramesIntoLaps(framesToAnalyze, 2410, false, trackName);
       const stintId = `stint-acad-${Date.now()}`;
       
       const analyzedLaps: LapAnalysis[] = segmentedLaps.map((lap, idx) => ({
@@ -201,7 +202,8 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
       : [];
 
     if (framesToAnalyze.length >= 20) {
-      const segmentedLaps = segmentFramesIntoLaps(framesToAnalyze, 3800);
+      const trackName = 'Lime Rock Park - Full Circuit';
+      const segmentedLaps = segmentFramesIntoLaps(framesToAnalyze, 2410, false, trackName);
       const attemptNum = sessionAttempts.length + 1;
       const stintId = `stint-acad-exam-${Date.now()}`;
 

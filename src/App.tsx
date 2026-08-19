@@ -15,7 +15,7 @@ import {
 } from './db/storage';
 import { Module, Session, UserProgressState, ChallengeResult, GraduationResult } from './types/curriculum';
 import { LapAnalysis, StintSession, TelemetryFrame } from './types/telemetry';
-import { analyzeLapTelemetry } from './engine/physicsEngine';
+import { analyzeLapTelemetry, rebindLapToTrack } from './engine/physicsEngine';
 import { parseForzaBuffer, convertPacketToTelemetryFrame } from './engine/forzaParser';
 import { resolveForzaCar } from './data/carMapping';
 import { detectTrackFromFrames } from './engine/trackDetector';
@@ -283,11 +283,15 @@ export function App() {
                     packet.lapNumber > currentLapNumRef.current && 
                     currentLapBufferRef.current.length >= 30
                   ) {
+                    const detectedTrack = detectTrackFromFrames(currentLapBufferRef.current);
+                    const effectiveTrack = detectedTrack !== 'Unknown Track' ? detectedTrack : undefined;
+
                     const completedLap = analyzeLapTelemetry(
                       currentLapBufferRef.current,
-                      3800,
+                      undefined,
                       wasCurrentLapRewoundRef.current,
-                      packet.lastLapTimeSeconds > 0 ? packet.lastLapTimeSeconds : undefined
+                      packet.lastLapTimeSeconds > 0 ? packet.lastLapTimeSeconds : undefined,
+                      effectiveTrack
                     );
                     const lapNumber = activeStintLapsRef.current.length + 1;
                     const analyzedLap: LapAnalysis = {
@@ -383,37 +387,45 @@ export function App() {
   };
 
   const handleConfirmSaveStint = (metadata: StintMetadataInput) => {
-    const finalLaps: LapAnalysis[] = [...activeStintLapsRef.current];
+    const rawLaps: LapAnalysis[] = [...activeStintLapsRef.current];
     const trailingBuffer = currentLapBufferRef.current;
+    const confirmedTrack = metadata.trackName || 'Lime Rock Park - Full Circuit';
 
     // If there is a trailing in-progress lap with sufficient frames (>= 30) or if 0 laps completed so far
-    if (trailingBuffer.length >= 30 || (finalLaps.length === 0 && trailingBuffer.length >= 15)) {
+    if (trailingBuffer.length >= 30 || (rawLaps.length === 0 && trailingBuffer.length >= 15)) {
       const trailingLap = analyzeLapTelemetry(
         trailingBuffer,
-        3800,
-        wasCurrentLapRewoundRef.current
+        undefined,
+        wasCurrentLapRewoundRef.current,
+        undefined,
+        confirmedTrack
       );
-      finalLaps.push({
+      rawLaps.push({
         ...trailingLap,
-        lapNumber: finalLaps.length + 1,
+        lapNumber: rawLaps.length + 1,
         source: 'practice',
         recordedAt: new Date().toISOString()
       });
-    } else if (finalLaps.length === 0) {
+    } else if (rawLaps.length === 0) {
       // Fallback if stopped with minimal data
       const fallbackFrames = liveFramesBuffer.length >= 20 ? liveFramesBuffer : [];
       const fallbackLap = analyzeLapTelemetry(
         fallbackFrames,
-        3800,
-        wasCurrentLapRewoundRef.current
+        undefined,
+        wasCurrentLapRewoundRef.current,
+        undefined,
+        confirmedTrack
       );
-      finalLaps.push({
+      rawLaps.push({
         ...fallbackLap,
         lapNumber: 1,
         source: 'practice',
         recordedAt: new Date().toISOString()
       });
     }
+
+    // Rebind all laps in the stint to the confirmed track's canonical corner profiles & length
+    const finalLaps = rawLaps.map(lap => rebindLapToTrack(lap, confirmedTrack));
 
     const durationSec = recordingStartTime 
       ? Math.max(1, Math.round((Date.now() - recordingStartTime) / 1000))
@@ -436,7 +448,7 @@ export function App() {
       stintNumber,
       title: metadata.title || `Practice Stint #${stintNumber}`,
       carName: metadata.carName || 'Formula Skip Barber 2000',
-      trackName: metadata.trackName || 'Lime Rock Park - Full Circuit',
+      trackName: confirmedTrack,
       source: 'practice',
       recordedAt: new Date().toISOString(),
       durationSec,
