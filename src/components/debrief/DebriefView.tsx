@@ -21,6 +21,7 @@ interface DebriefViewProps {
   onSelectStint: (stint: StintSession) => void;
   onDeleteStint?: (stintId: string) => void;
   onDeleteLapFromStint?: (stintId: string, lapIndex: number) => void;
+  onToggleLapRewound?: (stintId: string, lapIndex: number) => void;
   // Legacy / fallback props
   savedLaps?: LapAnalysis[];
   currentLap?: LapAnalysis | null;
@@ -39,6 +40,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
   onSelectStint,
   onDeleteStint,
   onDeleteLapFromStint,
+  onToggleLapRewound,
   savedLaps = [],
   currentLap = null,
   onSelectLap,
@@ -534,9 +536,21 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                           {formatLapTime(lap.lapTimeSec)}
                         </span>
                         {lap.wasRewound && (
-                          <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-500/50 uppercase tracking-wide">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onToggleLapRewound) {
+                                onToggleLapRewound(activeSelectedStint.stintId, idx);
+                              }
+                            }}
+                            title={onToggleLapRewound ? "Click to toggle Clean / Rewound status" : "Lap was rewound"}
+                            className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-500/50 uppercase tracking-wide transition-all ${
+                              onToggleLapRewound ? 'hover:bg-amber-800 hover:text-white cursor-pointer' : ''
+                            }`}
+                          >
                             Rewound
-                          </span>
+                          </button>
                         )}
                         {isBest && (
                           <span className="text-[10px] font-sans uppercase font-bold text-amber-300">
@@ -603,7 +617,20 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Lap Time</span>
                         {selectedLap.wasRewound && (
-                          <span className="text-[9px] font-mono font-bold text-amber-400 bg-amber-950/60 px-1 border border-amber-500/40">REWOUND</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onToggleLapRewound) {
+                                onToggleLapRewound(activeSelectedStint.stintId, selectedLapIndex);
+                              }
+                            }}
+                            title={onToggleLapRewound ? "Click to toggle Clean / Rewound status" : "Lap was rewound"}
+                            className={`text-[9px] font-mono font-bold text-amber-400 bg-amber-950/60 px-1 border border-amber-500/40 rounded transition-all ${
+                              onToggleLapRewound ? 'hover:bg-amber-800 hover:text-white cursor-pointer' : ''
+                            }`}
+                          >
+                            REWOUND
+                          </button>
                         )}
                       </div>
                       <strong className="text-base font-mono font-bold text-white tabular-nums">{formatLapTime(selectedLap.lapTimeSec)}</strong>

@@ -212,40 +212,13 @@ export function App() {
                 const ts = packet.timestampMs;
 
                 // --- Forza Rewind Detection & Real-Time Buffer Rollback ---
-                let isTimeRewound = false;
-                let isDistRewound = false;
+                // In Forza Motorsport & Horizon, the rewind feature exclusively rolls back the simulation clock (timestampMs)
+                // by multiple seconds (typically 2000ms - 5000ms per step), or decrements packet.lapNumber across lap boundary.
+                // Normal forward driving strictly increments timestampMs forward. Lap boundary distance wrap-arounds (e.g. 4000m -> 0m)
+                // are normal and never indicate a rewind.
+                const isTimeRewound = lastPacketTimestampRef.current !== null && ts < (lastPacketTimestampRef.current - 1500);
                 const isLapRewound = currentLapNumRef.current !== null && packet.lapNumber < currentLapNumRef.current;
-
-                const isLapBoundaryAdvancing = currentLapNumRef.current !== null && packet.lapNumber > currentLapNumRef.current;
-                const isLapDistanceWrap = lastDistanceTraveledRef.current !== null && lastDistanceTraveledRef.current > 500 && rawDist < 200;
-
-                if (lastPacketTimestampRef.current !== null) {
-                  const timeDelta = ts - lastPacketTimestampRef.current;
-                  if (timeDelta < -1000) {
-                    // Substantial backward time jump (> 1.0s) -> definitive rewind
-                    isTimeRewound = true;
-                    consecutiveReversePacketsRef.current = 0;
-                  } else if (timeDelta < -40) {
-                    // Reverse time packet -> count consecutive frames to eliminate single-packet UDP jitter
-                    consecutiveReversePacketsRef.current += 1;
-                    if (consecutiveReversePacketsRef.current >= 3) {
-                      isTimeRewound = true;
-                    }
-                  } else if (timeDelta > 0) {
-                    // Forward time progress
-                    consecutiveReversePacketsRef.current = 0;
-                  }
-                }
-
-                // Distance rewind: only if NOT a lap boundary wrap/advance, and drop is substantial (>15m) with non-advancing time
-                if (!isLapBoundaryAdvancing && !isLapDistanceWrap && lastDistanceTraveledRef.current !== null) {
-                  const distDelta = rawDist - lastDistanceTraveledRef.current;
-                  if (distDelta < -15 && rawDist >= 0 && lastPacketTimestampRef.current !== null && ts <= lastPacketTimestampRef.current) {
-                    isDistRewound = true;
-                  }
-                }
-
-                const isRewindDetected = isTimeRewound || isDistRewound || isLapRewound;
+                const isRewindDetected = isTimeRewound || isLapRewound;
 
                 if (isRewindDetected) {
                   setIsRewinding(true);
@@ -615,6 +588,45 @@ export function App() {
     });
   };
 
+  const handleToggleLapRewound = (stintId: string, lapIndex: number) => {
+    setStintHistory(prev => {
+      const stintIndex = prev.findIndex(s => s.stintId === stintId);
+      if (stintIndex === -1) return prev;
+      const targetStint = prev[stintIndex];
+      if (!targetStint.laps || !targetStint.laps[lapIndex]) return prev;
+
+      const updatedLaps = [...targetStint.laps];
+      const targetLap = updatedLaps[lapIndex];
+      const newWasRewound = !targetLap.wasRewound;
+      
+      updatedLaps[lapIndex] = {
+        ...targetLap,
+        wasRewound: newWasRewound,
+        isClean: !newWasRewound
+      };
+
+      const hasAnyRewind = updatedLaps.some(l => l.wasRewound);
+      const updatedStint: StintSession = {
+        ...targetStint,
+        wasRewound: hasAnyRewind,
+        laps: updatedLaps
+      };
+
+      const nextStints = [...prev];
+      nextStints[stintIndex] = updatedStint;
+      saveStintHistory(nextStints);
+
+      if (currentStint?.stintId === stintId) {
+        setCurrentStint(updatedStint);
+        if (currentLap?.lapId === targetLap.lapId) {
+          setCurrentLap(updatedLaps[lapIndex]);
+        }
+      }
+
+      return nextStints;
+    });
+  };
+
   // --- Academy Lap Handlers ---
   const handleSaveAcademyStint = (stint: StintSession) => {
     setStintHistory(prev => {
@@ -793,6 +805,7 @@ export function App() {
             }}
             onDeleteStint={handleDeleteStint}
             onDeleteLapFromStint={handleDeleteLapFromStint}
+            onToggleLapRewound={handleToggleLapRewound}
             savedLaps={savedLaps}
             currentLap={currentLap}
             onSelectLap={setCurrentLap}
