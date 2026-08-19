@@ -737,7 +737,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                       Consolidated Stint Report (All {activeSelectedStint.laps.length} Laps)
                     </h3>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed font-sans">
-                      Generates the comprehensive 9-page dossier consolidating all {activeSelectedStint.laps.length} recorded laps, complete lap-by-lap comparison table, best vs. average telemetry trace overlays, sector splits, and stint consistency index.
+                      Generates the comprehensive 11-page dossier consolidating all {activeSelectedStint.laps.length} recorded laps, dedicated AI Coach analysis, best vs. average telemetry trace overlays, sector splits, and stint consistency index.
                     </p>
 
                     {/* Metric badges strip */}
@@ -787,7 +787,7 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                       Single Lap Debrief (Lap #{selectedLap ? (selectedLap.lapNumber || selectedLapIndex + 1) : (selectedLapIndex + 1)} Only)
                     </h3>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed font-sans">
-                      Generates the standard 9-page deep-dive report focused strictly on the currently inspected Lap #{selectedLap ? (selectedLap.lapNumber || selectedLapIndex + 1) : (selectedLapIndex + 1)} ({selectedLap ? formatLapTime(selectedLap.lapTimeSec) : '--:--'}).
+                      Generates the standard 11-page deep-dive report with dedicated AI Coach analysis focused strictly on the currently inspected Lap #{selectedLap ? (selectedLap.lapNumber || selectedLapIndex + 1) : (selectedLapIndex + 1)} ({selectedLap ? formatLapTime(selectedLap.lapTimeSec) : '--:--'}).
                     </p>
 
                     {/* Metric badges strip */}

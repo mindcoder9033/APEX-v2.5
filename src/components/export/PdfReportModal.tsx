@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { LapAnalysis } from '../../types/telemetry';
+import { LapAnalysis, StintSession } from '../../types/telemetry';
 import { Module, Session } from '../../types/curriculum';
 import { generateOfficialPdf } from '../../utils/pdfGenerator';
 import { X, FileDown, CheckCircle2, Shield, Activity, Target, Sparkles, Printer } from 'lucide-react';
@@ -8,6 +8,7 @@ interface PdfReportModalProps {
   lap: LapAnalysis;
   module?: Module;
   session?: Session;
+  stintSession?: StintSession;
   onClose: () => void;
 }
 
@@ -15,6 +16,7 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
   lap,
   module,
   session,
+  stintSession,
   onClose
 }) => {
   const reportRef = useRef<HTMLDivElement | null>(null);
@@ -23,7 +25,7 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
   const handleDownloadPdf = async () => {
     setIsGenerating(true);
     try {
-      await generateOfficialPdf(lap, module, session);
+      await generateOfficialPdf(lap, module, session, stintSession);
     } catch (err) {
       console.error('Error generating PDF:', err);
     } finally {

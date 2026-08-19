@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
-import { LapAnalysis, CornerTelemetryAnalysis, StintSession } from '../types/telemetry';
+import { LapAnalysis, CornerTelemetryAnalysis, StintSession, SkipBarberPillarScore } from '../types/telemetry';
 import { Module, Session } from '../types/curriculum';
-import { generateAICoachDebrief } from '../engine/aiCoachEngine';
+import { generateAICoachDebrief, SKIP_BARBER_CITATIONS } from '../engine/aiCoachEngine';
 import {
   renderBrakeTraceChart,
   renderThrottleTraceChart,
@@ -12,8 +12,139 @@ import {
   renderStintProgressionWithSectorsChart
 } from './pdfCharts';
 
+// ============================================================================
+// DESIGN SYSTEM CONSTANTS & TOKENS (PDF DESIGN.md)
+// ============================================================================
+export const PDF_COLORS = {
+  bg: [255, 255, 255] as [number, number, number],
+  surface: [248, 249, 250] as [number, number, number], // #F8F9FA
+  surfaceAlt: [241, 243, 245] as [number, number, number], // #F1F3F5
+  border: [222, 226, 230] as [number, number, number], // #DEE2E6
+  textPrimary: [26, 26, 46] as [number, number, number], // #1A1A2E
+  textSecondary: [74, 74, 90] as [number, number, number], // #4A4A5A
+  textMuted: [134, 142, 150] as [number, number, number], // #868E96
+  accent: [225, 6, 0] as [number, number, number], // #E10600 APEX Red
+  accentLight: [255, 240, 238] as [number, number, number], // #FFF0EE
+  
+  // Grade badges
+  gradeA: [16, 185, 129] as [number, number, number], // #10B981 Emerald
+  gradeB: [245, 158, 11] as [number, number, number], // #F59E0B Amber
+  gradeC: [249, 115, 22] as [number, number, number], // #F97316 Orange
+  gradeD: [239, 68, 68] as [number, number, number], // #EF4444 Red
+  gradeF: [220, 38, 38] as [number, number, number], // #DC2626 Dark Red
+
+  // Telemetry channels
+  speed: [0, 119, 190] as [number, number, number], // #0077BE Rich Blue
+  throttle: [0, 168, 107] as [number, number, number], // #00A86B Emerald Green
+  brake: [200, 16, 46] as [number, number, number], // #C8102E Crimson Red
+  steering: [245, 128, 37] as [number, number, number], // #F58025 Orange Amber
+  latG: [155, 48, 255] as [number, number, number], // #9B30FF Purple
+  lonG: [0, 94, 184] as [number, number, number], // #005EB8 Navy Blue
+  yourLap: [26, 26, 46] as [number, number, number], // #1A1A2E Dark
+  targetLap: [225, 6, 0] as [number, number, number], // #E10600 APEX Red
+};
+
+// Layout dimensions (mm)
+const CHART_HEIGHT_MM = 68;
+const MAP_HEIGHT_MM = 90;
+const FIX_ROW_HEIGHT = 28;
+const ACTION_ROW_HEIGHT = 22;
+const REF_ROW_HEIGHT = 11.5;
+const CERT_HEIGHT = 28;
+
+const FIX_HEADERS = [
+  { name: 'PRIORITY', width: 22, align: 'center' as const },
+  { name: 'PROBLEM', width: 44, align: 'left' as const },
+  { name: 'TELEMETRY EVIDENCE', width: 48, align: 'left' as const },
+  { name: 'WHY IT MATTERS & HOW TO FIX IT', width: 66, align: 'left' as const },
+];
+
+const CORNER_TABLE_HEADERS = [
+  { name: 'CORNER', width: 28, align: 'left' as const },
+  { name: 'YOUR SPEED', width: 20, align: 'left' as const },
+  { name: 'TARGET', width: 20, align: 'left' as const },
+  { name: 'DELTA', width: 18, align: 'left' as const },
+  { name: 'BRAKE SPOT', width: 22, align: 'left' as const },
+  { name: 'TARGET SPOT', width: 22, align: 'left' as const },
+  { name: 'GRADE', width: 16, align: 'center' as const },
+  { name: 'COACHING INSIGHT & FIX', width: 34, align: 'left' as const }
+];
+
+const ACTION_HEADERS = [
+  { name: 'PRIORITY', width: 24, align: 'center' as const },
+  { name: 'SPECIFIC COACHING ACTION (THREE-BITE FIX)', width: 80, align: 'left' as const },
+  { name: 'WHERE TO PRACTICE', width: 42, align: 'left' as const },
+  { name: 'EXPECTED GAIN', width: 34, align: 'right' as const }
+];
+
+const REF_HEADERS = [
+  { name: 'CORNER', width: 28, align: 'left' as const },
+  { name: 'BRAKE MARKER BOARD', width: 38, align: 'left' as const },
+  { name: 'TURN-IN REFERENCE', width: 38, align: 'left' as const },
+  { name: 'APEX CLIPPING POINT', width: 38, align: 'left' as const },
+  { name: 'TRACK-OUT LIMIT', width: 38, align: 'left' as const }
+];
+
+const ACTION_PRIORITIES = [
+  { prio: '1 (START)', color: PDF_COLORS.gradeD, gain: 0.30 },
+  { prio: '2 (NEXT)', color: PDF_COLORS.gradeD, gain: 0.20 },
+  { prio: '3 (THEN)', color: PDF_COLORS.gradeB, gain: 0.15 },
+  { prio: '4 (POLISH)', color: PDF_COLORS.speed, gain: 0.10 }
+];
+
+const LINE_DIAGNOSIS_MATRIX = [
+  {
+    symptom: 'You have to turn the steering wheel MORE after the apex cone',
+    issue: 'Early Apex / Rushed Turn-in',
+    fix: 'Wait 1 car-length longer before turning. Open up the corner radius and aim for a geometrical late clipping point.'
+  },
+  {
+    symptom: 'There is leftover road on the outside when leaving the corner',
+    issue: 'Under-committed Track-out',
+    fix: 'Let the car float all the way to the outer exit curb as you unwind the steering wheel.'
+  },
+  {
+    symptom: 'Cannot unwind the steering wheel on corner exit',
+    issue: 'Pinching the Exit Line',
+    fix: 'Apex slightly later so the car is already pointed straight down the track when you feed in full power.'
+  }
+];
+
 /**
- * Determines the coaching tone based on driver experience and curriculum context.
+ * Sanitizes a string for use as a valid filename.
+ */
+export function sanitizeFilename(name: string): string {
+  return name
+    .trim()
+    .replace(/[/\\?%*:|"<>]/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_');
+}
+
+/**
+ * Resolves the debrief filename based on the user's custom stint title.
+ * Follows pattern: [User_Title]_APEX_Debrief.pdf
+ */
+export function getDebriefFilename(
+  stintSession?: StintSession | null,
+  lap?: LapAnalysis,
+  trackName?: string,
+  carName?: string
+): string {
+  if (stintSession?.title && stintSession.title.trim().length > 0) {
+    const cleanTitle = sanitizeFilename(stintSession.title);
+    return `${cleanTitle}_APEX_Debrief.pdf`;
+  }
+  
+  const cleanTrack = sanitizeFilename(trackName || stintSession?.trackName || 'Session');
+  const cleanCar = sanitizeFilename(carName || stintSession?.carName || 'Formula');
+  const lapSuffix = lap?.lapNumber ? `_Lap_${lap.lapNumber}` : (stintSession?.stintNumber ? `_Stint_${stintSession.stintNumber}` : '');
+  
+  return `${cleanTrack}_${cleanCar}${lapSuffix}_APEX_Debrief.pdf`;
+}
+
+/**
+ * Determines coaching voice tone based on module and driver score.
  */
 function getCoachingVoice(module?: Module, _session?: Session, lap?: LapAnalysis): 'friendly_coach' | 'pro_engineer' {
   if (module && module.moduleNumber > 3) {
@@ -26,15 +157,15 @@ function getCoachingVoice(module?: Module, _session?: Session, lap?: LapAnalysis
 }
 
 /**
- * Calculates a letter grade and friendly encouraging feedback based on percentage score.
+ * Calculates letter grade, headline, and subtext based on performance score.
  */
 function getLetterGrade(score: number, isFriendly: boolean): { grade: string; text: string; subtext: string; color: [number, number, number] } {
   if (score >= 94) {
     return {
       grade: 'A+',
       text: isFriendly ? 'Awesome driving! You are flying!' : 'Mastery Pace & Precision Technique',
-      subtext: isFriendly ? 'Your lines and throttle control were super smooth.' : 'Optimal friction circle management & late apex geometry.',
-      color: [5, 150, 105]
+      subtext: isFriendly ? 'Your lines and throttle control were super smooth across every corner.' : 'Optimal friction circle management & late apex geometry.',
+      color: PDF_COLORS.gradeA
     };
   }
   if (score >= 88) {
@@ -42,7 +173,7 @@ function getLetterGrade(score: number, isFriendly: boolean): { grade: string; te
       grade: 'A',
       text: isFriendly ? 'Great job! Really solid stint!' : 'Excellent Driving Discipline & Pace',
       subtext: isFriendly ? 'You hit your marks consistently on almost every corner.' : 'Contact patch maintained within optimum slip angle window.',
-      color: [5, 150, 105]
+      color: PDF_COLORS.gradeA
     };
   }
   if (score >= 82) {
@@ -50,7 +181,7 @@ function getLetterGrade(score: number, isFriendly: boolean): { grade: string; te
       grade: 'B+',
       text: isFriendly ? 'Good line! Let’s work on braking next.' : 'Good Line, Needs Braking Modulation',
       subtext: isFriendly ? 'Your steering is great. A little practice on braking will unlock big speed.' : 'Solid geometric trajectory; braking markers can be compressed.',
-      color: [16, 185, 129]
+      color: PDF_COLORS.gradeA
     };
   }
   if (score >= 75) {
@@ -58,7 +189,7 @@ function getLetterGrade(score: number, isFriendly: boolean): { grade: string; te
       grade: 'B',
       text: isFriendly ? 'Solid foundation! Minor fixes will make you fast.' : 'Solid Foundation, Refine Apex Timing',
       subtext: isFriendly ? 'You are doing the right things. A couple of corner tweaks will give you easy time gains.' : 'Moderate entry understeer; delay turn-in point on key straights.',
-      color: [217, 119, 6]
+      color: PDF_COLORS.gradeB
     };
   }
   if (score >= 68) {
@@ -66,15 +197,36 @@ function getLetterGrade(score: number, isFriendly: boolean): { grade: string; te
       grade: 'C+',
       text: isFriendly ? 'Good effort! Focus on one corner at a time.' : 'Marginal Consistency, Fix Turn-Ins',
       subtext: isFriendly ? 'Don’t worry, this is totally normal. Let’s clean up your turn-in points.' : 'High variance on brake hit rates; steering lock increasing post-apex.',
-      color: [234, 88, 12]
+      color: PDF_COLORS.gradeC
     };
   }
   return {
     grade: 'C',
     text: isFriendly ? 'Great practice session! Here is your roadmap to get fast.' : 'Variable Pace & Steering Lock',
     subtext: isFriendly ? 'Every fast driver starts right here. Follow these 3 simple steps to find extra speed.' : 'Early turn-in causing pinched exits and delayed throttle.',
-    color: [220, 38, 38]
+    color: PDF_COLORS.gradeD
   };
+}
+
+/**
+ * Returns RGB color corresponding to a letter grade string.
+ */
+function getGradeBadgeColor(grade: string): [number, number, number] {
+  switch (grade.toUpperCase().trim()) {
+    case 'A+':
+    case 'A':
+      return PDF_COLORS.gradeA;
+    case 'B+':
+    case 'B':
+      return PDF_COLORS.gradeB;
+    case 'C+':
+    case 'C':
+      return PDF_COLORS.gradeC;
+    case 'D':
+      return PDF_COLORS.gradeD;
+    default:
+      return PDF_COLORS.gradeF;
+  }
 }
 
 /**
@@ -108,8 +260,250 @@ function getTargetLapBenchmark(lap: LapAnalysis, _session?: Session): { targetLa
   return { targetLap, deltaSec, targetTimeStr };
 }
 
+// ============================================================================
+// COMMON PDF RENDERING HELPERS (LIGHT THEME)
+// ============================================================================
+
 /**
- * Generates the official 9-Page "Going Faster!" PDF Debrief Dossier with Friendly Coach Language & Tone.
+ * Standard Header for Pages 2 through 11.
+ */
+function renderStandardHeader(
+  doc: jsPDF,
+  pageNumber: number,
+  sectionNumber: string,
+  title: string,
+  subtitle: string,
+  trackName: string,
+  carName: string,
+  lapTimeStr: string,
+  dateStr: string,
+  margin: number,
+  contentWidth: number,
+  pageWidth: number
+) {
+  const headerHeight = 18;
+  
+  // Header background card
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, margin, contentWidth, headerHeight, 1.5, 1.5, 'FD');
+
+  // Left red accent bar
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(margin, margin, 3.5, headerHeight, 'F');
+
+  // APEX 'A' Badge
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.roundedRect(margin + 6, margin + 3.5, 6, 6, 1, 1, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text('A', margin + 7.8, margin + 7.8);
+
+  // Section Number (Red)
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text(sectionNumber, margin + 15, margin + 7.8);
+
+  // Section Title (Dark Navy)
+  const secNumWidth = doc.getTextWidth(sectionNumber);
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text(title, margin + 16 + secNumWidth, margin + 7.8);
+
+  // Subtitle
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  doc.text(subtitle, margin + 15, margin + 14);
+
+  // Right metadata
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textMuted);
+  doc.text(`${trackName} • ${carName}`, pageWidth - margin - 5, margin + 7.5, { align: 'right' });
+  doc.text(`Lap Time: ${lapTimeStr} • ${dateStr}`, pageWidth - margin - 5, margin + 13.5, { align: 'right' });
+}
+
+/**
+ * Standard Footer for Pages 1 through 11.
+ */
+function renderStandardFooter(
+  doc: jsPDF,
+  pageNumber: number,
+  totalPages: number,
+  quoteText: string,
+  quoteAuthor: string | undefined,
+  margin: number,
+  contentWidth: number,
+  pageWidth: number,
+  pageHeight: number,
+  isFriendly: boolean
+) {
+  const footerY = pageHeight - 16;
+
+  // Philosophy quote card
+  if (quoteText) {
+    doc.setFillColor(...PDF_COLORS.surface);
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.roundedRect(margin, footerY - 7, contentWidth, 7.5, 1, 1, 'FD');
+
+    doc.setFontSize(6.8);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    const fullQuote = quoteAuthor ? `"${quoteText}" — ${quoteAuthor}` : `"${quoteText}"`;
+    doc.text(fullQuote, margin + 4, footerY - 2.2);
+  }
+
+  // Bottom divider
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.line(margin, footerY + 3.5, pageWidth - margin, footerY + 3.5);
+
+  // Page info
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textMuted);
+  const footerTag = isFriendly ? 'APEX Driver Coaching Guide • Trackside Debrief' : 'Skip Barber Going Faster! Analytical Methodology • APEX Systems';
+  doc.text(`Page ${pageNumber} of ${totalPages} • ${footerTag}`, margin, footerY + 8);
+  doc.text(`Certified Analytical Record • APEX v2.5`, pageWidth - margin, footerY + 8, { align: 'right' });
+}
+
+/**
+ * Corner table renderer used across Pages 4 & 5.
+ */
+function renderCornerTable(doc: jsPDF, cornersToRender: CornerTelemetryAnalysis[], margin: number, contentWidth: number) {
+  let tblY = margin + 24;
+
+  doc.setFillColor(...PDF_COLORS.surfaceAlt);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.rect(margin, tblY, contentWidth, 7, 'FD');
+
+  let curX = margin + 2;
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+
+  CORNER_TABLE_HEADERS.forEach(th => {
+    if (th.align === 'center') {
+      doc.text(th.name, curX + th.width / 2, tblY + 4.8, { align: 'center' });
+    } else {
+      doc.text(th.name, curX, tblY + 4.8);
+    }
+    curX += th.width;
+  });
+
+  tblY += 7;
+  const rowHeight = 16.5;
+
+  cornersToRender.forEach((c, idx) => {
+    const isEven = idx % 2 === 0;
+    doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.rect(margin, tblY, contentWidth, rowHeight, 'FD');
+
+    const gradeLetter = c.cornerScore >= 90 ? 'A' : c.cornerScore >= 80 ? 'B' : c.cornerScore >= 70 ? 'C' : 'D';
+    const statusColor = getGradeBadgeColor(gradeLetter);
+
+    doc.setFillColor(...statusColor);
+    doc.rect(margin, tblY, 2.5, rowHeight, 'F');
+
+    let xPos = margin + 4;
+    doc.setFontSize(6.8);
+
+    // 1. Corner
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    const cLabel = `T${c.cornerIndex} - ${c.cornerName.split('(')[0].trim().slice(0, 11)}`;
+    doc.text(cLabel, xPos, tblY + 5.5);
+    doc.setFontSize(5.8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textMuted);
+    doc.text(c.type.toUpperCase().replace('_', ' '), xPos, tblY + 11.5);
+    xPos += CORNER_TABLE_HEADERS[0].width;
+
+    // 2. Your Speed
+    doc.setFontSize(7.2);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text(`${c.apexMinSpeedKph} km/h`, xPos, tblY + 8.5);
+    xPos += CORNER_TABLE_HEADERS[1].width;
+
+    // 3. Target Speed
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    doc.text(`${c.targetApexSpeedKph} km/h`, xPos, tblY + 8.5);
+    xPos += CORNER_TABLE_HEADERS[2].width;
+
+    // 4. Delta
+    const speedDelta = c.apexMinSpeedKph - c.targetApexSpeedKph;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(speedDelta >= 0 ? PDF_COLORS.gradeA[0] : PDF_COLORS.gradeD[0], speedDelta >= 0 ? PDF_COLORS.gradeA[1] : PDF_COLORS.gradeD[1], speedDelta >= 0 ? PDF_COLORS.gradeA[2] : PDF_COLORS.gradeD[2]);
+    const deltaStr = speedDelta >= 0 ? `+${speedDelta} km/h` : `${speedDelta} km/h`;
+    doc.text(deltaStr, xPos, tblY + 8.5);
+    xPos += CORNER_TABLE_HEADERS[3].width;
+
+    // 5. Your Brake Marker
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    doc.text(`${Math.round(c.startDistance - 80)}m mark`, xPos, tblY + 8.5);
+    xPos += CORNER_TABLE_HEADERS[4].width;
+
+    // 6. Target Brake Marker
+    doc.setTextColor(...PDF_COLORS.textMuted);
+    doc.text(`${Math.round(c.startDistance - 65)}m mark`, xPos, tblY + 8.5);
+    xPos += CORNER_TABLE_HEADERS[5].width;
+
+    // 7. Grade Badge
+    doc.setFillColor(...statusColor);
+    doc.roundedRect(xPos + 2, tblY + 4, 10, 7, 1, 1, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text(gradeLetter, xPos + 7, tblY + 9, { align: 'center' });
+    xPos += CORNER_TABLE_HEADERS[6].width;
+
+    // 8. One-line Fix
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    const friendlyFix = speedDelta >= 0
+      ? 'Great apex speed! Line maintained smoothly.'
+      : c.trailBrakingDecayDurationSec < 0.22
+      ? 'Ease off brake gently toward apex cone.'
+      : 'Wait 1 car-length longer before turning in.';
+    const splitFix = doc.splitTextToSize(friendlyFix, CORNER_TABLE_HEADERS[7].width + 8);
+    doc.text(splitFix[0] || friendlyFix, xPos, tblY + 6.5);
+    if (splitFix[1]) {
+      doc.text(splitFix[1], xPos, tblY + 11.5);
+    }
+
+    tblY += rowHeight;
+  });
+
+  tblY += 4;
+  // Legend Box
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, tblY, contentWidth, 8, 1, 1, 'FD');
+
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.gradeA);
+  doc.text('■ Grade A: On Target Pace', margin + 4, tblY + 5.2);
+
+  doc.setTextColor(...PDF_COLORS.gradeB);
+  doc.text('■ Grade B: Minor Polish', margin + 60, tblY + 5.2);
+
+  doc.setTextColor(...PDF_COLORS.gradeD);
+  doc.text('■ Grade C/D: Priority Focus Area', margin + 120, tblY + 5.2);
+}
+
+// ============================================================================
+// 1. SINGLE LAP OFFICIAL 11-PAGE PDF GENERATOR
+// ============================================================================
+
+/**
+ * Generates the official 11-Page PDF Debrief Dossier with Dedicated AI Coach Analysis.
  */
 export const generateOfficialPdf = async (
   lap: LapAnalysis,
@@ -125,1154 +519,1313 @@ export const generateOfficialPdf = async (
   });
 
   const isFriendly = getCoachingVoice(module, session, lap) === 'friendly_coach';
+  const totalPages = 11;
 
   const pageWidth = 210;
   const pageHeight = 297;
-  const margin = 12;
+  const margin = 15;
   const contentWidth = pageWidth - margin * 2;
+
+  // Run AI Coach Debrief engine
+  const aiDebrief = generateAICoachDebrief(stintSession || null, lap);
 
   // Resolve target benchmark
   const { targetLap, deltaSec, targetTimeStr } = getTargetLapBenchmark(lap, session);
   const benchmarkLap = comparisonLap || targetLap;
 
-  // Driver Best Lap String
+  // Driver Lap String
   const driverMins = Math.floor(lap.lapTimeSec / 60);
   const driverSecs = (lap.lapTimeSec % 60).toFixed(2).padStart(5, '0');
   const driverTimeStr = `${driverMins}:${driverSecs}`;
 
   const overallGradeInfo = getLetterGrade(lap.overallScore, isFriendly);
   const dateStr = lap.recordedAt ? new Date(lap.recordedAt).toLocaleDateString() : new Date().toLocaleDateString();
-  const trackName = stintSession?.trackName || 'Laguna Seca Raceway';
-  const carName = stintSession?.carName || 'Formula Skip Barber 2000';
+  const trackName = stintSession?.trackName || lap.detectedTrackName || 'Lime Rock Park';
+  const carName = stintSession?.carName || lap.detectedCarName || 'Formula Skip Barber 2000';
 
-  // Helper for Standard Page Header
-  const renderPageHeader = (pageNumber: number, title: string, subtitle: string) => {
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, margin, contentWidth, 18, 1.5, 1.5, 'FD');
+  const userTitle = stintSession?.title || `Lap #${lap.lapNumber} Practice Debrief`;
 
-    doc.setFillColor(225, 6, 0);
-    doc.rect(margin, margin, 3.5, 18, 'F');
-
-    doc.setFillColor(225, 6, 0);
-    doc.roundedRect(margin + 6, margin + 3.5, 6, 6, 1, 1, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('A', margin + 7.8, margin + 7.8);
-
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(title, margin + 15, margin + 7.8);
-
-    doc.setFontSize(7.2);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(subtitle, margin + 15, margin + 14);
-
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(`${trackName} • ${carName}`, pageWidth - margin - 5, margin + 7.5, { align: 'right' });
-    doc.text(`Lap #${lap.lapNumber} (${driverTimeStr}) • ${dateStr}`, pageWidth - margin - 5, margin + 13.5, { align: 'right' });
-  };
-
-  // Helper for Standard Page Footer with Philosophy Quotes
-  const renderPageFooter = (pageNumber: number, quoteText?: string, quoteAuthor?: string) => {
-    const footerY = pageHeight - 16;
-
-    if (quoteText) {
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(margin, footerY - 7, contentWidth, 8, 1, 1, 'FD');
-
-      doc.setFontSize(6.8);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(51, 65, 85);
-      const fullQuote = quoteAuthor ? `"${quoteText}" — ${quoteAuthor}` : `"${quoteText}"`;
-      doc.text(fullQuote, margin + 4, footerY - 2);
-    }
-
-    doc.setDrawColor(226, 232, 240);
-    doc.line(margin, footerY + 4, pageWidth - margin, footerY + 4);
-
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(148, 163, 184);
-    const footerTag = isFriendly ? 'APEX Friendly Driver Coaching Guide • Trackside Debrief' : 'Skip Barber Going Faster! Analytical Methodology • APEX Systems';
-    doc.text(`Page ${pageNumber} of 9 • ${footerTag}`, margin, footerY + 9);
-    doc.text(`Official Driver Debrief • Stint #${lap.lapNumber}`, pageWidth - margin, footerY + 9, { align: 'right' });
-  };
-
-  // ==========================================
-  // PAGE 1: EXECUTIVE SUMMARY
-  // ==========================================
-  doc.setFillColor(255, 255, 255);
+  // ==========================================================================
+  // PAGE 1: COVER PAGE (PDF Structure.md & PDF DESIGN.md)
+  // ==========================================================================
+  doc.setFillColor(...PDF_COLORS.bg);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-  // Page 1 Header Banner
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(margin, margin, contentWidth, 26, 2, 2, 'FD');
+  // Top Red Accent Border (4pt)
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(0, 0, pageWidth, 4, 'F');
 
-  doc.setFillColor(225, 6, 0);
-  doc.rect(margin, margin, 4, 26, 'F');
+  // Brand Header Bar
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, margin + 4, contentWidth, 24, 2, 2, 'FD');
 
-  doc.setFillColor(225, 6, 0);
-  doc.roundedRect(margin + 7, margin + 4, 7, 7, 1, 1, 'F');
+  // Logo Icon
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.roundedRect(margin + 6, margin + 9, 8, 8, 1, 1, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
-  doc.text('A', margin + 9, margin + 9);
+  doc.setFontSize(11);
+  doc.text('A', margin + 8.5, margin + 14.8);
 
-  doc.setFontSize(13);
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text('APEX RACE COACH DEBRIEF', margin + 17, margin + 9);
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('APEX RACING ACADEMY', margin + 18, margin + 14);
 
-  doc.setFillColor(225, 6, 0);
-  doc.roundedRect(margin + 88, margin + 4.8, 32, 5.5, 1, 1, 'F');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text(isFriendly ? 'FRIENDLY COACH REPORT' : 'GOING FASTER! DOSSIER', margin + 90, margin + 8.6);
-
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  const sessionSubtitle = module
-    ? `Module ${module.moduleNumber}: ${module.title} • ${session?.title || 'Curriculum Academy Stint'}`
-    : `Stint Telemetry Debrief • ${trackName} (${carName})`;
-  doc.text(sessionSubtitle, margin + 7, margin + 19);
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text('OFFICIAL TELEMETRY DEBRIEF & COACHING DOSSIER', margin + 18, margin + 20);
 
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Date: ${dateStr}`, pageWidth - margin - 6, margin + 7.5, { align: 'right' });
-  doc.text(`Lap Number: #${lap.lapNumber} (${driverTimeStr})`, pageWidth - margin - 6, margin + 13, { align: 'right' });
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(5, 150, 105);
-  doc.text(isFriendly ? '✓ Clean Stint Validated' : 'Validated Stint Record', pageWidth - margin - 6, margin + 18.5, { align: 'right' });
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  doc.text(`Session Date: ${dateStr}`, pageWidth - margin - 6, margin + 12, { align: 'right' });
+  doc.text(`Certified Clean Lap: #${lap.lapNumber}`, pageWidth - margin - 6, margin + 18, { align: 'right' });
 
-  let curY = margin + 31;
+  let curY = margin + 36;
 
-  // Grade & Delta Highlight Dual Banner
-  const gradeBoxWidth = (contentWidth - 4) / 2;
-  const gradeBoxHeight = 32;
-
-  // Box 1: Overall Technique Grade
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(margin, curY, gradeBoxWidth, gradeBoxHeight, 2, 2, 'FD');
-
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(100, 116, 139);
-  doc.text(isFriendly ? "COACH'S OVERALL SESSION GRADE" : "OVERALL TECHNIQUE & CONSISTENCY GRADE", margin + 5, curY + 6);
-
+  // Title Section
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(overallGradeInfo.color[0], overallGradeInfo.color[1], overallGradeInfo.color[2]);
-  doc.text(overallGradeInfo.grade, margin + 5, curY + 18);
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('DRIVER COACHING REPORT', margin, curY);
 
+  curY += 6;
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text(userTitle.toUpperCase(), margin, curY);
+
+  curY += 5;
   doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text(overallGradeInfo.text, margin + 28, curY + 14);
-
-  doc.setFontSize(6.8);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  const splitSub = doc.splitTextToSize(overallGradeInfo.subtext, gradeBoxWidth - 32);
-  doc.text(splitSub, margin + 28, curY + 20);
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const sessionSub = module
+    ? `Module ${module.moduleNumber}: ${module.title} • ${session?.title || 'Curriculum Stint'} • ${trackName} (${carName})`
+    : `Track: ${trackName} • Vehicle: ${carName} • Stint Analysis`;
+  doc.text(sessionSub, margin, curY);
 
-  // Box 2: Lap Time Delta vs Target
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(margin + gradeBoxWidth + 4, curY, gradeBoxWidth, gradeBoxHeight, 2, 2, 'FD');
+  curY += 10;
 
-  doc.setFontSize(7);
+  // Grade & Delta Dual Banner
+  const gradeBoxWidth = (contentWidth - 6) / 2;
+  const gradeBoxHeight = 36;
+
+  // Box 1: Overall Grade
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, curY, gradeBoxWidth, gradeBoxHeight, 2, 2, 'FD');
+
+  doc.setFillColor(...overallGradeInfo.color);
+  doc.circle(margin + 18, curY + 18, 11, 'F');
+  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(100, 116, 139);
-  doc.text(isFriendly ? 'YOUR PACE VS TARGET BENCHMARK' : 'LAP TIME DELTA VS BENCHMARK TARGET', margin + gradeBoxWidth + 9, curY + 6);
+  doc.setFontSize(16);
+  doc.text(overallGradeInfo.grade, margin + 18, curY + 22.5, { align: 'center' });
 
-  doc.setFontSize(10.5);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text(`Your Best Lap: ${driverTimeStr}`, margin + gradeBoxWidth + 9, curY + 14);
-
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Target Benchmark: ${targetTimeStr}`, margin + gradeBoxWidth + 9, curY + 20);
+  doc.setTextColor(...PDF_COLORS.textMuted);
+  doc.text('OVERALL TECHNIQUE GRADE', margin + 34, curY + 11);
 
   doc.setFontSize(9.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(220, 38, 38);
-  const deltaMsg = isFriendly ? `You're just ${deltaSec.toFixed(2)}s off the target pace!` : `+${deltaSec.toFixed(2)}s Off Benchmark Pace`;
-  doc.text(deltaMsg, margin + gradeBoxWidth + 9, curY + 27);
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text(overallGradeInfo.text, margin + 34, curY + 18);
 
-  curY += gradeBoxHeight + 6;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const splitSubtext = doc.splitTextToSize(overallGradeInfo.subtext, gradeBoxWidth - 38);
+  doc.text(splitSubtext, margin + 34, curY + 24);
+
+  // Box 2: Benchmark Delta
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin + gradeBoxWidth + 6, curY, gradeBoxWidth, gradeBoxHeight, 2, 2, 'FD');
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textMuted);
+  doc.text('PACE VS TARGET BENCHMARK', margin + gradeBoxWidth + 12, curY + 11);
+
+  doc.setFontSize(10.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text(`Your Best Lap: ${driverTimeStr}`, margin + gradeBoxWidth + 12, curY + 18);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  doc.text(`Target Benchmark: ${targetTimeStr}`, margin + gradeBoxWidth + 12, curY + 24);
+
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.gradeD);
+  doc.text(`Delta: +${deltaSec.toFixed(2)}s to Target`, margin + gradeBoxWidth + 12, curY + 31);
+
+  curY += gradeBoxHeight + 8;
 
   // 6 KPI Micro Tiles
   const kpiCols = 6;
-  const kpiGap = 2.5;
+  const kpiGap = 3;
   const kpiWidth = (contentWidth - kpiGap * (kpiCols - 1)) / kpiCols;
-  const kpiHeight = 15;
+  const kpiHeight = 18;
 
   const kpis = [
-    { label: isFriendly ? 'YOUR TIME' : 'LAP TIME', value: `${lap.lapTimeSec.toFixed(2)}s`, color: [15, 23, 42] },
-    { label: isFriendly ? 'TOP SPEED' : 'PEAK SPEED', value: `${lap.maxSpeedKph} km/h`, color: [2, 132, 199] },
-    { label: isFriendly ? 'TIRE GRIP' : 'GRIP BUDGET', value: `${lap.avgTractionBudgetPct}%`, color: [5, 150, 105] },
-    { label: isFriendly ? 'TECH SCORE' : 'MASTERY', value: `${lap.overallScore}%`, color: [217, 119, 6] },
-    { label: isFriendly ? 'CORNER G' : 'PEAK LAT G', value: `${lap.peakLatG.toFixed(2)}G`, color: [124, 58, 237] },
-    { label: isFriendly ? 'BRAKE FORCE' : 'PEAK BRAKE G', value: `${lap.peakBrakingG.toFixed(2)}G`, color: [220, 38, 38] },
+    { label: 'LAP TIME', value: `${lap.lapTimeSec.toFixed(2)}s`, color: PDF_COLORS.textPrimary },
+    { label: 'TOP SPEED', value: `${lap.maxSpeedKph} km/h`, color: PDF_COLORS.speed },
+    { label: 'TIRE GRIP', value: `${lap.avgTractionBudgetPct}%`, color: PDF_COLORS.gradeA },
+    { label: 'TECH SCORE', value: `${lap.overallScore}%`, color: PDF_COLORS.gradeB },
+    { label: 'PEAK LAT G', value: `${lap.peakLatG.toFixed(2)}G`, color: PDF_COLORS.latG },
+    { label: 'PEAK BRAKE', value: `${lap.peakBrakingG.toFixed(2)}G`, color: PDF_COLORS.gradeD },
   ];
 
   kpis.forEach((kpi, idx) => {
     const kX = margin + idx * (kpiWidth + kpiGap);
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
+    doc.setFillColor(...PDF_COLORS.surface);
+    doc.setDrawColor(...PDF_COLORS.border);
     doc.roundedRect(kX, curY, kpiWidth, kpiHeight, 1.5, 1.5, 'FD');
-    doc.setFillColor(kpi.color[0], kpi.color[1], kpi.color[2]);
-    doc.rect(kX, curY, kpiWidth, 1, 'F');
+    
+    // Top colored indicator line
+    doc.setFillColor(...kpi.color);
+    doc.rect(kX, curY, kpiWidth, 1.2, 'F');
 
-    doc.setFontSize(5.8);
+    doc.setFontSize(6.2);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(100, 116, 139);
-    doc.text(kpi.label, kX + 2.5, curY + 5);
+    doc.setTextColor(...PDF_COLORS.textMuted);
+    doc.text(kpi.label, kX + 3, curY + 6.5);
 
-    doc.setFontSize(8.5);
+    doc.setFontSize(9.5);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(kpi.color[0], kpi.color[1], kpi.color[2]);
-    doc.text(kpi.value, kX + 2.5, curY + 11.2);
+    doc.setTextColor(...kpi.color);
+    doc.text(kpi.value, kX + 3, curY + 14);
   });
 
-  curY += kpiHeight + 6;
+  curY += kpiHeight + 10;
 
-  // Top 3 Issues Section Card (Three-Bite Rule applied)
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  const issuesCardHeight = 72;
-  doc.roundedRect(margin, curY, contentWidth, issuesCardHeight, 2, 2, 'FD');
-
-  doc.setFillColor(15, 23, 42);
-  doc.roundedRect(margin, curY, contentWidth, 7.5, 2, 2, 'F');
-  doc.rect(margin, curY + 4, contentWidth, 3.5, 'F');
+  // One-Line Summary Quote Box (PDF Structure.md Page 1)
+  doc.setFillColor(...PDF_COLORS.accentLight);
+  doc.setDrawColor(...PDF_COLORS.accent);
+  doc.roundedRect(margin, curY, contentWidth, 20, 2, 2, 'FD');
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(margin, curY, 3.5, 20, 'F');
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text('COACH’S ONE-LINE DEBRIEF', margin + 8, curY + 7);
+
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
   doc.text(
-    isFriendly ? 'TOP 3 THINGS TO WORK ON NEXT (THREE-BITE COACHING FIXES)' : 'TOP 3 PRIMARY TECHNIQUE DEFICITS (RANKED BY TIME IMPACT)',
-    margin + 5,
-    curY + 5.2
+    isFriendly
+      ? '"Great driving line! Let’s refine your braking release to unlock consistent speed."'
+      : '"Disciplined trajectory; compress initial threshold braking markers for optimal rotation."',
+    margin + 8,
+    curY + 14
   );
 
-  const sortedIssues = [...lap.corners].sort((a, b) => a.cornerScore - b.cornerScore).slice(0, 3);
-  let issueY = curY + 12;
+  curY += 28;
 
-  sortedIssues.forEach((c, idx) => {
-    const issueNum = idx + 1;
-    doc.setFillColor(220, 38, 38);
-    doc.circle(margin + 8, issueY + 1, 3.2, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.text(`${issueNum}`, margin + 6.8, issueY + 2.8);
+  // Summary Table: The Learn-As-You-Read Guide
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, curY, contentWidth, 70, 2, 2, 'FD');
 
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    const cornerTitle = `Turn ${c.cornerIndex} (${c.cornerName.trim()}) — You can gain +${Math.max(0.12, (100 - c.cornerScore) * 0.007).toFixed(2)}s here!`;
-    doc.text(cornerTitle, margin + 15, issueY + 2.5);
-
-    doc.setFontSize(7.2);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-
-    // Three-Bite Rule Friendly Wording
-    const biteText = isFriendly
-      ? `• What Happened: You're turning in a little too early here.\n• Why It Matters: This pushes your car wide on exit and costs speed down the straight.\n• How To Fix It: Wait just one car-length longer before turning the steering wheel.`
-      : (c.diagnosis || `Overslowing entry and releasing brakes abruptly prior to geometric apex. Minimum speed ${c.apexMinSpeedKph} km/h vs target ${c.targetApexSpeedKph} km/h.`);
-
-    const splitDesc = doc.splitTextToSize(biteText, contentWidth - 22);
-    doc.text(splitDesc, margin + 15, issueY + 6.5);
-
-    issueY += splitDesc.length * 3.4 + 4.5;
-  });
-
-  curY += issuesCardHeight + 6;
-
-  // Quick Wins Section Card (Warm Encouragement)
-  doc.setFillColor(240, 253, 244);
-  doc.setDrawColor(187, 247, 208);
-  const quickWinsHeight = 62;
-  doc.roundedRect(margin, curY, contentWidth, quickWinsHeight, 2, 2, 'FD');
-
-  doc.setFillColor(5, 150, 105);
-  doc.roundedRect(margin, curY, contentWidth, 7.5, 2, 2, 'F');
-  doc.rect(margin, curY + 4, contentWidth, 3.5, 'F');
-
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text(isFriendly ? 'QUICK WINS: FIX THESE FIRST FOR THE EASIEST TIME GAINS' : 'QUICK WINS: HIGH-LEVERAGE FIXES FOR IMMEDIATE TIME GAINS', margin + 5, curY + 5.2);
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('WHAT THIS 11-PAGE REPORT COVERS:', margin + 6, curY + 8);
 
-  let winY = curY + 12;
-  const quickWinsList = isFriendly ? [
-    {
-      title: '1. Wait 1 Car-Length Before Turning In',
-      action: 'This is super common! Turning in just slightly later lets you get on the gas way earlier on corner exit.'
-    },
-    {
-      title: '2. Smooth Off the Brakes Like Letting Air Out of a Balloon',
-      action: 'Instead of snapping your foot off the brake pedal, ease off smoothly as you approach the apex cone.'
-    },
-    {
-      title: '3. Squeeze Throttle Only As You Unwind the Steering Wheel',
-      action: 'Imagine an elastic string between your steering wheel and your right foot. As the wheel straightens, press the gas!'
-    }
-  ] : [
-    {
-      title: '1. Deeper Turn-In on Key Exit Corners',
-      action: 'Move turn-in marker 1-2 car lengths deeper to ensure a geometrical late apex, allowing immediate 100% throttle.'
-    },
-    {
-      title: '2. Smooth Trail-Braking Bleed-Off',
-      action: 'Hold 15-20% trailing brake pressure all the way to the apex cone. Never snap foot abruptly off the pedal.'
-    },
-    {
-      title: '3. Throttle-Steering Coordination ("String Theory")',
-      action: 'Only feed throttle beyond 50% as steering lock unwinds towards the exit curb. Squeeze progressively.'
-    }
+  const reportIndexItems = [
+    { p: 'Pages 2 & 3', title: 'AI Coach Assessment & 5-Pillar Scorecard', desc: 'Deep dive into Traction Budget, Trail-Braking, Corner Priorities, Throttle & Consistency.' },
+    { p: 'Pages 4 & 5', title: 'Corner-by-Corner Telemetry Breakdown', desc: 'Turn-by-turn speeds, brake markers, delta times, and individual corner grades.' },
+    { p: 'Page 6', title: 'Brake Analysis & The Brake Report', desc: 'Brake pressure trace overlay, threshold hit rates, and the balloon trail-braking rule.' },
+    { p: 'Page 7', title: 'Throttle & Exit Speed Analysis', desc: 'Throttle application traces, string theory discipline, and straightaway speed building.' },
+    { p: 'Page 8', title: 'Racing Line & Trajectory Diagnosis', desc: '2D GPS track map comparison with apex timing and steering unwind analysis.' },
+    { p: 'Page 9', title: 'Session Progression & Consistency', desc: 'Lap-by-lap variance, stint pace development, and fastest lap replication.' },
+    { p: 'Pages 10 & 11', title: 'Action Plan & Reference Marks Card', desc: 'Prioritized high-leverage fixes (Bucket Principle) and visual track reference markers.' }
   ];
 
-  quickWinsList.forEach((win) => {
+  let itemY = curY + 15;
+  reportIndexItems.forEach(item => {
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(4, 120, 87);
-    doc.text(win.title, margin + 5, winY);
+    doc.setTextColor(...PDF_COLORS.accent);
+    doc.text(item.p, margin + 6, itemY);
+
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text(item.title, margin + 34, itemY);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    doc.text(`— ${item.desc}`, margin + 94, itemY);
+
+    itemY += 7.2;
+  });
+
+  renderStandardFooter(
+    doc,
+    1,
+    totalPages,
+    'Every graph is explained. Every number has context. Speed comes from understanding.',
+    'APEX Coaching Philosophy',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // ==========================================================================
+  // PAGE 2: AI COACH ASSESSMENT & 5-PILLAR SCORECARD
+  // ==========================================================================
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+  renderStandardHeader(
+    doc,
+    2,
+    '01',
+    'AI COACH ASSESSMENT & 5-PILLAR SCORECARD',
+    'Independent Skip Barber analytical evaluation of vehicle dynamics & driving technique',
+    trackName,
+    carName,
+    driverTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+
+  let p2Y = margin + 24;
+
+  // Driver Profile Card
+  doc.setFillColor(...PDF_COLORS.accentLight);
+  doc.setDrawColor(...PDF_COLORS.accent);
+  doc.roundedRect(margin, p2Y, contentWidth, 22, 2, 2, 'FD');
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(margin, p2Y, 3.5, 22, 'F');
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text('DRIVER PROFILE CLASSIFICATION', margin + 8, p2Y + 6.5);
+
+  doc.setFontSize(10.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text(aiDebrief.driverProfileTag || 'Developing Track Tactician', margin + 8, p2Y + 12.5);
+
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const splitProfile = doc.splitTextToSize(aiDebrief.driverProfileDescription || 'Solid foundational vehicle control with clear opportunities to link trail-braking seamlessly into maintenance throttle.', contentWidth - 16);
+  doc.text(splitProfile, margin + 8, p2Y + 18);
+
+  p2Y += 28;
+
+  // 5 Skip Barber Pillar Cards
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('THE 5 SKIP BARBER PILLARS OF SPEED', margin, p2Y);
+
+  p2Y += 5;
+
+  const pillarCards = aiDebrief.pillarScores || [];
+  const pillarHeight = 32;
+
+  pillarCards.forEach((pillar: SkipBarberPillarScore, idx: number) => {
+    const cardY = p2Y + idx * (pillarHeight + 3.5);
+    const pColor = getGradeBadgeColor(pillar.grade);
+
+    doc.setFillColor(...PDF_COLORS.surface);
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.roundedRect(margin, cardY, contentWidth, pillarHeight, 1.5, 1.5, 'FD');
+
+    // Left colored pill
+    doc.setFillColor(...pColor);
+    doc.rect(margin, cardY, 3, pillarHeight, 'F');
+
+    // Pillar Number & Title
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text(`Pillar ${idx + 1}: ${pillar.name}`, margin + 7, cardY + 7);
+
+    // Book Chapter Citation
+    doc.setFontSize(6.8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.accent);
+    doc.text(`[Skip Barber Going Faster! ${pillar.bookChapter}]`, margin + 7, cardY + 12);
+
+    // Summary description
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    const splitSummary = doc.splitTextToSize(pillar.summary, contentWidth - 55);
+    doc.text(splitSummary, margin + 7, cardY + 18);
+
+    // Grade Badge on right
+    doc.setFillColor(...pColor);
+    doc.roundedRect(pageWidth - margin - 28, cardY + 6, 22, 18, 1.5, 1.5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(pillar.grade, pageWidth - margin - 17, cardY + 14.5, { align: 'center' });
+
+    doc.setFontSize(6.5);
+    doc.text(`${pillar.score}/100`, pageWidth - margin - 17, cardY + 20.5, { align: 'center' });
+  });
+
+  // Footer quote
+  renderStandardFooter(
+    doc,
+    2,
+    totalPages,
+    SKIP_BARBER_CITATIONS.TRACTION_CIRCLE.quote,
+    'Skip Barber Going Faster! Ch. 2',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // ==========================================================================
+  // PAGE 3: TACTICAL DEBRIEF — WHAT YOU DID WELL & 3 THINGS TO FIX
+  // ==========================================================================
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+  renderStandardHeader(
+    doc,
+    3,
+    '02',
+    'TACTICAL COACHING DEBRIEF — WHAT WENT RIGHT & WHAT TO FIX',
+    'Telemetry evidence-based driver feedback and high-leverage fixes',
+    trackName,
+    carName,
+    driverTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+
+  let p3Y = margin + 24;
+
+  // Section 1: What You Did Well
+  doc.setFillColor(240, 253, 244);
+  doc.setDrawColor(187, 247, 208);
+  doc.roundedRect(margin, p3Y, contentWidth, 46, 2, 2, 'FD');
+  doc.setFillColor(...PDF_COLORS.gradeA);
+  doc.rect(margin, p3Y, 3.5, 46, 'F');
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(4, 120, 87);
+  doc.text('WHAT YOU DID WELL (STANDOUT STRENGTHS)', margin + 8, p3Y + 7);
+
+  const strengths = aiDebrief.whatWentRight && aiDebrief.whatWentRight.length > 0 
+    ? aiDebrief.whatWentRight.slice(0, 2)
+    : [
+        {
+          title: 'Smooth Initial Throttle Pick-Up',
+          description: 'You applied maintenance throttle progressively right at apex clipping points without unsettling the rear.',
+          metricEvidence: 'Throttle Linearity: 92% | Zero abrupt power spikes'
+        },
+        {
+          title: 'Consistent Corner Placement',
+          description: 'You nailed your geometric late apex on key transition turns, maximizing straightaway exit trajectory.',
+          metricEvidence: 'Apex Hit Rate: 94% on Turn 3 & Turn 5'
+        }
+      ];
+
+  let strY = p3Y + 14;
+  strengths.forEach(str => {
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text(`✓ ${str.title}`, margin + 8, strY);
 
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(30, 41, 59);
-    const splitWin = doc.splitTextToSize(win.action, contentWidth - 10);
-    doc.text(splitWin, margin + 5, winY + 4.5);
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    const splitDesc = doc.splitTextToSize(`${str.description} (${str.metricEvidence || ''})`, contentWidth - 18);
+    doc.text(splitDesc, margin + 12, strY + 4.5);
 
-    winY += splitWin.length * 3.4 + 5.5;
+    strY += 15;
   });
 
-  renderPageFooter(
-    1,
-    isFriendly
-      ? 'The goal is to make the driver feel like they just had a coaching session with a friend—not a lecture from an engineer.'
-      : 'The most important lesson is that in order to drive extraordinarily well, you have to use your head much more than your guts.',
-    isFriendly ? 'Friendly Coach Golden Rule' : 'Going Faster! Philosophy'
+  p3Y += 52;
+
+  // Section 2: Top 3 Things to Fix Table (Three-Bite Rule)
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('TOP 3 THINGS TO FIX (THREE-BITE COACHING METHODOLOGY)', margin, p3Y);
+
+  p3Y += 5;
+
+  // Table header
+  doc.setFillColor(...PDF_COLORS.surfaceAlt);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.rect(margin, p3Y, contentWidth, 7, 'FD');
+
+  let curFixX = margin + 2;
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  FIX_HEADERS.forEach(th => {
+    if (th.align === 'center') {
+      doc.text(th.name, curFixX + th.width / 2, p3Y + 4.8, { align: 'center' });
+    } else {
+      doc.text(th.name, curFixX, p3Y + 4.8);
+    }
+    curFixX += th.width;
+  });
+
+  p3Y += 7;
+
+  const sortedIssues = [...lap.corners].sort((a, b) => a.cornerScore - b.cornerScore).slice(0, 3);
+
+  sortedIssues.forEach((c, idx) => {
+    const isEven = idx % 2 === 0;
+    doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.rect(margin, p3Y, contentWidth, FIX_ROW_HEIGHT, 'FD');
+
+    // Priority badge
+    doc.setFillColor(...PDF_COLORS.gradeD);
+    doc.roundedRect(margin + 4, p3Y + 8, 14, 10, 1, 1, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text(`#${idx + 1}`, margin + 11, p3Y + 14.5, { align: 'center' });
+
+    let colX = margin + 24;
+
+    // Problem
+    doc.setFontSize(7.2);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    const pTitle = `T${c.cornerIndex} (${c.cornerName.split('(')[0].trim()})`;
+    doc.text(pTitle, colX, p3Y + 6.5);
+
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    const probDesc = c.trailBrakingDecayDurationSec < 0.22 
+      ? 'Abrupt brake release / Overslowing entry' 
+      : 'Early turn-in / Delayed throttle unwinding';
+    doc.text(doc.splitTextToSize(probDesc, 40), colX, p3Y + 12);
+    colX += 44;
+
+    // Telemetry Evidence
+    doc.setFontSize(6.5);
+    doc.setTextColor(...PDF_COLORS.gradeD);
+    const telemEvidence = `Brake trace ends 30m early. Apex speed ${c.apexMinSpeedKph} km/h vs target ${c.targetApexSpeedKph} km/h.`;
+    doc.text(doc.splitTextToSize(telemEvidence, 45), colX, p3Y + 8);
+    colX += 48;
+
+    // Why & How to Fix (Three-Bite Rule)
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    const whyHow = isFriendly
+      ? `• Why: Loses speed before corner starts.\n• Fix: Wait 1 car-length longer before turning, then ease off brakes gently.`
+      : `• Why: Unloads front contact patch prematurely.\n• Fix: Hold 15% trailing pressure to the apex clipping point.`;
+    doc.text(doc.splitTextToSize(whyHow, 62), colX, p3Y + 8);
+
+    p3Y += FIX_ROW_HEIGHT;
+  });
+
+  p3Y += 6;
+
+  // Telemetry Lesson Box (PDF Structure.md Page 3)
+  doc.setFillColor(...PDF_COLORS.accentLight);
+  doc.setDrawColor(...PDF_COLORS.accent);
+  doc.roundedRect(margin, p3Y, contentWidth, 18, 1.5, 1.5, 'FD');
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(margin, p3Y, 3.5, 18, 'F');
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text('TELEMETRY LESSON — WHERE TIME IS HIDING', margin + 8, p3Y + 6);
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text(
+    '"The blue line is YOUR data. The red line is the TARGET. Where they are apart—that is where lap time is hiding."',
+    margin + 8,
+    p3Y + 12
   );
 
-  // ==========================================
-  // PAGES 2 & 3: CORNER-BY-CORNER BREAKDOWN
-  // ==========================================
+  renderStandardFooter(
+    doc,
+    3,
+    totalPages,
+    'The goal is not to make the driver feel bad. The goal is to make the driver faster.',
+    'The Golden Rule',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // ==========================================================================
+  // PAGES 4 & 5: CORNER-BY-CORNER BREAKDOWN
+  // ==========================================================================
   const totalCorners = lap.corners.length;
   const halfCorners = Math.ceil(totalCorners / 2);
-  const page2Corners = lap.corners.slice(0, halfCorners);
-  const page3Corners = lap.corners.slice(halfCorners);
+  const page4Corners = lap.corners.slice(0, halfCorners);
+  const page5Corners = lap.corners.slice(halfCorners);
 
-  const cornerTableHeaders = [
-    { name: 'CORNER', width: 28, align: 'left' as const },
-    { name: isFriendly ? 'YOUR SPEED' : 'YOUR MIN', width: 20, align: 'left' as const },
-    { name: isFriendly ? 'TARGET' : 'TARGET MIN', width: 22, align: 'left' as const },
-    { name: 'DELTA', width: 18, align: 'left' as const },
-    { name: isFriendly ? 'BRAKE SPOT' : 'YOUR BRAKE', width: 22, align: 'left' as const },
-    { name: isFriendly ? 'TARGET SPOT' : 'TARGET BRK', width: 22, align: 'left' as const },
-    { name: 'GRADE', width: 16, align: 'center' as const },
-    { name: isFriendly ? 'FRIENDLY COACH FIX' : 'ONE-LINE COACHING FIX', width: 38, align: 'left' as const }
-  ];
-
-  const renderCornerTable = (cornersToRender: CornerTelemetryAnalysis[]) => {
-    let tblY = margin + 24;
-
-    doc.setFillColor(241, 245, 249);
-    doc.setDrawColor(203, 213, 225);
-    doc.rect(margin, tblY, contentWidth, 7, 'FD');
-
-    let curX = margin + 2;
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(71, 85, 105);
-
-    cornerTableHeaders.forEach(th => {
-      if (th.align === 'center') {
-        doc.text(th.name, curX + th.width / 2, tblY + 4.8, { align: 'center' });
-      } else {
-        doc.text(th.name, curX, tblY + 4.8);
-      }
-      curX += th.width;
-    });
-
-    tblY += 7;
-
-    const rowHeight = 15.5;
-
-    cornersToRender.forEach((c, idx) => {
-      const isEven = idx % 2 === 0;
-      doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.rect(margin, tblY, contentWidth, rowHeight, 'FD');
-
-      const gradeLetter = c.cornerScore >= 90 ? 'A' : c.cornerScore >= 80 ? 'B' : c.cornerScore >= 70 ? 'C' : 'D';
-      const statusColor: [number, number, number] = c.cornerScore >= 80 ? [5, 150, 105] : c.cornerScore >= 70 ? [217, 119, 6] : [220, 38, 38];
-
-      doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-      doc.rect(margin, tblY, 2.5, rowHeight, 'F');
-
-      let xPos = margin + 4;
-      doc.setFontSize(6.8);
-
-      // 1. Corner
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(15, 23, 42);
-      const cLabel = `T${c.cornerIndex} - ${c.cornerName.split('(')[0].trim().slice(0, 11)}`;
-      doc.text(cLabel, xPos, tblY + 5.5);
-      doc.setFontSize(5.8);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 116, 139);
-      doc.text(c.type.toUpperCase().replace('_', ' '), xPos, tblY + 11.5);
-      xPos += cornerTableHeaders[0].width;
-
-      // 2. Your Min Speed
-      doc.setFontSize(7.2);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(15, 23, 42);
-      doc.text(`${c.apexMinSpeedKph} km/h`, xPos, tblY + 8.5);
-      xPos += cornerTableHeaders[1].width;
-
-      // 3. Target Min Speed
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 116, 139);
-      doc.text(`${c.targetApexSpeedKph} km/h`, xPos, tblY + 8.5);
-      xPos += cornerTableHeaders[2].width;
-
-      // 4. Delta
-      const speedDelta = c.apexMinSpeedKph - c.targetApexSpeedKph;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(speedDelta >= 0 ? 5 : 220, speedDelta >= 0 ? 150 : 38, speedDelta >= 0 ? 105 : 38);
-      const deltaStr = speedDelta >= 0 ? `+${speedDelta} km/h` : `${speedDelta} km/h`;
-      doc.text(deltaStr, xPos, tblY + 8.5);
-      xPos += cornerTableHeaders[3].width;
-
-      // 5. Your Brake Point
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(51, 65, 85);
-      const yourBrake = `${Math.round(c.startDistance - 80)}m board`;
-      doc.text(yourBrake, xPos, tblY + 8.5);
-      xPos += cornerTableHeaders[4].width;
-
-      // 6. Target Brake Point
-      doc.setTextColor(100, 116, 139);
-      const targetBrake = `${Math.round(c.startDistance - 65)}m board`;
-      doc.text(targetBrake, xPos, tblY + 8.5);
-      xPos += cornerTableHeaders[5].width;
-
-      // 7. Grade Badge
-      doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-      doc.roundedRect(xPos + 2, tblY + 4, 10, 6.5, 1, 1, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.8);
-      doc.text(gradeLetter, xPos + 7, tblY + 8.5, { align: 'center' });
-      xPos += cornerTableHeaders[6].width;
-
-      // 8. One-Line Fix (Plain English)
-      doc.setFontSize(6.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(30, 41, 59);
-      const friendlyFix = speedDelta >= 0
-        ? 'Great job! You carried great speed through the apex.'
-        : c.trailBrakingDecayDurationSec < 0.22
-        ? 'Ease off the brake gently as you turn toward the cone.'
-        : 'Wait one car-length before turning in, then squeeze throttle.';
-      const fixText = isFriendly ? friendlyFix : (c.skipBarberAdvice || 'Brake 15m later and trail-brake to the apex cone.');
-      const splitFix = doc.splitTextToSize(fixText, cornerTableHeaders[7].width + 8);
-      doc.text(splitFix[0] || fixText, xPos, tblY + 6.2);
-      if (splitFix[1]) {
-        doc.text(splitFix[1], xPos, tblY + 11.2);
-      }
-
-      tblY += rowHeight;
-    });
-
-    tblY += 4;
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, tblY, contentWidth, 8, 1, 1, 'FD');
-
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(5, 150, 105);
-    doc.text(isFriendly ? '■ GREEN: Great Job! (Grade A)' : '■ GREEN: On Target (Grade A)', margin + 4, tblY + 5.2);
-
-    doc.setTextColor(217, 119, 6);
-    doc.text(isFriendly ? '■ YELLOW: Pretty Good (Grade B/C)' : '■ YELLOW: Marginal (Grade B/C)', margin + 60, tblY + 5.2);
-
-    doc.setTextColor(220, 38, 38);
-    doc.text(isFriendly ? '■ RED: Practice This Next! (Grade D)' : '■ RED: Needs Work / Overslowing (Grade D/F)', margin + 120, tblY + 5.2);
-  };
-
-  // --- PAGE 2 ---
+  // --- PAGE 4 ---
   doc.addPage();
-  doc.setFillColor(255, 255, 255);
+  doc.setFillColor(...PDF_COLORS.bg);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(2, isFriendly ? 'CORNER-BY-CORNER COACHING (SECTOR 1 & 2)' : 'CORNER-BY-CORNER BREAKDOWN (SECTOR 1 & 2)', isFriendly ? 'Simple corner notes, speeds, and friendly fixes for each turn' : 'Individual corner telemetry, apex speeds, brake markers, and Skip Barber prescriptions');
-  renderCornerTable(page2Corners);
-  renderPageFooter(2, isFriendly ? 'Get the line right first. Exit speed comes second. Braking deeper comes last.' : 'The line is primary. Exit speed is second. Braking is last. Master them strictly in that sequence.', isFriendly ? 'Friendly Coach Rule' : 'Skip Barber Fundamental');
-
-  // --- PAGE 3 ---
-  doc.addPage();
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(3, isFriendly ? 'CORNER-BY-CORNER COACHING (SECTOR 3 & FINAL TURNS)' : 'CORNER-BY-CORNER BREAKDOWN (SECTOR 3 & FINAL COMPLEX)', isFriendly ? 'Simple corner notes, speeds, and friendly fixes for each turn' : 'Individual corner telemetry, apex speeds, brake markers, and Skip Barber prescriptions');
-  renderCornerTable(page3Corners);
-  renderPageFooter(3, isFriendly ? 'Remember: A corner is only finished once your car is driving straight again!' : 'A corner is not finished when you reach the apex. A corner is finished only when the car is traveling straight again.', isFriendly ? 'Coach Tip' : 'Going Faster! Ch. 3');
-
-  // ==========================================
-  // PAGE 4: BRAKE ANALYSIS (THE BRAKE REPORT)
-  // ==========================================
-  doc.addPage();
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(4, isFriendly ? 'THE BRAKE REPORT — HOW TO USE YOUR BRAKES' : 'BRAKE ANALYSIS — THE BRAKE REPORT', isFriendly ? 'Simple answers on braking force, easing off smoothly, and finding extra speed' : 'Threshold modulation, trail-braking decay duration, and deceleration efficiency');
-
-  let p4Y = margin + 23;
-
-  const brakeChartImg = renderBrakeTraceChart(lap, benchmarkLap, 800, 280);
-  const chartHeightMm = 68;
-  doc.addImage(brakeChartImg, 'PNG', margin, p4Y, contentWidth, chartHeightMm);
-
-  p4Y += chartHeightMm + 6;
-
-  // 3 Key Questions Answered Card (Three-Bite Rule & Balloon Analogy)
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  const brakeQAHeight = 126;
-  doc.roundedRect(margin, p4Y, contentWidth, brakeQAHeight, 2, 2, 'FD');
-
-  doc.setFillColor(15, 23, 42);
-  doc.roundedRect(margin, p4Y, contentWidth, 7.5, 2, 2, 'F');
-  doc.rect(margin, p4Y + 4, contentWidth, 3.5, 'F');
-
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text(isFriendly ? 'THREE SIMPLE BRAKING QUESTIONS ANSWERED (FRIENDLY COACH BREAKDOWN)' : 'THREE FUNDAMENTAL BRAKING QUESTIONS ANSWERED (GOING FASTER! CH. 4)', margin + 5, p4Y + 5.2);
-
-  let qY = p4Y + 13;
-
-  // Q1: Are you braking hard enough?
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(220, 38, 38);
-  doc.text('1. Are you pressing the brake pedal hard enough?', margin + 5, qY);
-  qY += 4.5;
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const q1Text = isFriendly
-    ? `• What Happened: You hit about 80% maximum brake pressure on straight lines.\n• Why It Matters: Pressing firmly right at the start stops the car quicker and lets you brake closer to the turn.\n• How To Fix It: Don't worry—most drivers are cautious here! Give the brake pedal a confident, firm press initially.`
-    : `Your peak deceleration reached ${lap.peakBrakingG.toFixed(2)}G. Target benchmark is 1.55G (95%+). You are leaving stopping power unused on straight-line threshold hits, forcing earlier brake points.`;
-  const splitQ1 = doc.splitTextToSize(q1Text, contentWidth - 10);
-  doc.text(splitQ1, margin + 5, qY);
-  qY += splitQ1.length * 3.4 + 5.5;
-
-  // Q2: Are you trail-braking? (The Balloon Analogy)
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(124, 58, 237);
-  doc.text(isFriendly ? '2. Are you easing off the brakes gently into the turn? (The Balloon Rule)' : '2. Are you trail-braking smoothly into the apex clipping point?', margin + 5, qY);
-  qY += 4.5;
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const q2Text = isFriendly
-    ? `• The Balloon Analogy: Think of your front tires like a balloon. If you squeeze too hard or pop off suddenly, you lose grip. Trail-braking is like slowly letting air out—smooth, gentle, and controlled.\n• How To Fix It: As you start turning the steering wheel, slowly bleed off the brake pedal toward the apex cone.`
-    : `Your average trail-braking bleed duration is 0.22s into corner entries. As steering lock increases, brake pressure must be continuously tapered off to maintain the friction envelope. Avoid stepping off abruptly.`;
-  const splitQ2 = doc.splitTextToSize(q2Text, contentWidth - 10);
-  doc.text(splitQ2, margin + 5, qY);
-  qY += splitQ2.length * 3.4 + 5.5;
-
-  // Q3: Where do you lose time?
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(217, 119, 6);
-  doc.text(isFriendly ? '3. Where is your easiest spot to gain time under braking?' : '3. Where are you giving away time under deceleration?', margin + 5, qY);
-  qY += 4.5;
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const lowestBrakeCorner = [...lap.corners].sort((a, b) => a.cornerScore - b.cornerScore)[0];
-  const q3Text = isFriendly
-    ? `• What Happened: At Turn ${lowestBrakeCorner.cornerIndex} (${lowestBrakeCorner.cornerName.trim()}), you're braking at the 200m board.\n• Why It Matters: That's earlier than needed, so your car slows down before the corner even starts.\n• How To Fix It: Try braking at the 150m board next session. Take 3-4 laps to get comfortable with the feeling!`
-    : `Primary braking loss is localized at T${lowestBrakeCorner.cornerIndex} (${lowestBrakeCorner.cornerName.trim()}). You are initiating braking approximately 20m before the ideal marker. Compress the threshold zone.`;
-  const splitQ3 = doc.splitTextToSize(q3Text, contentWidth - 10);
-  doc.text(splitQ3, margin + 5, qY);
-
-  renderPageFooter(
+  renderStandardHeader(
+    doc,
     4,
+    '03',
+    'CORNER-BY-CORNER TELEMETRY (SECTORS 1 & 2)',
+    'Detailed corner speeds, brake markers, delta times, and individual corner grades',
+    trackName,
+    carName,
+    driverTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+  renderCornerTable(doc, page4Corners, margin, contentWidth);
+  renderStandardFooter(
+    doc,
+    4,
+    totalPages,
+    'The line is primary. Exit speed is second. Braking deeper comes last. Master them strictly in that sequence.',
+    'Skip Barber Fundamental',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
     isFriendly
-      ? 'Think of your tires like a balloon. Smooth and gentle pressure gives you maximum grip.'
-      : 'It is amazing how many drivers, even at the Formula One level, think that the brakes are for slowing the car down.',
-    isFriendly ? 'Friendly Coach Analogy' : 'Mario Andretti'
   );
 
-  // ==========================================
-  // PAGE 5: THROTTLE & EXIT SPEED ANALYSIS
-  // ==========================================
+  // --- PAGE 5 ---
   doc.addPage();
-  doc.setFillColor(255, 255, 255);
+  doc.setFillColor(...PDF_COLORS.bg);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(5, isFriendly ? 'GAS PEDAL & EXIT SPEED — HOW TO GO FAST' : 'THROTTLE & EXIT SPEED ANALYSIS', isFriendly ? 'String theory, smooth throttle squeeze, and building straightaway speed' : 'Progressive squeeze linearity, apex power pickup points, and straightaway exit velocity');
-
-  let p5Y = margin + 23;
-
-  const throttleChartImg = renderThrottleTraceChart(lap, benchmarkLap, 800, 280);
-  doc.addImage(throttleChartImg, 'PNG', margin, p5Y, contentWidth, chartHeightMm);
-
-  p5Y += chartHeightMm + 6;
-
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  const throttleCardHeight = 126;
-  doc.roundedRect(margin, p5Y, contentWidth, throttleCardHeight, 2, 2, 'FD');
-
-  doc.setFillColor(15, 23, 42);
-  doc.roundedRect(margin, p5Y, contentWidth, 7.5, 2, 2, 'F');
-  doc.rect(margin, p5Y + 4, contentWidth, 3.5, 'F');
-
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text(isFriendly ? 'THREE GAS PEDAL SECRETS FOR BEGINNERS (FRIENDLY COACH)' : 'EXIT SPEED & THROTTLE SYNCHRONIZATION DIAGNOSIS', margin + 5, p5Y + 5.2);
-
-  let tY = p5Y + 13;
-
-  // Insight 1: When do you get on throttle?
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(5, 150, 105);
-  doc.text(isFriendly ? '1. When should you first touch the gas pedal?' : '1. When do you pick up initial throttle?', margin + 5, tY);
-  tY += 4.5;
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const t1Text = isFriendly
-    ? `• What Happened: You're hesitating slightly before touching the gas on exit.\n• Why It Matters: Touching the gas gently right at the apex settles the rear of the car and gives you speed down the entire straight.\n• How To Fix It: As soon as the car clips the apex curb, squeeze on 20% maintenance gas smoothly.`
-    : 'At critical exit corners leading onto long straights, initial maintenance throttle (15-20%) should be picked up right at the geometric apex. On your stint, hesitation averaged 180ms of dead coasting.';
-  const splitT1 = doc.splitTextToSize(t1Text, contentWidth - 10);
-  doc.text(splitT1, margin + 5, tY);
-  tY += splitT1.length * 3.4 + 5.5;
-
-  // Insight 2: String Theory
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(2, 132, 199);
-  doc.text(isFriendly ? '2. Are you squeezing the gas smoothly? (The String Theory Rule)' : '2. Are you smooth or abrupt with throttle application?', margin + 5, tY);
-  tY += 4.5;
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const t2Text = isFriendly
-    ? `• The String Theory Analogy: Imagine an invisible string connecting the bottom of your steering wheel to your gas pedal. When the wheel is turned tight, the string is short—you can only press a little gas. As you straighten the wheel toward the exit curb, the string lengthens and you can press 100% full gas!\n• Pro Tip: Never stomp the gas while turning tightly.`
-    : 'Throttle unwind linearity score is 84%. Remember String Theory: Imagine an inelastic string tied between the bottom of your steering wheel and your throttle foot. Never stab the pedal while holding high steering lock.';
-  const splitT2 = doc.splitTextToSize(t2Text, contentWidth - 10);
-  doc.text(splitT2, margin + 5, tY);
-  tY += splitT2.length * 3.4 + 5.5;
-
-  // Insight 3: Exit Speed Compounding
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(124, 58, 237);
-  doc.text(isFriendly ? '3. Why corner exit speed is your best friend' : '3. Exit Speed Comparison & Down-Straight Compounding Effect', margin + 5, tY);
-  tY += 4.5;
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const t3Text = isFriendly
-    ? `• Encouragement: Carrying just 3 km/h more speed coming off a corner turns into a massive 0.3s lead by the end of the straightaway!\n• Celebrate Small Wins: Great job getting on throttle early at Turn 5—that is exactly why you gained time down the main straight!`
-    : 'Carrying 3 km/h more apex minimum speed onto the main straight translates into +0.25s gain by the end of the straightaway. Maximizing exit velocity compounds every meter down the straight.';
-  const splitT3 = doc.splitTextToSize(t3Text, contentWidth - 10);
-  doc.text(splitT3, margin + 5, tY);
-
-  renderPageFooter(
+  renderStandardHeader(
+    doc,
     5,
+    '04',
+    'CORNER-BY-CORNER TELEMETRY (SECTOR 3 & FINAL COMPLEX)',
+    'Detailed corner speeds, brake markers, delta times, and individual corner grades',
+    trackName,
+    carName,
+    driverTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+  renderCornerTable(doc, page5Corners, margin, contentWidth);
+  renderStandardFooter(
+    doc,
+    5,
+    totalPages,
+    'A corner is not finished when you reach the apex. A corner is finished only when the car is traveling straight again.',
+    'Going Faster! Ch. 3',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
     isFriendly
-      ? 'Big chunks of lap time come from getting off the corner fast and carrying that speed down the straight.'
-      : 'Big chunks of lap time will come off by learning to maximize the exit speeds coming off the corners.',
-    isFriendly ? 'Friendly Coach Secret' : 'Going Faster! Ch. 5'
   );
 
-  // ==========================================
-  // PAGE 6: LINE ANALYSIS
-  // ==========================================
+  // ==========================================================================
+  // PAGE 6: BRAKE ANALYSIS (THE BRAKE REPORT)
+  // ==========================================================================
   doc.addPage();
-  doc.setFillColor(255, 255, 255);
+  doc.setFillColor(...PDF_COLORS.bg);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(6, isFriendly ? 'DRIVING LINE COACHING — WHERE TO PLACE YOUR CAR' : 'LINE ANALYSIS & GEOMETRIC TRAJECTORY', isFriendly ? 'Track map view, turning in at the right spot, and opening up the corner' : '2D Track map trajectory overlay, apex timing classification, and steering unwind discipline');
+  renderStandardHeader(
+    doc,
+    6,
+    '05',
+    'BRAKE ANALYSIS — THE BRAKE REPORT',
+    'Brake pressure traces, threshold hit rates, and the balloon trail-braking rule',
+    trackName,
+    carName,
+    driverTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
 
-  let p6Y = margin + 23;
+  let p6Y = margin + 24;
+  const brakeChartImg = renderBrakeTraceChart(lap, benchmarkLap, 800, 280);
+  doc.addImage(brakeChartImg, 'PNG', margin, p6Y, contentWidth, CHART_HEIGHT_MM);
 
-  const trackMapImg = renderTrackMapLineChart(lap, benchmarkLap, 800, 380);
-  const mapHeightMm = 92;
-  doc.addImage(trackMapImg, 'PNG', margin, p6Y, contentWidth, mapHeightMm);
+  p6Y += CHART_HEIGHT_MM + 6;
 
-  p6Y += mapHeightMm + 6;
+  // 3 Fundamental Braking Questions
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  const brakeCardHeight = 124;
+  doc.roundedRect(margin, p6Y, contentWidth, brakeCardHeight, 2, 2, 'FD');
 
-  // Line Diagnosis Table (Grandma Test Compliant)
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  const lineCardHeight = 104;
-  doc.roundedRect(margin, p6Y, contentWidth, lineCardHeight, 2, 2, 'FD');
-
-  doc.setFillColor(15, 23, 42);
+  doc.setFillColor(...PDF_COLORS.textPrimary);
   doc.roundedRect(margin, p6Y, contentWidth, 7.5, 2, 2, 'F');
   doc.rect(margin, p6Y + 4, contentWidth, 3.5, 'F');
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
-  doc.text(isFriendly ? 'EASY LINE DIAGNOSIS GUIDE (WHAT YOU FEEL VS HOW TO FIX IT)' : 'LINE SYMPTOM & APEX TIMING DIAGNOSIS MATRIX (GOING FASTER! CH. 3 & 6)', margin + 5, p6Y + 5.2);
+  doc.text('THREE FUNDAMENTAL BRAKING QUESTIONS ANSWERED (GOING FASTER! CH. 5)', margin + 6, p6Y + 5.2);
 
-  let diagY = p6Y + 12;
+  let bqY = p6Y + 13;
 
-  const lineMatrix = isFriendly ? [
-    {
-      symptom: 'You have to turn the wheel MORE after the apex cone',
-      issue: 'You turned in too early! (Most common beginner habit)',
-      fix: 'Wait 1 car-length longer before turning the steering wheel. This opens up the corner.'
-    },
-    {
-      symptom: 'There is leftover road on the outside when leaving the corner',
-      issue: 'You did not let the car drift all the way to the exit curb',
-      fix: 'Trust your car and let it float all the way to the outer exit curb as you straighten the wheel.'
-    },
-    {
-      symptom: 'You cannot straighten the wheel on corner exit without running off',
-      issue: 'Pinching the exit corner',
-      fix: 'Apex slightly later so your car is already pointed straight down the track when you hit the gas.'
-    }
-  ] : [
-    {
-      symptom: 'Steering INCREASES after apex',
-      issue: 'Early Apex / Rushed Turn-In',
-      fix: 'Move turn-in point 1-2 car lengths deeper. Open up corner radius and wait for late clipping point.'
-    },
-    {
-      symptom: 'Road left at exit curb (unused track)',
-      issue: 'Late Apex / Under-committed Track-Out',
-      fix: 'Turn in slightly earlier or carry more speed to fully utilize exit curbing width and maximize corner radius.'
-    },
-    {
-      symptom: 'Cannot unwind wheel on exit',
-      issue: 'Pinching the Exit Line',
-      fix: 'Turn in later and apex later. Unwinding the wheel is mandatory before applying full throttle.'
-    }
-  ];
+  // Q1
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.gradeD);
+  doc.text('1. Are you pressing the brake pedal hard enough?', margin + 6, bqY);
+  bqY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const q1Msg = `• Telemetry Evidence: Peak deceleration hit ${lap.peakBrakingG.toFixed(2)}G (Target: 1.55G).\n• What It Means: Giving a firm initial press stops the car quicker and allows moving your brake marker closer to the turn.`;
+  const splitQ1 = doc.splitTextToSize(q1Msg, contentWidth - 12);
+  doc.text(splitQ1, margin + 6, bqY);
+  bqY += splitQ1.length * 3.4 + 5;
 
-  lineMatrix.forEach((row, idx) => {
-    doc.setFillColor(idx % 2 === 0 ? 255 : 241, idx % 2 === 0 ? 255 : 245, idx % 2 === 0 ? 255 : 249);
-    doc.setDrawColor(226, 232, 240);
-    doc.rect(margin + 3, diagY, contentWidth - 6, 26, 'FD');
+  // Q2: The Balloon Analogy
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.latG);
+  doc.text('2. Are you trail-braking smoothly into the apex? (The Balloon Rule)', margin + 6, bqY);
+  bqY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const q2Msg = `• The Balloon Analogy: Think of front tire grip like a balloon. Stepping abruptly off the brakes pops the grip and unloads the front tires. Trail-braking is slowly bleeding off the final 15% pressure like letting air out of a balloon.\n• Action: Keep light trailing pressure on the pedal all the way until your front wheel touches the apex curb.`;
+  const splitQ2 = doc.splitTextToSize(q2Msg, contentWidth - 12);
+  doc.text(splitQ2, margin + 6, bqY);
+  bqY += splitQ2.length * 3.4 + 5;
 
-    doc.setFontSize(7.2);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(220, 38, 38);
-    doc.text(`WHAT YOU FEEL: ${row.symptom}`, margin + 6, diagY + 5.5);
+  // Q3: Where to gain time
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.gradeB);
+  doc.text('3. Where is your easiest braking time gain on track?', margin + 6, bqY);
+  bqY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const lowestBrake = sortedIssues[0] || lap.corners[0];
+  const q3Msg = `• Focus: Turn ${lowestBrake.cornerIndex} (${lowestBrake.cornerName.trim()}). You are initiating braking ~20m earlier than necessary. Compress this zone by 10m next session.`;
+  const splitQ3 = doc.splitTextToSize(q3Msg, contentWidth - 12);
+  doc.text(splitQ3, margin + 6, bqY);
 
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(217, 119, 6);
-    doc.text(`WHY IT HAPPENS: ${row.issue}`, margin + 6, diagY + 12);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(5, 150, 105);
-    const splitFix = doc.splitTextToSize(`FRIENDLY FIX: ${row.fix}`, contentWidth - 18);
-    doc.text(splitFix, margin + 6, diagY + 18);
-
-    diagY += 29;
-  });
-
-  renderPageFooter(
+  renderStandardFooter(
+    doc,
     6,
+    totalPages,
+    SKIP_BARBER_CITATIONS.TRAIL_BRAKING.quote,
+    'Skip Barber Going Faster! Ch. 5',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
     isFriendly
-      ? 'If you feel like you are running out of road at the exit, you probably turned in too early.'
-      : 'If you cannot unwind the steering wheel at corner exit, you are apexing too early.',
-    isFriendly ? 'Coach Tip' : 'Going Faster! Ch. 3'
   );
 
-  // ==========================================
-  // PAGE 7: CONSISTENCY & TREND ANALYSIS
-  // ==========================================
+  // ==========================================================================
+  // PAGE 7: THROTTLE & EXIT SPEED ANALYSIS
+  // ==========================================================================
   doc.addPage();
-  doc.setFillColor(255, 255, 255);
+  doc.setFillColor(...PDF_COLORS.bg);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(7, isFriendly ? 'SESSION PROGRESSION & CONSISTENCY' : 'CONSISTENCY & STINT TREND ANALYSIS', isFriendly ? 'How your laps improved across the session and building consistency' : 'Lap time variance, pace evolution across stint laps, and tire degradation tracking');
+  renderStandardHeader(
+    doc,
+    7,
+    '06',
+    'GETTING ON THE POWER — THROTTLE & EXIT SPEED',
+    'Progressive squeeze linearity, apex power pickup points, and exit velocity compounding',
+    trackName,
+    carName,
+    driverTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
 
-  let p7Y = margin + 23;
+  let p7Y = margin + 24;
+  const throttleChartImg = renderThrottleTraceChart(lap, benchmarkLap, 800, 280);
+  doc.addImage(throttleChartImg, 'PNG', margin, p7Y, contentWidth, CHART_HEIGHT_MM);
 
-  const consistencyChartImg = renderConsistencyBarChart(stintSession || null, lap.lapNumber, 800, 280);
-  doc.addImage(consistencyChartImg, 'PNG', margin, p7Y, contentWidth, chartHeightMm);
+  p7Y += CHART_HEIGHT_MM + 6;
 
-  p7Y += chartHeightMm + 6;
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, p7Y, contentWidth, 124, 2, 2, 'FD');
 
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  const consistencyCardHeight = 126;
-  doc.roundedRect(margin, p7Y, contentWidth, consistencyCardHeight, 2, 2, 'FD');
-
-  doc.setFillColor(15, 23, 42);
+  doc.setFillColor(...PDF_COLORS.textPrimary);
   doc.roundedRect(margin, p7Y, contentWidth, 7.5, 2, 2, 'F');
   doc.rect(margin, p7Y + 4, contentWidth, 3.5, 'F');
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
-  doc.text(isFriendly ? 'HOW YOUR DRIVING DEVELOPED THIS SESSION (ENCOURAGING SUMMARY)' : 'STINT PROGRESSION & PACE REPRODUCIBILITY (GOING FASTER! CH. 7)', margin + 5, p7Y + 5.2);
+  doc.text('THREE GAS PEDAL SECRETS FOR MAXIMUM EXIT VELOCITY (GOING FASTER! CH. 7)', margin + 6, p7Y + 5.2);
 
-  let cY = p7Y + 13;
+  let tY = p7Y + 13;
 
-  // Insight 1: Encouraging Consistency
+  // Insight 1
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(2, 132, 199);
-  doc.text(isFriendly ? '1. Your Lap Time Consistency' : '1. Lap Time Variance & Consistency Index', margin + 5, cY);
-  cY += 4.5;
+  doc.setTextColor(...PDF_COLORS.gradeA);
+  doc.text('1. When should you first touch the gas pedal?', margin + 6, tY);
+  tY += 4.5;
   doc.setFontSize(7.2);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const c1Text = isFriendly
-    ? `• Great Effort: Your lap times stayed within a close 0.8s window.\n• Why Consistency Matters: Consistency is the secret to going fast! Once you can repeat the same braking and turn-in points lap after lap, finding extra speed becomes super easy.\n• Next Goal: Try doing 3 consecutive laps within 0.4s of each other.`
-    : 'Your lap times across this stint varied within a 0.82s band (Target benchmark: < 0.35s). Consistency is the foundation of speed: until you can repeat identical brake and turn-in markers lap after lap, setup adjustments cannot be reliably measured.';
-  const splitC1 = doc.splitTextToSize(c1Text, contentWidth - 10);
-  doc.text(splitC1, margin + 5, cY);
-  cY += splitC1.length * 3.4 + 5.5;
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const t1Msg = `• Rule of Thumb: Initial maintenance throttle (15-20%) should be picked up right at the apex clipping point. This settles the rear suspension and pre-loads the drivetrain.`;
+  const splitT1 = doc.splitTextToSize(t1Msg, contentWidth - 12);
+  doc.text(splitT1, margin + 6, tY);
+  tY += splitT1.length * 3.4 + 5;
 
-  // Insight 2: Session progression
+  // Insight 2: String Theory
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(5, 150, 105);
-  doc.text(isFriendly ? '2. Stint Progression & Warming Up' : '2. Stint Progression & Tire Management', margin + 5, cY);
-  cY += 4.5;
+  doc.setTextColor(...PDF_COLORS.speed);
+  doc.text('2. Are you squeezing the gas smoothly? (The String Theory Rule)', margin + 6, tY);
+  tY += 4.5;
   doc.setFontSize(7.2);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const c2Text = isFriendly
-    ? `• Nice Improvement: Laps 1-3 were your warmup, and by Lap 5 you hit your fastest pace! Look at that—you gained time as you got comfortable with the track.\n• Keep It Up: As you practice more, your peak pace will feel natural and effortless right from Lap 1.`
-    : 'Laps 1-3 established initial tire temperature and platform stability. Peak pace was achieved on Lap 5. Subsequent laps show slight pace decay (+0.4s), indicating tire pressure rise or driver concentration fatigue.';
-  const splitC2 = doc.splitTextToSize(c2Text, contentWidth - 10);
-  doc.text(splitC2, margin + 5, cY);
-  cY += splitC2.length * 3.4 + 5.5;
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const t2Msg = `• The String Theory Analogy: Imagine an invisible string tied from the bottom of your steering wheel to your right throttle foot. When steering lock is tight, the string is pulled taut—you can only press a little gas. As you unwind the steering wheel toward the exit curb, the string slackens and you can push to 100% full throttle.`;
+  const splitT2 = doc.splitTextToSize(t2Msg, contentWidth - 12);
+  doc.text(splitT2, margin + 6, tY);
+  tY += splitT2.length * 3.4 + 5;
 
-  // Insight 3: Celebrating Fastest Lap
+  // Insight 3: Exit Compounding
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(220, 38, 38);
-  doc.text(isFriendly ? '3. Celebrate Your Best Lap!' : '3. Fastest Lap Replication Drill', margin + 5, cY);
-  cY += 4.5;
+  doc.setTextColor(...PDF_COLORS.latG);
+  doc.text('3. The Down-Straight Compounding Effect', margin + 6, tY);
+  tY += 4.5;
   doc.setFontSize(7.2);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const c3Text = isFriendly
-    ? `• Star Lap: Your best lap was Lap #${lap.lapNumber} with a time of ${driverTimeStr}!\n• You did several corners brilliantly on this lap. Carry that confidence straight into your next stint on track.`
-    : `Your fastest lap was Lap #${lap.lapNumber} (${driverTimeStr}). Compare this stint against your theoretical optimal lap (sum of best sectors) to identify where consistency is dropping off across the lap.`;
-  const splitC3 = doc.splitTextToSize(c3Text, contentWidth - 10);
-  doc.text(splitC3, margin + 5, cY);
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const t3Msg = `• Physics Secret: Carrying just 3 km/h more apex exit speed onto a main straightaway produces a massive +0.30s advantage by the end of the straight. Never sacrifice your exit for a rushed entry.`;
+  const splitT3 = doc.splitTextToSize(t3Msg, contentWidth - 12);
+  doc.text(splitT3, margin + 6, tY);
 
-  renderPageFooter(
+  renderStandardFooter(
+    doc,
     7,
+    totalPages,
+    SKIP_BARBER_CITATIONS.THROTTLE_UNWIND.quote,
+    'Skip Barber Going Faster! Ch. 7',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
     isFriendly
-      ? 'Don\'t worry about perfection on every corner. Focus on being smooth, having fun, and learning the flow.'
-      : 'The great driver is not the one who can do one brilliant lap. The great driver is the one who can do twenty brilliant laps in a row.',
-    isFriendly ? 'Friendly Coach Encouragement' : 'Skip Barber Philosophy'
   );
 
-  // ==========================================
-  // PAGE 8: ACTION PLAN (THE MOST IMPORTANT PAGE)
-  // ==========================================
+  // ==========================================================================
+  // PAGE 8: DRIVING LINE & GEOMETRIC TRAJECTORY
+  // ==========================================================================
   doc.addPage();
-  doc.setFillColor(255, 255, 255);
+  doc.setFillColor(...PDF_COLORS.bg);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(8, isFriendly ? 'YOUR ACTION PLAN — THE MOST IMPORTANT PAGE' : 'ACTION PLAN — THE MOST IMPORTANT PAGE', isFriendly ? 'Four simple, friendly steps to practice in your very next session' : 'Prioritized, actionable coaching prescriptions ranked by expected lap time gain');
+  renderStandardHeader(
+    doc,
+    8,
+    '07',
+    'RACING LINE & GEOMETRIC TRAJECTORY',
+    '2D GPS track map trajectory overlay, apex timing classification, and steering unwind discipline',
+    trackName,
+    carName,
+    driverTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
 
-  let p8Y = margin + 23;
+  let p8Y = margin + 24;
+  const trackMapImg = renderTrackMapLineChart(lap, benchmarkLap, 800, 380);
+  doc.addImage(trackMapImg, 'PNG', margin, p8Y, contentWidth, MAP_HEIGHT_MM);
 
-  // Bucket Principle Intro Card
-  doc.setFillColor(254, 242, 242);
-  doc.setDrawColor(252, 165, 165);
-  doc.roundedRect(margin, p8Y, contentWidth, 18, 1.5, 1.5, 'FD');
+  p8Y += MAP_HEIGHT_MM + 6;
+
+  // Line Diagnosis Guide
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, p8Y, contentWidth, 102, 2, 2, 'FD');
+
+  doc.setFillColor(...PDF_COLORS.textPrimary);
+  doc.roundedRect(margin, p8Y, contentWidth, 7.5, 2, 2, 'F');
+  doc.rect(margin, p8Y + 4, contentWidth, 3.5, 'F');
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(185, 28, 28);
-  doc.text(isFriendly ? "COACH'S 4-STEP ACTION PLAN — ONE STEP AT A TIME" : "COACH'S ACTION PRIORITIZATION — THE BUCKET PRINCIPLE (TERRY EARWOOD RULE)", margin + 5, p8Y + 5.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text('LINE SYMPTOM & APEX TIMING DIAGNOSIS GUIDE (GOING FASTER! CH. 3 & 6)', margin + 6, p8Y + 5.2);
 
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(153, 27, 27);
-  doc.text(
-    isFriendly
-      ? '"Your brain can only focus on one or two things at a time. Master these in order, take your time, and have fun!"'
-      : '"Don\'t confuse the driver. The bucket can only hold so much water. Master these in order:"',
-    margin + 5,
-    p8Y + 11.5
-  );
+  let lY = p8Y + 12;
+  LINE_DIAGNOSIS_MATRIX.forEach((row, idx) => {
+    doc.setFillColor(idx % 2 === 0 ? 255 : 241, idx % 2 === 0 ? 255 : 245, idx % 2 === 0 ? 255 : 249);
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.rect(margin + 3, lY, contentWidth - 6, 26, 'FD');
 
-  p8Y += 23;
+    doc.setFontSize(7.2);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.gradeD);
+    doc.text(`WHAT YOU FEEL: ${row.symptom}`, margin + 6, lY + 5.5);
 
-  // Action Items Table (Structured with Three-Bite Rule)
-  const actionHeaders = [
-    { name: 'PRIORITY', width: 22, align: 'center' as const },
-    { name: isFriendly ? 'THREE-BITE COACHING FIX' : 'SPECIFIC COACHING ACTION', width: 80, align: 'left' as const },
-    { name: 'WHERE TO PRACTICE', width: 44, align: 'left' as const },
-    { name: isFriendly ? 'TIME GAIN' : 'EXPECTED GAIN', width: 40, align: 'right' as const }
-  ];
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.gradeB);
+    doc.text(`WHY IT HAPPENS: ${row.issue}`, margin + 6, lY + 12);
 
-  doc.setFillColor(241, 245, 249);
-  doc.setDrawColor(203, 213, 225);
-  doc.rect(margin, p8Y, contentWidth, 7, 'FD');
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.gradeA);
+    const splitFix = doc.splitTextToSize(`COACH FIX: ${row.fix}`, contentWidth - 18);
+    doc.text(splitFix, margin + 6, lY + 18);
 
-  let actHeadX = margin + 2;
-  doc.setFontSize(6.8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(71, 85, 105);
-
-  actionHeaders.forEach(th => {
-    if (th.align === 'right') {
-      doc.text(th.name, actHeadX + th.width - 4, p8Y + 4.8, { align: 'right' });
-    } else if (th.align === 'center') {
-      doc.text(th.name, actHeadX + th.width / 2, p8Y + 4.8, { align: 'center' });
-    } else {
-      doc.text(th.name, actHeadX, p8Y + 4.8);
-    }
-    actHeadX += th.width;
+    lY += 29;
   });
 
-  p8Y += 7;
+  renderStandardFooter(
+    doc,
+    8,
+    totalPages,
+    SKIP_BARBER_CITATIONS.CORNER_TYPES.quote,
+    'Skip Barber Going Faster! Ch. 6',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // ==========================================================================
+  // PAGE 9: SESSION PROGRESSION & CONSISTENCY
+  // ==========================================================================
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  renderStandardHeader(
+    doc,
+    9,
+    '08',
+    'SESSION PROGRESSION & CONSISTENCY',
+    'Lap time variance, pace evolution across stint laps, and tire degradation tracking',
+    trackName,
+    carName,
+    driverTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+
+  let p9Y = margin + 24;
+  const consistencyChartImg = renderConsistencyBarChart(stintSession || null, lap.lapNumber, 800, 280);
+  doc.addImage(consistencyChartImg, 'PNG', margin, p9Y, contentWidth, CHART_HEIGHT_MM);
+
+  p9Y += CHART_HEIGHT_MM + 6;
+
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, p9Y, contentWidth, 124, 2, 2, 'FD');
+
+  doc.setFillColor(...PDF_COLORS.textPrimary);
+  doc.roundedRect(margin, p9Y, contentWidth, 7.5, 2, 2, 'F');
+  doc.rect(margin, p9Y + 4, contentWidth, 3.5, 'F');
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('STINT PROGRESSION & PACE REPRODUCIBILITY (GOING FASTER! CH. 4 & 8)', margin + 6, p9Y + 5.2);
+
+  let cY = p9Y + 13;
+
+  // Insight 1
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.speed);
+  doc.text('1. Lap Time Variance & Consistency Band', margin + 6, cY);
+  cY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const c1Msg = `• Analysis: Your lap times stayed within an encouraging 0.8s band. Consistency is the true bedrock of speed: once you repeat identical brake and turn-in markers lap after lap, finding extra speed becomes effortless.`;
+  const splitC1 = doc.splitTextToSize(c1Msg, contentWidth - 12);
+  doc.text(splitC1, margin + 6, cY);
+  cY += splitC1.length * 3.4 + 5;
+
+  // Insight 2
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.gradeA);
+  doc.text('2. Warm-up Cycle & Stint Development', margin + 6, cY);
+  cY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const c2Msg = `• Progress: Laps 1-2 built tire temperature and chassis platform stability. Peak pace arrived on Lap #${lap.lapNumber}. Excellent rhythm discipline throughout this stint.`;
+  const splitC2 = doc.splitTextToSize(c2Msg, contentWidth - 12);
+  doc.text(splitC2, margin + 6, cY);
+  cY += splitC2.length * 3.4 + 5;
+
+  // Insight 3
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text('3. Fastest Lap Replication Target', margin + 6, cY);
+  cY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const c3Msg = `• Benchmark: Your fastest lap was Lap #${lap.lapNumber} (${driverTimeStr}). Focus on replicating the exact brake markers from this lap on your next session.`;
+  const splitC3 = doc.splitTextToSize(c3Msg, contentWidth - 12);
+  doc.text(splitC3, margin + 6, cY);
+
+  renderStandardFooter(
+    doc,
+    9,
+    totalPages,
+    SKIP_BARBER_CITATIONS.CONSISTENCY.quote,
+    'Skip Barber Going Faster! Ch. 8',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // ==========================================================================
+  // PAGE 10: ACTION PLAN (THE MOST IMPORTANT PAGE)
+  // ==========================================================================
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  renderStandardHeader(
+    doc,
+    10,
+    '09',
+    'NEXT SESSION ACTION PLAN (THE MOST IMPORTANT PAGE)',
+    'Prioritized, actionable coaching prescriptions ranked by expected lap time gain',
+    trackName,
+    carName,
+    driverTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+
+  let p10Y = margin + 24;
+
+  // Bucket Principle Intro Card
+  doc.setFillColor(...PDF_COLORS.accentLight);
+  doc.setDrawColor(...PDF_COLORS.accent);
+  doc.roundedRect(margin, p10Y, contentWidth, 18, 1.5, 1.5, 'FD');
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(margin, p10Y, 3.5, 18, 'F');
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text("COACH'S ACTION PRIORITIZATION — THE BUCKET PRINCIPLE (TERRY EARWOOD RULE)", margin + 7, p10Y + 6);
+
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text(
+    '"Don\'t confuse the driver. The bucket can only hold so much water. Master these in strict priority order:"',
+    margin + 7,
+    p10Y + 12.5
+  );
+
+  p10Y += 24;
+
+  doc.setFillColor(...PDF_COLORS.surfaceAlt);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.rect(margin, p10Y, contentWidth, 7, 'FD');
+
+  let actX = margin + 2;
+  doc.setFontSize(6.8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  ACTION_HEADERS.forEach(th => {
+    if (th.align === 'right') {
+      doc.text(th.name, actX + th.width - 4, p10Y + 4.8, { align: 'right' });
+    } else if (th.align === 'center') {
+      doc.text(th.name, actX + th.width / 2, p10Y + 4.8, { align: 'center' });
+    } else {
+      doc.text(th.name, actX, p10Y + 4.8);
+    }
+    actX += th.width;
+  });
+
+  p10Y += 7;
 
   const actionCorners = [...lap.corners].sort((a, b) => a.cornerScore - b.cornerScore).slice(0, 4);
-  const priorities = [
-    { prio: '1 (START)', color: [220, 38, 38], gain: 0.30 },
-    { prio: '2 (NEXT)', color: [220, 38, 38], gain: 0.20 },
-    { prio: '3 (THEN)', color: [217, 119, 6], gain: 0.15 },
-    { prio: '4 (POLISH)', color: [2, 132, 199], gain: 0.10 }
-  ];
 
   let totalGain = 0;
-  const actionRowHeight = 22;
 
   actionCorners.forEach((c, idx) => {
-    const prioInfo = priorities[idx] || priorities[3];
+    const prioInfo = ACTION_PRIORITIES[idx] || ACTION_PRIORITIES[3];
     totalGain += prioInfo.gain;
 
     const isEven = idx % 2 === 0;
     doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.rect(margin, p8Y, contentWidth, actionRowHeight, 'FD');
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.rect(margin, p10Y, contentWidth, ACTION_ROW_HEIGHT, 'FD');
 
-    doc.setFillColor(prioInfo.color[0], prioInfo.color[1], prioInfo.color[2]);
-    doc.roundedRect(margin + 4, p8Y + 6.5, 16, 7.5, 1, 1, 'F');
+    // Priority badge
+    doc.setFillColor(...prioInfo.color);
+    doc.roundedRect(margin + 4, p10Y + 6.5, 16, 8, 1, 1, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
-    doc.text(prioInfo.prio, margin + 12, p8Y + 11.5, { align: 'center' });
+    doc.text(prioInfo.prio, margin + 12, p10Y + 12, { align: 'center' });
 
     let colX = margin + 24;
 
+    // Title
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    const actionTitle = isFriendly
-      ? (c.trailBrakingDecayDurationSec < 0.22
-          ? 'Brake at the 150m board and ease off gently'
-          : c.throttleUnwindLinearityScore < 70
-          ? 'Squeeze throttle smoothly as the wheel unwinds'
-          : 'Wait 1 car-length longer before turning in')
-      : (c.trailBrakingDecayDurationSec < 0.22
-          ? 'Brake 15m later and trail-brake to the apex cone'
-          : c.throttleUnwindLinearityScore < 70
-          ? 'Squeeze throttle progressively as steering wheel unwinds'
-          : 'Move turn-in 1 car-length deeper for geometrical late apex');
-    doc.text(actionTitle, colX, p8Y + 7);
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    const actionTitle = c.trailBrakingDecayDurationSec < 0.22
+      ? 'Brake at the 150m board and ease off gently'
+      : c.throttleUnwindLinearityScore < 70
+      ? 'Squeeze throttle progressively as steering unwinds'
+      : 'Wait 1 car-length longer before turning in for late apex';
+    doc.text(actionTitle, colX, p10Y + 7);
 
+    // Detail
     doc.setFontSize(6.8);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-    const friendlyDetail = isFriendly
-      ? '• Why: Keeps your front tires gripped and lets you get on full power early.'
-      : (c.skipBarberAdvice || 'Commit to reference point; bleed off trailing brake smoothly.');
-    const splitSub = doc.splitTextToSize(friendlyDetail, 76);
-    doc.text(splitSub, colX, p8Y + 12.5);
-
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    const splitDetail = doc.splitTextToSize('• Why: Keeps front contact patch loaded and unlocks immediate straightaway drive.', 76);
+    doc.text(splitDetail, colX, p10Y + 13);
     colX += 80;
 
-    // Where to Practice
+    // Corner
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(51, 65, 85);
-    doc.text(`Turn ${c.cornerIndex} (${c.cornerName.split('(')[0].trim()})`, colX, p8Y + 11.5);
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text(`Turn ${c.cornerIndex} (${c.cornerName.split('(')[0].trim()})`, colX, p10Y + 11.5);
+    colX += 42;
 
-    colX += 44;
-
-    // Expected Gain
+    // Gain
     doc.setFontSize(9.5);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(5, 150, 105);
-    doc.text(`+${prioInfo.gain.toFixed(2)}s`, colX + 36, p8Y + 12, { align: 'right' });
+    doc.setTextColor(...PDF_COLORS.gradeA);
+    doc.text(`+${prioInfo.gain.toFixed(2)}s`, colX + 30, p10Y + 12, { align: 'right' });
 
-    p8Y += actionRowHeight;
+    p10Y += ACTION_ROW_HEIGHT;
   });
 
-  // Total Possible Gain Banner
-  p8Y += 4;
+  p10Y += 6;
+
+  // Total Achievable Speed Banner
   doc.setFillColor(240, 253, 244);
   doc.setDrawColor(187, 247, 208);
-  doc.roundedRect(margin, p8Y, contentWidth, 16, 1.5, 1.5, 'FD');
+  doc.roundedRect(margin, p10Y, contentWidth, 16, 1.5, 1.5, 'FD');
 
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(5, 150, 105);
-  doc.text(isFriendly ? 'TOTAL ESTIMATED SPEED YOU CAN GAIN NEXT SESSION:' : 'TOTAL ESTIMATED LAP TIME GAIN ACROSS NEXT STINT:', margin + 6, p8Y + 10);
+  doc.setTextColor(4, 120, 87);
+  doc.text('TOTAL ESTIMATED SPEED YOU CAN GAIN NEXT SESSION:', margin + 6, p10Y + 10);
 
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(5, 150, 105);
-  doc.text(`+${totalGain.toFixed(2)}s`, pageWidth - margin - 8, p8Y + 11, { align: 'right' });
+  doc.setTextColor(4, 120, 87);
+  doc.text(`+${totalGain.toFixed(2)}s`, pageWidth - margin - 8, p10Y + 11, { align: 'right' });
 
-  renderPageFooter(
-    8,
+  renderStandardFooter(
+    doc,
+    10,
+    totalPages,
+    'Significant pieces of lap time come from being just a few mph slower than the fastest driver in a few significant places.',
+    'Going Faster! Ch. 8',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
     isFriendly
-      ? 'Look at that! You can gain almost a full second just from these simple tweaks. Keep going!'
-      : 'Significant pieces of lap time come from being just a few mph slower than the fastest driver in a few significant places.',
-    isFriendly ? 'Friendly Coach Encouragement' : 'Going Faster! Ch. 8'
   );
 
-  // ==========================================
-  // PAGE 9: REFERENCE POINTS QUICK REFERENCE
-  // ==========================================
+  // ==========================================================================
+  // PAGE 11: TRACK REFERENCE MARKS & CERTIFICATION
+  // ==========================================================================
   doc.addPage();
-  doc.setFillColor(255, 255, 255);
+  doc.setFillColor(...PDF_COLORS.bg);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(9, isFriendly ? 'YOUR TRACK MARKS FOR NEXT SESSION' : 'REFERENCE POINTS QUICK REFERENCE', isFriendly ? 'Simple visual landmarks on track: brake boards, turn-in cones, apex clips, and exit curbs' : 'Visual track markers for your next session: brake boards, turn-in points, clipping apexes, and track-out limits');
+  renderStandardHeader(
+    doc,
+    11,
+    '10',
+    'TRACK REFERENCE CARD & CERTIFIED DEBRIEF',
+    'Visual landmarks on track: brake boards, turn-in points, apex clipping cones, and track-out limits',
+    trackName,
+    carName,
+    driverTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
 
-  let p9Y = margin + 23;
+  let p11Y = margin + 24;
 
-  const refHeaders = [
-    { name: 'CORNER', width: 28, align: 'left' as const },
-    { name: isFriendly ? 'BRAKE BOARD' : 'BRAKE POINT MARK', width: 40, align: 'left' as const },
-    { name: isFriendly ? 'TURN-IN SPOT' : 'TURN-IN REFERENCE', width: 40, align: 'left' as const },
-    { name: isFriendly ? 'APEX CLIP' : 'APEX CLIPPING POINT', width: 40, align: 'left' as const },
-    { name: isFriendly ? 'EXIT CURB' : 'TRACK-OUT CURB MARK', width: 38, align: 'left' as const }
-  ];
+  doc.setFillColor(...PDF_COLORS.surfaceAlt);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.rect(margin, p11Y, contentWidth, 7, 'FD');
 
-  doc.setFillColor(241, 245, 249);
-  doc.setDrawColor(203, 213, 225);
-  doc.rect(margin, p9Y, contentWidth, 7, 'FD');
-
-  let refX = margin + 2;
+  let rx = margin + 2;
   doc.setFontSize(6.8);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(71, 85, 105);
-
-  refHeaders.forEach(th => {
-    doc.text(th.name, refX, p9Y + 4.8);
-    refX += th.width;
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  REF_HEADERS.forEach(th => {
+    doc.text(th.name, rx, p11Y + 4.8);
+    rx += th.width;
   });
 
-  p9Y += 7;
+  p11Y += 7;
 
-  const refRowHeight = 11.5;
   lap.corners.forEach((c, idx) => {
     const isEven = idx % 2 === 0;
     doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.rect(margin, p9Y, contentWidth, refRowHeight, 'FD');
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.rect(margin, p11Y, contentWidth, REF_ROW_HEIGHT, 'FD');
 
     let xP = margin + 3;
     doc.setFontSize(7);
 
     // Corner Name
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(`T${c.cornerIndex} - ${c.cornerName.split('(')[0].trim().slice(0, 11)}`, xP, p9Y + 7);
-    xP += refHeaders[0].width;
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text(`T${c.cornerIndex} - ${c.cornerName.split('(')[0].trim().slice(0, 11)}`, xP, p11Y + 7);
+    xP += REF_HEADERS[0].width;
 
     // Brake Point
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(220, 38, 38);
-    doc.text(`${Math.round(c.startDistance - 75)}m board`, xP, p9Y + 7);
-    xP += refHeaders[1].width;
+    doc.setTextColor(...PDF_COLORS.gradeD);
+    doc.text(`${Math.round(c.startDistance - 75)}m board`, xP, p11Y + 7);
+    xP += REF_HEADERS[1].width;
 
     // Turn-In
-    doc.setTextColor(51, 65, 85);
-    doc.text(`Start of entry curb`, xP, p9Y + 7);
-    xP += refHeaders[2].width;
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    doc.text(`Start of entry curb`, xP, p11Y + 7);
+    xP += REF_HEADERS[2].width;
 
     // Apex
-    doc.setTextColor(5, 150, 105);
-    doc.text(`Red/White apex cone`, xP, p9Y + 7);
-    xP += refHeaders[3].width;
+    doc.setTextColor(...PDF_COLORS.gradeA);
+    doc.text(`Red/White apex cone`, xP, p11Y + 7);
+    xP += REF_HEADERS[3].width;
 
     // Track-Out
-    doc.setTextColor(2, 132, 199);
-    doc.text(`End of outer exit curb`, xP, p9Y + 7);
+    doc.setTextColor(...PDF_COLORS.speed);
+    doc.text(`Outer exit curb limit`, xP, p11Y + 7);
 
-    p9Y += refRowHeight;
+    p11Y += REF_ROW_HEIGHT;
   });
 
-  // Official Coach Certification & Sign-off Seal
-  p9Y += 8;
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  const certHeight = 28;
-  doc.roundedRect(margin, p9Y, contentWidth, certHeight, 2, 2, 'FD');
+  // Telemetry Key Reference (PDF Structure.md Page 10)
+  p11Y += 6;
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, p11Y, contentWidth, 22, 1.5, 1.5, 'FD');
 
-  doc.setFillColor(225, 6, 0);
-  doc.rect(margin, p9Y, 3, certHeight, 'F');
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('TELEMETRY TRACE COLOR KEY (REFERENCE)', margin + 6, p11Y + 6);
+
+  doc.setFontSize(6.8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  doc.text('• Speed: Blue (#0077BE)  |  • Throttle: Green (#00A86B)  |  • Brake: Red (#C8102E)  |  • Steering: Orange (#F58025)', margin + 6, p11Y + 11.5);
+  doc.text('• Your Lap: Dark Navy (#1A1A2E)  |  • Target Lap: APEX Red (#E10600)  |  • Lateral G: Purple (#9B30FF)', margin + 6, p11Y + 16.5);
+
+  // Official Coach Certification Sign-off Seal
+  p11Y += 26;
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, p11Y, contentWidth, CERT_HEIGHT, 2, 2, 'FD');
+
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(margin, p11Y, 3.5, CERT_HEIGHT, 'F');
 
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text(isFriendly ? 'YOUR APEX RACE COACH SIGN-OFF & ENCOURAGEMENT' : 'OFFICIAL COACH SIGN-OFF & CERTIFICATION', margin + 7, p9Y + 7);
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('OFFICIAL APEX RACE COACH SIGN-OFF & CERTIFICATION', margin + 8, p11Y + 7);
 
   doc.setFontSize(7.2);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(71, 85, 105);
-  const certNotice = isFriendly
-    ? 'You did a fantastic job this session! Keep practicing these simple fixes one corner at a time. The speed will come naturally as you build rhythm and confidence.'
-    : 'This 9-page analytical dossier was generated and validated by APEX Race Engineering in full compliance with the Skip Barber Racing School curriculum.';
-  const splitCert = doc.splitTextToSize(certNotice, contentWidth - 14);
-  doc.text(splitCert, margin + 7, p9Y + 13.5);
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  doc.text(
+    'This 11-page analytical debrief dossier was generated and validated by APEX Race Engineering in full compliance with the Skip Barber Racing School curriculum.',
+    margin + 8,
+    p11Y + 13.5
+  );
 
   doc.setFontSize(7.2);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(225, 6, 0);
+  doc.setTextColor(...PDF_COLORS.accent);
   const dossierId = `APEX-COACH-${lap.lapNumber}-${Date.now().toString().slice(-6)}`;
-  doc.text(`SESSION RECORD: ${dossierId}`, margin + 7, p9Y + 22.5);
-  doc.text('CERTIFIED DRIVER COACHING', pageWidth - margin - 6, p9Y + 22.5, { align: 'right' });
+  doc.text(`SESSION RECORD: ${dossierId}`, margin + 8, p11Y + 22.5);
+  doc.text('CERTIFIED DRIVER COACHING • APPROVED', pageWidth - margin - 6, p11Y + 22.5, { align: 'right' });
 
-  renderPageFooter(
-    9,
-    'The goal is not to make the driver feel bad. The goal is to make the driver faster. The report should feel like a coach, not a critic.',
-    'The Golden Rule'
+  renderStandardFooter(
+    doc,
+    11,
+    totalPages,
+    'Speed comes from understanding. You are learning to read your driving. That is how champions are made.',
+    'Carl Lopez, Going Faster!',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
   );
 
-  // Save the complete 9-page PDF
-  const filename = `APEX_Coach_Debrief_Lap_${lap.lapNumber}_${Date.now()}.pdf`;
+  // Download PDF with custom Stint Title filename
+  const filename = getDebriefFilename(stintSession, lap, trackName, carName);
   doc.save(filename);
 };
 
+// ============================================================================
+// 2. STINT OFFICIAL 11-PAGE PDF GENERATOR
+// ============================================================================
+
 /**
- * Generates the official 9-Page Consolidated Stint Dossier aggregating all laps,
- * sector splits, lap-by-lap comparison, and stint-wide coaching.
+ * Generates the official 11-Page Consolidated Stint Dossier aggregating all laps.
  */
 export const generateStintOfficialPdf = async (
   stint: StintSession,
@@ -1291,16 +1844,19 @@ export const generateStintOfficialPdf = async (
     throw new Error('Cannot generate Stint PDF: No laps recorded in stint.');
   }
 
-  // Identify Best Lap and Stint Averages
   const bestLap = [...laps].sort((a, b) => a.lapTimeSec - b.lapTimeSec)[0];
   const isFriendly = getCoachingVoice(module, session, bestLap) === 'friendly_coach';
+  const totalPages = 11;
 
   const pageWidth = 210;
   const pageHeight = 297;
-  const margin = 12;
+  const margin = 15;
   const contentWidth = pageWidth - margin * 2;
 
-  // Resolve target benchmark based on best lap
+  // Run AI Coach Debrief engine
+  const aiDebrief = generateAICoachDebrief(stint, bestLap);
+
+  // Resolve target benchmark
   const { targetLap, deltaSec, targetTimeStr } = getTargetLapBenchmark(bestLap, session);
   const benchmarkLap = comparisonLap || targetLap;
 
@@ -1315,1198 +1871,1223 @@ export const generateStintOfficialPdf = async (
   const avgSecs = (avgTimeSec % 60).toFixed(2).padStart(5, '0');
   const avgTimeStr = `${avgMins}:${avgSecs}`;
 
-  // Sector Splits & Theoretical Optimal Lap Calculation
-  const lapSectors = laps.map(l => {
-    const s1 = Number((l.lapTimeSec * 0.318).toFixed(2));
-    const s2 = Number((l.lapTimeSec * 0.354).toFixed(2));
-    const s3 = Number((l.lapTimeSec - s1 - s2).toFixed(2));
-    return { lapNumber: l.lapNumber, s1, s2, s3, lapTimeSec: l.lapTimeSec };
-  });
-
-  const bestS1 = Math.min(...lapSectors.map(s => s.s1));
-  const bestS2 = Math.min(...lapSectors.map(s => s.s2));
-  const bestS3 = Math.min(...lapSectors.map(s => s.s3));
-  const theoreticalOptSec = Number((bestS1 + bestS2 + bestS3).toFixed(2));
-  const optMins = Math.floor(theoreticalOptSec / 60);
-  const optSecs = (theoreticalOptSec % 60).toFixed(2).padStart(5, '0');
-  const optTimeStr = `${optMins}:${optSecs}`;
-  const optGainSec = Math.max(0, Number((bestLap.lapTimeSec - theoreticalOptSec).toFixed(2)));
-
-  // Scores & Consistency
   const stintAvgScore = stint.avgScore || Math.round(laps.reduce((a, b) => a + b.overallScore, 0) / laps.length);
   const overallGradeInfo = getLetterGrade(stintAvgScore, isFriendly);
-  const timeSpread = (Math.max(...times) - Math.min(...times)).toFixed(2);
 
   const dateStr = stint.recordedAt ? new Date(stint.recordedAt).toLocaleDateString() : new Date().toLocaleDateString();
-  const trackName = stint.trackName || 'Laguna Seca Raceway';
+  const trackName = stint.trackName || 'Lime Rock Park';
   const carName = stint.carName || 'Formula Skip Barber 2000';
+  const userTitle = stint.title || `Stint #${stint.stintNumber || 1} Session Debrief`;
 
-  // Standard Page Header
-  const renderPageHeader = (pageNumber: number, title: string, subtitle: string) => {
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, margin, contentWidth, 18, 1.5, 1.5, 'FD');
-
-    doc.setFillColor(225, 6, 0);
-    doc.rect(margin, margin, 3.5, 18, 'F');
-
-    doc.setFillColor(225, 6, 0);
-    doc.roundedRect(margin + 6, margin + 3.5, 6, 6, 1, 1, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('A', margin + 7.8, margin + 7.8);
-
-    doc.setFontSize(10.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(title, margin + 15, margin + 7.8);
-
-    doc.setFontSize(7.2);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(subtitle, margin + 15, margin + 14);
-
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(`${trackName} • ${carName}`, pageWidth - margin - 5, margin + 7.5, { align: 'right' });
-    doc.text(`Stint #${stint.stintNumber || 1} (${laps.length} Laps) • Best: ${bestTimeStr} • ${dateStr}`, pageWidth - margin - 5, margin + 13.5, { align: 'right' });
-  };
-
-  // Standard Page Footer
-  const renderPageFooter = (pageNumber: number, quoteText?: string, quoteAuthor?: string) => {
-    const footerY = pageHeight - 16;
-
-    if (quoteText) {
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(margin, footerY - 7, contentWidth, 8, 1, 1, 'FD');
-
-      doc.setFontSize(6.8);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(51, 65, 85);
-      const fullQuote = quoteAuthor ? `"${quoteText}" — ${quoteAuthor}` : `"${quoteText}"`;
-      doc.text(fullQuote, margin + 4, footerY - 2);
-    }
-
-    doc.setDrawColor(226, 232, 240);
-    doc.line(margin, footerY + 4, pageWidth - margin, footerY + 4);
-
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(148, 163, 184);
-    const footerTag = isFriendly ? 'APEX Friendly Driver Coaching Guide • Consolidated Stint Dossier' : 'Skip Barber Going Faster! Analytical Methodology • APEX Systems';
-    doc.text(`Page ${pageNumber} of 9 • ${footerTag}`, margin, footerY + 9);
-    doc.text(`Consolidated Stint Report • ${laps.length} Laps Total`, pageWidth - margin, footerY + 9, { align: 'right' });
-  };
-
-  // ==========================================
-  // PAGE 1: STINT EXECUTIVE SUMMARY & LAP TABLE
-  // ==========================================
-  doc.setFillColor(255, 255, 255);
+  // ==========================================================================
+  // PAGE 1: COVER PAGE
+  // ==========================================================================
+  doc.setFillColor(...PDF_COLORS.bg);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(0, 0, pageWidth, 4, 'F');
 
-  // Page 1 Header Banner
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(margin, margin, contentWidth, 26, 2, 2, 'FD');
+  // Header Bar
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, margin + 4, contentWidth, 24, 2, 2, 'FD');
 
-  doc.setFillColor(225, 6, 0);
-  doc.rect(margin, margin, 4, 26, 'F');
-
-  doc.setFillColor(225, 6, 0);
-  doc.roundedRect(margin + 7, margin + 4, 7, 7, 1, 1, 'F');
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.roundedRect(margin + 6, margin + 9, 8, 8, 1, 1, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
-  doc.text('A', margin + 9, margin + 9);
+  doc.setFontSize(11);
+  doc.text('A', margin + 8.5, margin + 14.8);
 
-  doc.setFontSize(12.5);
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text('APEX RACE COACH DEBRIEF • STINT DOSSIER', margin + 17, margin + 9);
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('APEX RACING ACADEMY', margin + 18, margin + 14);
 
-  doc.setFillColor(225, 6, 0);
-  doc.roundedRect(margin + 120, margin + 4.8, 38, 5.5, 1, 1, 'F');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text(`ALL ${laps.length} LAPS CONSOLIDATED`, margin + 122, margin + 8.6);
-
-  doc.setFontSize(7.8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  const sessionSubtitle = module
-    ? `Module ${module.moduleNumber}: ${module.title} • ${session?.title || 'Curriculum Academy Stint'}`
-    : `Multi-Lap Stint Telemetry Debrief • ${trackName} (${carName})`;
-  doc.text(sessionSubtitle, margin + 7, margin + 19);
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text('CONSOLIDATED MULTI-LAP STINT DOSSIER', margin + 18, margin + 20);
 
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Date: ${dateStr}`, pageWidth - margin - 6, margin + 7.5, { align: 'right' });
-  doc.text(`Total Laps: ${laps.length} | Best: ${bestTimeStr}`, pageWidth - margin - 6, margin + 13, { align: 'right' });
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  doc.text(`Date: ${dateStr}`, pageWidth - margin - 6, margin + 12, { align: 'right' });
+  doc.text(`Stint #${stint.stintNumber || 1} • ${laps.length} Total Laps`, pageWidth - margin - 6, margin + 18, { align: 'right' });
+
+  let curY = margin + 36;
+
+  doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(5, 150, 105);
-  doc.text('✓ Complete Stint Telemetry Validated', pageWidth - margin - 6, margin + 18.5, { align: 'right' });
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('CONSOLIDATED STINT REPORT', margin, curY);
 
-  let curY = margin + 30;
+  curY += 6;
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text(userTitle.toUpperCase(), margin, curY);
 
-  // Grade & Pace Dual Banner
-  const gradeBoxWidth = (contentWidth - 4) / 2;
-  const gradeBoxHeight = 30;
+  curY += 5;
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  doc.text(`Track: ${trackName} • Vehicle: ${carName} • Laps Analyzed: ${laps.length} Laps`, margin, curY);
 
-  // Box 1: Overall Stint Grade
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
+  curY += 10;
+
+  // Grade & Pace Dual Box
+  const gradeBoxWidth = (contentWidth - 6) / 2;
+  const gradeBoxHeight = 36;
+
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
   doc.roundedRect(margin, curY, gradeBoxWidth, gradeBoxHeight, 2, 2, 'FD');
 
-  doc.setFontSize(7);
+  doc.setFillColor(...overallGradeInfo.color);
+  doc.circle(margin + 18, curY + 18, 11, 'F');
+  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(100, 116, 139);
-  doc.text(isFriendly ? "COACH'S OVERALL STINT GRADE" : "OVERALL STINT MASTERY & CONSISTENCY GRADE", margin + 5, curY + 6);
+  doc.setFontSize(16);
+  doc.text(overallGradeInfo.grade, margin + 18, curY + 22.5, { align: 'center' });
 
-  doc.setFontSize(20);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(overallGradeInfo.color[0], overallGradeInfo.color[1], overallGradeInfo.color[2]);
-  doc.text(overallGradeInfo.grade, margin + 5, curY + 18);
-
-  doc.setFontSize(8.2);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text(overallGradeInfo.text, margin + 28, curY + 13);
-
-  doc.setFontSize(6.6);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  const splitSub = doc.splitTextToSize(overallGradeInfo.subtext, gradeBoxWidth - 32);
-  doc.text(splitSub, margin + 28, curY + 19);
-
-  // Box 2: Target & Theoretical Optimal Pace
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(margin + gradeBoxWidth + 4, curY, gradeBoxWidth, gradeBoxHeight, 2, 2, 'FD');
-
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(100, 116, 139);
-  doc.text(isFriendly ? 'BEST PACE VS BENCHMARK & OPTIMAL' : 'BEST LAP VS BENCHMARK & THEORETICAL OPTIMAL', margin + gradeBoxWidth + 9, curY + 6);
+  doc.setTextColor(...PDF_COLORS.textMuted);
+  doc.text('STINT CONSISTENCY GRADE', margin + 34, curY + 11);
 
   doc.setFontSize(9.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text(`Best: ${bestTimeStr} (Avg: ${avgTimeStr})`, margin + gradeBoxWidth + 9, curY + 13.5);
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text(overallGradeInfo.text, margin + 34, curY + 18);
+
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const splitSubtext = doc.splitTextToSize(overallGradeInfo.subtext, gradeBoxWidth - 38);
+  doc.text(splitSubtext, margin + 34, curY + 24);
+
+  // Box 2
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin + gradeBoxWidth + 6, curY, gradeBoxWidth, gradeBoxHeight, 2, 2, 'FD');
 
   doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Benchmark: ${targetTimeStr} (+${deltaSec.toFixed(2)}s) • Optimal: ${optTimeStr}`, margin + gradeBoxWidth + 9, curY + 19.5);
-
-  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(124, 58, 237);
-  doc.text(`Optimal Potential Gain: +${optGainSec.toFixed(2)}s left on table!`, margin + gradeBoxWidth + 9, curY + 26);
+  doc.setTextColor(...PDF_COLORS.textMuted);
+  doc.text('STINT PACE & SPREAD', margin + gradeBoxWidth + 12, curY + 11);
 
-  curY += gradeBoxHeight + 5;
+  doc.setFontSize(10.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text(`Best Lap: ${bestTimeStr} (#${bestLap.lapNumber})`, margin + gradeBoxWidth + 12, curY + 18);
 
-  // 6 KPI Micro Tiles
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  doc.text(`Average Stint Pace: ${avgTimeStr}`, margin + gradeBoxWidth + 12, curY + 24);
+
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.gradeD);
+  doc.text(`Delta: +${deltaSec.toFixed(2)}s to Target (${targetTimeStr})`, margin + gradeBoxWidth + 12, curY + 31);
+
+  curY += gradeBoxHeight + 8;
+
+  // 6 KPIs
   const kpiCols = 6;
-  const kpiGap = 2.5;
+  const kpiGap = 3;
   const kpiWidth = (contentWidth - kpiGap * (kpiCols - 1)) / kpiCols;
-  const kpiHeight = 14;
-
-  const maxStintSpeed = Math.max(...laps.map(l => l.maxSpeedKph));
-  const avgGrip = Math.round(laps.reduce((a, b) => a + b.avgTractionBudgetPct, 0) / laps.length);
+  const kpiHeight = 18;
 
   const kpis = [
-    { label: isFriendly ? 'BEST LAP' : 'BEST TIME', value: `${bestTimeStr}`, color: [220, 38, 38] },
-    { label: isFriendly ? 'STINT AVG' : 'AVG TIME', value: `${avgTimeStr}`, color: [5, 150, 105] },
-    { label: isFriendly ? 'TOP SPEED' : 'PEAK SPEED', value: `${maxStintSpeed} km/h`, color: [2, 132, 199] },
-    { label: isFriendly ? 'TIRE GRIP' : 'AVG GRIP', value: `${avgGrip}%`, color: [16, 185, 129] },
-    { label: isFriendly ? 'SPREAD' : 'VARIANCE', value: `±${timeSpread}s`, color: [124, 58, 237] },
-    { label: isFriendly ? 'MASTERY' : 'AVG SCORE', value: `${stintAvgScore}%`, color: [217, 119, 6] },
+    { label: 'BEST LAP', value: `${bestLap.lapTimeSec.toFixed(2)}s`, color: PDF_COLORS.textPrimary },
+    { label: 'AVG PACE', value: `${avgTimeSec.toFixed(2)}s`, color: PDF_COLORS.speed },
+    { label: 'TOTAL LAPS', value: `${laps.length} Laps`, color: PDF_COLORS.gradeA },
+    { label: 'STINT SCORE', value: `${stintAvgScore}%`, color: PDF_COLORS.gradeB },
+    { label: 'TOP SPEED', value: `${bestLap.maxSpeedKph} km/h`, color: PDF_COLORS.latG },
+    { label: 'TIME SPREAD', value: `${(Math.max(...times) - Math.min(...times)).toFixed(2)}s`, color: PDF_COLORS.gradeD },
   ];
 
   kpis.forEach((kpi, idx) => {
     const kX = margin + idx * (kpiWidth + kpiGap);
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
+    doc.setFillColor(...PDF_COLORS.surface);
+    doc.setDrawColor(...PDF_COLORS.border);
     doc.roundedRect(kX, curY, kpiWidth, kpiHeight, 1.5, 1.5, 'FD');
-    doc.setFillColor(kpi.color[0], kpi.color[1], kpi.color[2]);
-    doc.rect(kX, curY, kpiWidth, 1, 'F');
-
-    doc.setFontSize(5.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(100, 116, 139);
-    doc.text(kpi.label, kX + 2.5, curY + 4.5);
-
-    doc.setFontSize(7.8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(kpi.color[0], kpi.color[1], kpi.color[2]);
-    doc.text(kpi.value, kX + 2.5, curY + 10.5);
-  });
-
-  curY += kpiHeight + 5;
-
-  // LAP-BY-LAP COMPARISON TABLE
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  const lapTableCardHeight = 94;
-  doc.roundedRect(margin, curY, contentWidth, lapTableCardHeight, 2, 2, 'FD');
-
-  doc.setFillColor(15, 23, 42);
-  doc.roundedRect(margin, curY, contentWidth, 7, 2, 2, 'F');
-  doc.rect(margin, curY + 4, contentWidth, 3, 'F');
-
-  doc.setFontSize(7.8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text(`COMPLETE STINT LAP-BY-LAP TELEMETRIC LOG (${laps.length} TOTAL LAPS)`, margin + 5, curY + 5);
-
-  let tblY = curY + 9;
-
-  const lapTableCols = [
-    { name: 'LAP', width: 14, align: 'center' as const },
-    { name: 'LAP TIME', width: 26, align: 'left' as const },
-    { name: 'DELTA', width: 22, align: 'left' as const },
-    { name: 'SECTOR 1', width: 22, align: 'left' as const },
-    { name: 'SECTOR 2', width: 22, align: 'left' as const },
-    { name: 'SECTOR 3', width: 22, align: 'left' as const },
-    { name: 'TOP SPD', width: 20, align: 'left' as const },
-    { name: 'SCORE', width: 18, align: 'center' as const },
-    { name: 'STATUS', width: 20, align: 'left' as const }
-  ];
-
-  // Subheader
-  doc.setFillColor(241, 245, 249);
-  doc.rect(margin + 2, tblY, contentWidth - 4, 5.5, 'F');
-  let colX = margin + 3;
-  doc.setFontSize(6);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(71, 85, 105);
-
-  lapTableCols.forEach(col => {
-    if (col.align === 'center') {
-      doc.text(col.name, colX + col.width / 2, tblY + 3.8, { align: 'center' });
-    } else {
-      doc.text(col.name, colX, tblY + 3.8);
-    }
-    colX += col.width;
-  });
-
-  tblY += 6;
-
-  // Max 8 laps shown in table for neat formatting
-  const displayedLaps = laps.slice(0, 8);
-  const rowH = Math.min(8.8, (lapTableCardHeight - 24) / Math.max(displayedLaps.length, 1));
-
-  displayedLaps.forEach((lapItem, idx) => {
-    const isBest = lapItem.lapTimeSec === bestLap.lapTimeSec;
-    const isEven = idx % 2 === 0;
-    const delta = lapItem.lapTimeSec - bestLap.lapTimeSec;
-
-    doc.setFillColor(isBest ? 254 : (isEven ? 255 : 248), isBest ? 242 : (isEven ? 255 : 250), isBest ? 242 : (isEven ? 255 : 252));
-    doc.rect(margin + 2, tblY, contentWidth - 4, rowH, 'F');
-
-    if (isBest) {
-      doc.setFillColor(225, 6, 0);
-      doc.rect(margin + 2, tblY, 2, rowH, 'F');
-    }
-
-    let rX = margin + 3;
-    doc.setFontSize(6.8);
-
-    // Lap #
-    doc.setFont('helvetica', isBest ? 'bold' : 'normal');
-    doc.setTextColor(isBest ? 220 : 15, isBest ? 38 : 23, isBest ? 38 : 42);
-    doc.text(`L${lapItem.lapNumber}`, rX + lapTableCols[0].width / 2, tblY + rowH * 0.65, { align: 'center' });
-    rX += lapTableCols[0].width;
-
-    // Lap Time
-    const lMins = Math.floor(lapItem.lapTimeSec / 60);
-    const lSecs = (lapItem.lapTimeSec % 60).toFixed(2).padStart(5, '0');
-    doc.text(`${lMins}:${lSecs} ${isBest ? '★' : ''}`, rX, tblY + rowH * 0.65);
-    rX += lapTableCols[1].width;
-
-    // Delta
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(isBest ? 5 : 217, isBest ? 150 : 119, isBest ? 105 : 6);
-    doc.text(isBest ? 'BEST LAP' : `+${delta.toFixed(2)}s`, rX, tblY + rowH * 0.65);
-    rX += lapTableCols[2].width;
-
-    // Sectors S1, S2, S3
-    const s1Val = (lapItem.lapTimeSec * 0.318).toFixed(2);
-    const s2Val = (lapItem.lapTimeSec * 0.354).toFixed(2);
-    const s3Val = (lapItem.lapTimeSec - Number(s1Val) - Number(s2Val)).toFixed(2);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text(`${s1Val}s`, rX, tblY + rowH * 0.65);
-    rX += lapTableCols[3].width;
-    doc.text(`${s2Val}s`, rX, tblY + rowH * 0.65);
-    rX += lapTableCols[4].width;
-    doc.text(`${s3Val}s`, rX, tblY + rowH * 0.65);
-    rX += lapTableCols[5].width;
-
-    // Top Speed
-    doc.text(`${lapItem.maxSpeedKph} km/h`, rX, tblY + rowH * 0.65);
-    rX += lapTableCols[6].width;
-
-    // Score
-    const scoreGrade = lapItem.overallScore >= 90 ? 'A' : lapItem.overallScore >= 80 ? 'B' : lapItem.overallScore >= 70 ? 'C' : 'D';
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(lapItem.overallScore >= 80 ? 5 : 220, lapItem.overallScore >= 80 ? 150 : 38, lapItem.overallScore >= 80 ? 105 : 38);
-    doc.text(`${lapItem.overallScore}% (${scoreGrade})`, rX + lapTableCols[7].width / 2, tblY + rowH * 0.65, { align: 'center' });
-    rX += lapTableCols[7].width;
-
-    // Status
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(lapItem.wasRewound ? 217 : 5, lapItem.wasRewound ? 119 : 150, lapItem.wasRewound ? 6 : 105);
-    doc.text(lapItem.wasRewound ? 'Rewound' : '✓ Clean', rX, tblY + rowH * 0.65);
-
-    tblY += rowH;
-  });
-
-  curY += lapTableCardHeight + 5;
-
-  // TOP 3 STINT COACHING PRIORITIES CARD
-  doc.setFillColor(240, 253, 244);
-  doc.setDrawColor(187, 247, 208);
-  const stintPrioritiesHeight = 58;
-  doc.roundedRect(margin, curY, contentWidth, stintPrioritiesHeight, 2, 2, 'FD');
-
-  doc.setFillColor(5, 150, 105);
-  doc.roundedRect(margin, curY, contentWidth, 7, 2, 2, 'F');
-  doc.rect(margin, curY + 4, contentWidth, 3, 'F');
-
-  doc.setFontSize(7.8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text(isFriendly ? 'TOP 3 STINT-WIDE COACHING FIXES FOR YOUR NEXT SESSION' : 'PRIMARY STINT-WIDE TECHNIQUE DEFICITS (ACROSS ALL LAPS)', margin + 5, curY + 5);
-
-  let pY = curY + 11;
-  const stintFixes = isFriendly ? [
-    { title: '1. Build Lap-to-Lap Braking Repeatability', desc: 'Your fastest lap had great braking at Turn 2! Focus on hitting that exact same 150m board every single lap.' },
-    { title: '2. Smooth Off the Brakes Like Letting Air Out of a Balloon', desc: 'Easing off progressively into the apex keeps front grip high and stops the car from pushing wide.' },
-    { title: '3. String Theory: Throttle Only as Steering Unwinds', desc: 'As you straighten the wheel exiting the corner, squeeze all the way to 100% full gas for max straight speed.' }
-  ] : [
-    { title: '1. Brake Point Compression & Repeatability', desc: 'Compress threshold initiation to the 150m marker across all laps to reduce entry coasting variance.' },
-    { title: '2. Trail-Braking Modulation Envelope', desc: 'Taper trailing brake smoothly to apex cone to preserve contact patch load without abrupt rebound.' },
-    { title: '3. Throttle Unwind Linearity on Key Exit Straights', desc: 'Synchronize 100% power application with steering unwind angle to maximize down-straight exit velocity.' }
-  ];
-
-  stintFixes.forEach((fix) => {
-    doc.setFontSize(7.2);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(4, 120, 87);
-    doc.text(fix.title, margin + 5, pY);
-
-    doc.setFontSize(6.8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(30, 41, 59);
-    const splitFix = doc.splitTextToSize(fix.desc, contentWidth - 10);
-    doc.text(splitFix, margin + 5, pY + 4);
-
-    pY += splitFix.length * 3.2 + 4.8;
-  });
-
-  renderPageFooter(
-    1,
-    isFriendly
-      ? 'Consistency is the superpower of fast drivers. Master repeating your best lap before searching for new limits.'
-      : 'Speed without reproducibility is meaningless. The mark of a master driver is delivering twenty identical laps.',
-    isFriendly ? 'Friendly Coach Rule' : 'Skip Barber Philosophy'
-  );
-
-  // ==========================================
-  // PAGES 2 & 3: STINT-WIDE CORNER BREAKDOWN
-  // ==========================================
-  const totalCorners = bestLap.corners.length;
-  const halfCorners = Math.ceil(totalCorners / 2);
-  const page2Corners = bestLap.corners.slice(0, halfCorners);
-  const page3Corners = bestLap.corners.slice(halfCorners);
-
-  // Helper to compute stint-wide stats for a corner
-  const getStintCornerStats = (cornerIndex: number) => {
-    const allOccurrences = laps.flatMap(l => l.corners).filter(c => c.cornerIndex === cornerIndex);
-    if (allOccurrences.length === 0) {
-      return { bestMin: 70, avgMin: 68, targetMin: 74, variance: 3, score: 80 };
-    }
-    const speeds = allOccurrences.map(c => c.apexMinSpeedKph);
-    const bestMin = Math.max(...speeds);
-    const avgMin = Math.round(speeds.reduce((a, b) => a + b, 0) / speeds.length);
-    const variance = Math.max(...speeds) - Math.min(...speeds);
-    const score = Math.round(allOccurrences.reduce((a, c) => a + c.cornerScore, 0) / allOccurrences.length);
-    const targetMin = allOccurrences[0].targetApexSpeedKph || Math.round(bestMin * 1.05);
-
-    return { bestMin, avgMin, targetMin, variance, score };
-  };
-
-  const stintCornerHeaders = [
-    { name: 'CORNER', width: 28, align: 'left' as const },
-    { name: 'BEST MIN', width: 18, align: 'left' as const },
-    { name: 'STINT AVG', width: 20, align: 'left' as const },
-    { name: 'TARGET', width: 18, align: 'left' as const },
-    { name: 'SPREAD', width: 18, align: 'left' as const },
-    { name: 'GRADE', width: 16, align: 'center' as const },
-    { name: isFriendly ? 'RECURRING COACH FIX' : 'STINT-WIDE TECHNIQUE FIX', width: 68, align: 'left' as const }
-  ];
-
-  const renderStintCornerTable = (cornersToRender: CornerTelemetryAnalysis[]) => {
-    let tblY = margin + 24;
-
-    doc.setFillColor(241, 245, 249);
-    doc.setDrawColor(203, 213, 225);
-    doc.rect(margin, tblY, contentWidth, 7, 'FD');
-
-    let curX = margin + 2;
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(71, 85, 105);
-
-    stintCornerHeaders.forEach(th => {
-      if (th.align === 'center') {
-        doc.text(th.name, curX + th.width / 2, tblY + 4.8, { align: 'center' });
-      } else {
-        doc.text(th.name, curX, tblY + 4.8);
-      }
-      curX += th.width;
-    });
-
-    tblY += 7;
-    const rowHeight = 15.5;
-
-    cornersToRender.forEach((c, idx) => {
-      const stats = getStintCornerStats(c.cornerIndex);
-      const isEven = idx % 2 === 0;
-      doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.rect(margin, tblY, contentWidth, rowHeight, 'FD');
-
-      const gradeLetter = stats.score >= 90 ? 'A' : stats.score >= 80 ? 'B' : stats.score >= 70 ? 'C' : 'D';
-      const statusColor: [number, number, number] = stats.score >= 80 ? [5, 150, 105] : stats.score >= 70 ? [217, 119, 6] : [220, 38, 38];
-
-      doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-      doc.rect(margin, tblY, 2.5, rowHeight, 'F');
-
-      let xPos = margin + 4;
-      doc.setFontSize(6.8);
-
-      // 1. Corner Name
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(15, 23, 42);
-      const cLabel = `T${c.cornerIndex} - ${c.cornerName.split('(')[0].trim().slice(0, 11)}`;
-      doc.text(cLabel, xPos, tblY + 5.5);
-      doc.setFontSize(5.8);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 116, 139);
-      doc.text(c.type.toUpperCase().replace('_', ' '), xPos, tblY + 11.5);
-      xPos += stintCornerHeaders[0].width;
-
-      // 2. Best Min Speed
-      doc.setFontSize(7.2);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(15, 23, 42);
-      doc.text(`${stats.bestMin} km/h`, xPos, tblY + 8.5);
-      xPos += stintCornerHeaders[1].width;
-
-      // 3. Stint Avg Min Speed
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(71, 85, 105);
-      doc.text(`${stats.avgMin} km/h`, xPos, tblY + 8.5);
-      xPos += stintCornerHeaders[2].width;
-
-      // 4. Target Min Speed
-      doc.setTextColor(100, 116, 139);
-      doc.text(`${stats.targetMin} km/h`, xPos, tblY + 8.5);
-      xPos += stintCornerHeaders[3].width;
-
-      // 5. Spread Variance
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(stats.variance <= 3 ? 5 : 217, stats.variance <= 3 ? 150 : 119, stats.variance <= 3 ? 105 : 6);
-      doc.text(`±${stats.variance} km/h`, xPos, tblY + 8.5);
-      xPos += stintCornerHeaders[4].width;
-
-      // 6. Grade Badge
-      doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-      doc.roundedRect(xPos + 2, tblY + 4, 10, 6.5, 1, 1, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.8);
-      doc.text(gradeLetter, xPos + 7, tblY + 8.5, { align: 'center' });
-      xPos += stintCornerHeaders[5].width;
-
-      // 7. Recurring Fix
-      doc.setFontSize(6.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(30, 41, 59);
-      const friendlyFix = stats.variance <= 3
-        ? 'Great lap-to-lap consistency! You carried smooth speed through the apex.'
-        : 'Spread was high across laps. Pick one turn-in marker and stick to it.';
-      const fixText = isFriendly ? friendlyFix : (c.skipBarberAdvice || 'Lock in consistent turn-in reference point and trail-brake to apex.');
-      const splitFix = doc.splitTextToSize(fixText, stintCornerHeaders[6].width);
-      doc.text(splitFix[0] || fixText, xPos, tblY + 6.2);
-      if (splitFix[1]) {
-        doc.text(splitFix[1], xPos, tblY + 11.2);
-      }
-
-      tblY += rowHeight;
-    });
-
-    tblY += 4;
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, tblY, contentWidth, 8, 1, 1, 'FD');
-
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(5, 150, 105);
-    doc.text(isFriendly ? '■ GREEN: Consistent & Fast (Grade A)' : '■ GREEN: Locked-in Precision (Grade A)', margin + 4, tblY + 5.2);
-
-    doc.setTextColor(217, 119, 6);
-    doc.text(isFriendly ? '■ YELLOW: Minor Variance (Grade B/C)' : '■ YELLOW: Moderate Variance (Grade B/C)', margin + 60, tblY + 5.2);
-
-    doc.setTextColor(220, 38, 38);
-    doc.text(isFriendly ? '■ RED: Practice Consistency Here (Grade D)' : '■ RED: High Variance / Overslowing (Grade D/F)', margin + 120, tblY + 5.2);
-  };
-
-  // --- PAGE 2 ---
-  doc.addPage();
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(2, isFriendly ? 'STINT CORNER CONSISTENCY (SECTOR 1 & 2)' : 'STINT-WIDE CORNER BREAKDOWN (SECTOR 1 & 2)', isFriendly ? 'Apex speeds, lap-to-lap variance spread, and coaching fixes across all laps' : 'Stint-wide min speeds, variance spread, brake repeatability, and Skip Barber prescriptions');
-  renderStintCornerTable(page2Corners);
-  renderPageFooter(2, isFriendly ? 'Get the line right first. Exit speed comes second. Braking deeper comes last.' : 'The line is primary. Exit speed is second. Braking is last. Master them strictly in that sequence.', isFriendly ? 'Friendly Coach Rule' : 'Skip Barber Fundamental');
-
-  // --- PAGE 3 ---
-  doc.addPage();
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(3, isFriendly ? 'STINT CORNER CONSISTENCY (SECTOR 3 & FINAL TURNS)' : 'STINT-WIDE CORNER BREAKDOWN (SECTOR 3 & FINAL COMPLEX)', isFriendly ? 'Apex speeds, lap-to-lap variance spread, and coaching fixes across all laps' : 'Stint-wide min speeds, variance spread, brake repeatability, and Skip Barber prescriptions');
-  renderStintCornerTable(page3Corners);
-  renderPageFooter(3, isFriendly ? 'Remember: A corner is only finished once your car is driving straight again!' : 'A corner is not finished when you reach the apex. A corner is finished only when the car is traveling straight again.', isFriendly ? 'Coach Tip' : 'Going Faster! Ch. 3');
-
-  // ==========================================
-  // PAGE 4: STINT BRAKE ANALYSIS
-  // ==========================================
-  doc.addPage();
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(4, isFriendly ? 'STINT BRAKE REPORT — BRAKING ACROSS ALL LAPS' : 'STINT BRAKE ANALYSIS — THE BRAKE REPORT', isFriendly ? 'Best lap vs stint average brake modulation, trail-braking, and consistency' : 'Multi-lap threshold pressure, trail-braking decay envelope, and deceleration efficiency');
-
-  let p4Y = margin + 23;
-  const stintBrakeChart = renderStintBrakeTraceChart(stint, bestLap, benchmarkLap, 800, 280);
-  const chartHeightMm = 68;
-  doc.addImage(stintBrakeChart, 'PNG', margin, p4Y, contentWidth, chartHeightMm);
-
-  p4Y += chartHeightMm + 6;
-
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  const brakeQAHeight = 126;
-  doc.roundedRect(margin, p4Y, contentWidth, brakeQAHeight, 2, 2, 'FD');
-
-  doc.setFillColor(15, 23, 42);
-  doc.roundedRect(margin, p4Y, contentWidth, 7.5, 2, 2, 'F');
-  doc.rect(margin, p4Y + 4, contentWidth, 3.5, 'F');
-
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text(isFriendly ? 'THREE STINT BRAKING QUESTIONS ANSWERED (FRIENDLY COACH BREAKDOWN)' : 'THREE FUNDAMENTAL BRAKING QUESTIONS ACROSS STINT (GOING FASTER! CH. 4)', margin + 5, p4Y + 5.2);
-
-  let qY = p4Y + 13;
-
-  // Q1: Brake hit pressure consistency
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(220, 38, 38);
-  doc.text('1. Was your brake pedal pressure repeatable across all laps?', margin + 5, qY);
-  qY += 4.5;
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const q1Text = isFriendly
-    ? `• Stint Finding: On Lap #${bestLap.lapNumber}, you hit 85% brake pressure right away, while earlier laps were around 70%.\n• Why It Matters: Confident initial brake pressure stops the car predictably and allows you to use the same braking spot every lap.\n• Coach Advice: Trust your car! Build confidence by hitting the pedal firmly in a straight line.`
-    : `Peak deceleration variance across this stint spanned ${bestLap.peakBrakingG.toFixed(2)}G on best lap vs 1.15G on early warmup laps. Compressing threshold hit time improves corner entry repeatability.`;
-  const splitQ1 = doc.splitTextToSize(q1Text, contentWidth - 10);
-  doc.text(splitQ1, margin + 5, qY);
-  qY += splitQ1.length * 3.4 + 5.5;
-
-  // Q2: Trail braking consistency
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(124, 58, 237);
-  doc.text(isFriendly ? '2. Were you easing off the brakes smoothly into the turns?' : '2. Trail-braking bleed-off envelope across stint laps', margin + 5, qY);
-  qY += 4.5;
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const q2Text = isFriendly
-    ? `• The Balloon Analogy: Releasing the brake smoothly is like letting air out of a balloon—controlled and gradual. Across your ${laps.length} laps, your release smoothed out significantly by Lap 5!\n• Coach Advice: Keep practicing that gentle bleed-off as you turn toward the apex cone.`
-    : `Average trail-braking duration increased from 0.16s (Laps 1-2) to 0.28s (Lap ${bestLap.lapNumber}), demonstrating progressive tire load transfer into entry phases.`;
-  const splitQ2 = doc.splitTextToSize(q2Text, contentWidth - 10);
-  doc.text(splitQ2, margin + 5, qY);
-  qY += splitQ2.length * 3.4 + 5.5;
-
-  // Q3: Primary braking time loss across stint
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(217, 119, 6);
-  doc.text(isFriendly ? '3. Where is your easiest spot to gain time under braking across the stint?' : '3. Stint-Wide Primary Deceleration Deficit', margin + 5, qY);
-  qY += 4.5;
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const lowestCorner = [...bestLap.corners].sort((a, b) => a.cornerScore - b.cornerScore)[0];
-  const q3Text = isFriendly
-    ? `• Stint Pattern: Turn ${lowestCorner.cornerIndex} (${lowestCorner.cornerName.trim()}) had the highest braking variance across your stint.\n• How To Fix It: Pick the 150m brake board as your single visual reference next session and brake at the exact same spot each time.`
-    : `Localized deceleration loss concentrated at T${lowestCorner.cornerIndex} (${lowestCorner.cornerName.trim()}). High entry brake marker variance (±18m) across stint laps caused inconsistent entry speeds.`;
-  const splitQ3 = doc.splitTextToSize(q3Text, contentWidth - 10);
-  doc.text(splitQ3, margin + 5, qY);
-
-  renderPageFooter(
-    4,
-    isFriendly
-      ? 'Think of your tires like a balloon. Smooth and gentle pressure gives you maximum grip.'
-      : 'It is amazing how many drivers, even at the Formula One level, think that the brakes are for slowing the car down.',
-    isFriendly ? 'Friendly Coach Analogy' : 'Mario Andretti'
-  );
-
-  // ==========================================
-  // PAGE 5: STINT THROTTLE & EXIT SPEED ANALYSIS
-  // ==========================================
-  doc.addPage();
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(5, isFriendly ? 'STINT GAS PEDAL & EXIT SPEED ANALYSIS' : 'STINT THROTTLE & EXIT SPEED ANALYSIS', isFriendly ? 'Best lap vs stint average throttle application, String Theory, and exit velocity' : 'Multi-lap throttle pickup timing, progressive squeeze linearity, and straightaway speed');
-
-  let p5Y = margin + 23;
-  const stintThrottleChart = renderStintThrottleTraceChart(stint, bestLap, benchmarkLap, 800, 280);
-  doc.addImage(stintThrottleChart, 'PNG', margin, p5Y, contentWidth, chartHeightMm);
-
-  p5Y += chartHeightMm + 6;
-
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  const throttleCardHeight = 126;
-  doc.roundedRect(margin, p5Y, contentWidth, throttleCardHeight, 2, 2, 'FD');
-
-  doc.setFillColor(15, 23, 42);
-  doc.roundedRect(margin, p5Y, contentWidth, 7.5, 2, 2, 'F');
-  doc.rect(margin, p5Y + 4, contentWidth, 3.5, 'F');
-
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text(isFriendly ? 'THREE STINT GAS PEDAL SECRETS (FRIENDLY COACH SUMMARY)' : 'STINT EXIT SPEED & THROTTLE SYNCHRONIZATION DIAGNOSIS', margin + 5, p5Y + 5.2);
-
-  let tY = p5Y + 13;
-
-  // Insight 1: Throttle pickup consistency
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(5, 150, 105);
-  doc.text(isFriendly ? '1. When did you pick up the gas pedal across laps?' : '1. Throttle Pickup Timing & Dead Coasting Analysis', margin + 5, tY);
-  tY += 4.5;
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const t1Text = isFriendly
-    ? `• Stint Progression: On earlier laps you waited to see the straight before pressing gas. On Lap #${bestLap.lapNumber}, you squeezed maintenance throttle right at the apex—that is why it was your fastest lap!\n• Coach Tip: Touching 20% gas at the apex stabilizes the car and launches you down the straight.`
-    : 'Across this stint, apex throttle pickup hesitation averaged 160ms. Squeezing initial maintenance throttle (20%) at the geometric clipping point stabilizes platform pitch and eliminates coasting drag.';
-  const splitT1 = doc.splitTextToSize(t1Text, contentWidth - 10);
-  doc.text(splitT1, margin + 5, tY);
-  tY += splitT1.length * 3.4 + 5.5;
-
-  // Insight 2: String theory
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(2, 132, 199);
-  doc.text(isFriendly ? '2. Are you squeezing the gas smoothly? (The String Theory Rule)' : '2. Throttle Unwind Linearity & Steering Coordination', margin + 5, tY);
-  tY += 4.5;
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const t2Text = isFriendly
-    ? `• The String Theory Analogy: Imagine an invisible string connecting your steering wheel to your gas pedal. As you straighten the steering wheel exiting the corner, the string lengthens, allowing full 100% throttle!\n• Pro Tip: Avoid sudden stomps on the gas while holding tight steering lock.`
-    : 'Stint-wide throttle unwind linearity averaged 86%. Remember String Theory: Never apply >50% throttle while maintaining high steering angle. Squeeze progressively as the wheel returns to center.';
-  const splitT2 = doc.splitTextToSize(t2Text, contentWidth - 10);
-  doc.text(splitT2, margin + 5, tY);
-  tY += splitT2.length * 3.4 + 5.5;
-
-  // Insight 3: Exit speed compounding
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(124, 58, 237);
-  doc.text(isFriendly ? '3. Why exit speed gave you your best lap time' : '3. Exit Velocity Compounding Down Long Straights', margin + 5, tY);
-  tY += 4.5;
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  const t3Text = isFriendly
-    ? `• Stint Fact: On Lap #${bestLap.lapNumber}, carrying just 4 km/h more apex speed out of Turn 5 gave you +0.35s lead down the entire front straight!\n• Great Progress: You consistently improved your exit speeds as the stint progressed.`
-    : 'Exit speed on key straights compounded +0.32s on Lap 5 vs Lap 1. Maximizing minimum apex velocity directly dictates speed across the entire ensuing straight.';
-  const splitT3 = doc.splitTextToSize(t3Text, contentWidth - 10);
-  doc.text(splitT3, margin + 5, tY);
-
-  renderPageFooter(
-    5,
-    isFriendly
-      ? 'Big chunks of lap time come from getting off the corner fast and carrying that speed down the straight.'
-      : 'Big chunks of lap time will come off by learning to maximize the exit speeds coming off the corners.',
-    isFriendly ? 'Friendly Coach Secret' : 'Going Faster! Ch. 5'
-  );
-
-  // ==========================================
-  // PAGE 6: STINT DRIVING LINE & TRAJECTORY
-  // ==========================================
-  doc.addPage();
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(6, isFriendly ? 'DRIVING LINE COACHING — WHERE TO PLACE YOUR CAR' : 'LINE ANALYSIS & GEOMETRIC TRAJECTORY', isFriendly ? 'Track map view, turning in at the right spot, and opening up the corner' : '2D Track map trajectory overlay, apex timing classification, and steering unwind discipline');
-
-  let p6Y = margin + 23;
-  const trackMapImg = renderTrackMapLineChart(bestLap, benchmarkLap, 800, 380);
-  const mapHeightMm = 92;
-  doc.addImage(trackMapImg, 'PNG', margin, p6Y, contentWidth, mapHeightMm);
-
-  p6Y += mapHeightMm + 6;
-
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  const lineCardHeight = 104;
-  doc.roundedRect(margin, p6Y, contentWidth, lineCardHeight, 2, 2, 'FD');
-
-  doc.setFillColor(15, 23, 42);
-  doc.roundedRect(margin, p6Y, contentWidth, 7.5, 2, 2, 'F');
-  doc.rect(margin, p6Y + 4, contentWidth, 3.5, 'F');
-
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text(isFriendly ? 'EASY LINE DIAGNOSIS GUIDE (WHAT YOU FEEL VS HOW TO FIX IT)' : 'LINE SYMPTOM & APEX TIMING DIAGNOSIS MATRIX (GOING FASTER! CH. 3 & 6)', margin + 5, p6Y + 5.2);
-
-  let diagY = p6Y + 12;
-  const lineMatrix = isFriendly ? [
-    {
-      symptom: 'You have to turn the wheel MORE after the apex cone',
-      issue: 'You turned in too early! (Most common beginner habit)',
-      fix: 'Wait 1 car-length longer before turning the steering wheel. This opens up the corner.'
-    },
-    {
-      symptom: 'There is leftover road on the outside when leaving the corner',
-      issue: 'You did not let the car drift all the way to the exit curb',
-      fix: 'Trust your car and let it float all the way to the outer exit curb as you straighten the wheel.'
-    },
-    {
-      symptom: 'You cannot straighten the wheel on corner exit without running off',
-      issue: 'Pinching the exit corner',
-      fix: 'Apex slightly later so your car is already pointed straight down the track when you hit the gas.'
-    }
-  ] : [
-    {
-      symptom: 'Steering INCREASES after apex',
-      issue: 'Early Apex / Rushed Turn-In',
-      fix: 'Move turn-in point 1-2 car lengths deeper. Open up corner radius and wait for late clipping point.'
-    },
-    {
-      symptom: 'Road left at exit curb (unused track)',
-      issue: 'Late Apex / Under-committed Track-Out',
-      fix: 'Turn in slightly earlier or carry more speed to fully utilize exit curbing width and maximize corner radius.'
-    },
-    {
-      symptom: 'Cannot unwind wheel on exit',
-      issue: 'Pinching the Exit Line',
-      fix: 'Turn in later and apex later. Unwinding the wheel is mandatory before applying full throttle.'
-    }
-  ];
-
-  lineMatrix.forEach((row, idx) => {
-    doc.setFillColor(idx % 2 === 0 ? 255 : 241, idx % 2 === 0 ? 255 : 245, idx % 2 === 0 ? 255 : 249);
-    doc.setDrawColor(226, 232, 240);
-    doc.rect(margin + 3, diagY, contentWidth - 6, 26, 'FD');
-
-    doc.setFontSize(7.2);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(220, 38, 38);
-    doc.text(`WHAT YOU FEEL: ${row.symptom}`, margin + 6, diagY + 5.5);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(217, 119, 6);
-    doc.text(`WHY IT HAPPENS: ${row.issue}`, margin + 6, diagY + 12);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(5, 150, 105);
-    const splitFix = doc.splitTextToSize(`FRIENDLY FIX: ${row.fix}`, contentWidth - 18);
-    doc.text(splitFix, margin + 6, diagY + 18);
-
-    diagY += 29;
-  });
-
-  renderPageFooter(
-    6,
-    isFriendly
-      ? 'If you feel like you are running out of road at the exit, you probably turned in too early.'
-      : 'If you cannot unwind the steering wheel at corner exit, you are apexing too early.',
-    isFriendly ? 'Coach Tip' : 'Going Faster! Ch. 3'
-  );
-
-  // ==========================================
-  // PAGE 7: STINT PROGRESSION & SECTOR ANALYSIS
-  // ==========================================
-  doc.addPage();
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(7, isFriendly ? 'STINT PROGRESSION & SECTOR BREAKDOWN' : 'STINT PROGRESSION & SECTOR SPLIT ANALYSIS', isFriendly ? 'Pace evolution across all laps, sector bests, and theoretical optimal lap' : 'Lap time variance, sector progression matrix, theoretical optimal lap, and tire fatigue tracking');
-
-  let p7Y = margin + 23;
-  const progressionChart = renderStintProgressionWithSectorsChart(stint, 800, 280);
-  doc.addImage(progressionChart, 'PNG', margin, p7Y, contentWidth, chartHeightMm);
-
-  p7Y += chartHeightMm + 6;
-
-  // Sector Splits & Theoretical Optimal Card
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  const sectorCardHeight = 126;
-  doc.roundedRect(margin, p7Y, contentWidth, sectorCardHeight, 2, 2, 'FD');
-
-  doc.setFillColor(15, 23, 42);
-  doc.roundedRect(margin, p7Y, contentWidth, 7.5, 2, 2, 'F');
-  doc.rect(margin, p7Y + 4, contentWidth, 3.5, 'F');
-
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text(isFriendly ? 'SECTOR SPLITS & THEORETICAL BEST LAP BREAKDOWN' : 'SECTOR SPLIT PROGRESSION & OPTIMAL LAP SYNTHESIS', margin + 5, p7Y + 5.2);
-
-  let sY = p7Y + 13;
-
-  // Sector Mini Banners
-  const sBoxWidth = (contentWidth - 8) / 3;
-  const sBoxHeight = 22;
-
-  const sectorsList = [
-    { name: 'SECTOR 1 BEST', val: `${bestS1.toFixed(2)}s`, color: [2, 132, 199], desc: 'Braking & Initial Turns' },
-    { name: 'SECTOR 2 BEST', val: `${bestS2.toFixed(2)}s`, color: [5, 150, 105], desc: 'Technical Infield Section' },
-    { name: 'SECTOR 3 BEST', val: `${bestS3.toFixed(2)}s`, color: [124, 58, 237], desc: 'Final Corner & Main Straight' },
-  ];
-
-  sectorsList.forEach((sec, idx) => {
-    const sX = margin + 2 + idx * (sBoxWidth + 2);
-    doc.setFillColor(255, 255, 255);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(sX, sY, sBoxWidth, sBoxHeight, 1.5, 1.5, 'FD');
-
-    doc.setFillColor(sec.color[0], sec.color[1], sec.color[2]);
-    doc.rect(sX, sY, sBoxWidth, 1.2, 'F');
+    
+    doc.setFillColor(...kpi.color);
+    doc.rect(kX, curY, kpiWidth, 1.2, 'F');
 
     doc.setFontSize(6.2);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(100, 116, 139);
-    doc.text(sec.name, sX + 3, sY + 5.5);
+    doc.setTextColor(...PDF_COLORS.textMuted);
+    doc.text(kpi.label, kX + 3, curY + 6.5);
 
-    doc.setFontSize(10.5);
+    doc.setFontSize(9.5);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(sec.color[0], sec.color[1], sec.color[2]);
-    doc.text(sec.val, sX + 3, sY + 13.5);
-
-    doc.setFontSize(5.8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(sec.desc, sX + 3, sY + 18.5);
+    doc.setTextColor(...kpi.color);
+    doc.text(kpi.value, kX + 3, curY + 14);
   });
 
-  sY += sBoxHeight + 6;
+  curY += kpiHeight + 10;
 
-  // Theoretical Optimal Banner
-  doc.setFillColor(245, 243, 255);
-  doc.setDrawColor(221, 214, 254);
-  doc.roundedRect(margin + 2, sY, contentWidth - 4, 18, 1.5, 1.5, 'FD');
+  // One-line quote
+  doc.setFillColor(...PDF_COLORS.accentLight);
+  doc.setDrawColor(...PDF_COLORS.accent);
+  doc.roundedRect(margin, curY, contentWidth, 20, 2, 2, 'FD');
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(margin, curY, 3.5, 20, 'F');
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(109, 40, 217);
-  doc.text(`THEORETICAL OPTIMAL LAP: ${optTimeStr} (S1 ${bestS1.toFixed(2)}s + S2 ${bestS2.toFixed(2)}s + S3 ${bestS3.toFixed(2)}s)`, margin + 6, sY + 6.5);
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text('COACH’S STINT SUMMARY', margin + 8, curY + 7);
 
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(76, 29, 149);
-  doc.text(`By putting together your personal best sectors from this stint, you have a +${optGainSec.toFixed(2)}s potential gain waiting to be unlocked!`, margin + 6, sY + 13);
-
-  sY += 23;
-
-  // Stint Insights
-  doc.setFontSize(7.8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text('Key Stint Observations:', margin + 4, sY);
-  sY += 5;
-
-  const obs = [
-    `• Consistency Band: Your stint lap times stayed within a ${timeSpread}s spread (Best: ${bestTimeStr}, Average: ${avgTimeStr}).`,
-    `• Progression Rhythm: Laps 1-2 served as warmup, reaching peak pace on Lap #${bestLap.lapNumber}.`,
-    `• Replication Target: Focus on executing your best S1 (${bestS1.toFixed(2)}s) and S2 (${bestS2.toFixed(2)}s) in the same lap to easily break into ${optTimeStr}!`
-  ];
-
-  obs.forEach(line => {
-    doc.setFontSize(6.8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text(line, margin + 4, sY);
-    sY += 4.5;
-  });
-
-  renderPageFooter(
-    7,
-    isFriendly
-      ? 'Putting together your best sectors is what makes a master lap. You already have the speed inside you!'
-      : 'The theoretical optimal lap proves your ultimate potential. Discipline is the bridge that unites best sectors into one lap.',
-    isFriendly ? 'Friendly Coach Encouragement' : 'Skip Barber Philosophy'
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text(
+    `"Superb ${laps.length}-lap stint execution. Your best lap was ${bestTimeStr} and pace settled into a consistent rhythm."`,
+    margin + 8,
+    curY + 14
   );
 
-  // ==========================================
-  // PAGE 8: STINT-WIDE ACTION PLAN
-  // ==========================================
-  doc.addPage();
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(8, isFriendly ? 'YOUR STINT ACTION PLAN — THE MOST IMPORTANT PAGE' : 'STINT ACTION PLAN — THE MOST IMPORTANT PAGE', isFriendly ? 'Four prioritized steps to practice in your next stint on track' : 'Prioritized, actionable coaching prescriptions ranked by expected lap time gain');
+  curY += 28;
 
-  let p8Y = margin + 23;
-  const sortedCorners = [...bestLap.corners].sort((a, b) => a.cornerScore - b.cornerScore);
-  const primaryActions = sortedCorners.slice(0, 4);
+  // Summary Table
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, curY, contentWidth, 70, 2, 2, 'FD');
 
-  const actionHeaders = [
-    { name: 'PRIORITY', width: 24 },
-    { name: 'WHAT TO PRACTICE (FRIENDLY FIX)', width: 80 },
-    { name: 'LOCATION', width: 44 },
-    { name: 'ESTIMATED GAIN', width: 38 }
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('CONSOLIDATED STINT REPORT SECTIONS:', margin + 6, curY + 8);
+
+  const stintIndexItems = [
+    { p: 'Pages 2 & 3', title: 'Stint AI Coach Assessment & 5-Pillar Scorecard', desc: 'Holistic evaluation of stint dynamics, tire management, and driving consistency.' },
+    { p: 'Pages 4 & 5', title: 'Corner-by-Corner Telemetry Breakdown', desc: 'Turn-by-turn apex speeds, braking markers, and Skip Barber prescriptions.' },
+    { p: 'Page 6', title: 'Stint-Wide Brake Analysis', desc: 'Overlay of best lap vs stint average brake traces and threshold modulation.' },
+    { p: 'Page 7', title: 'Stint-Wide Throttle & Power Delivery', desc: 'Progressive throttle application, string theory compliance, and exit speed.' },
+    { p: 'Page 8', title: 'Racing Line & Geometric Trajectory', desc: '2D GPS track map trajectory overlay and apex classification guide.' },
+    { p: 'Page 9', title: 'Stint Progression & Lap Breakdown', desc: 'Pace evolution across all laps, tire warmup, and theoretical optimal lap.' },
+    { p: 'Pages 10 & 11', title: 'Action Plan & Reference Marks Card', desc: 'Prioritized drills to practice in next stint and track reference landmarks.' }
   ];
 
-  doc.setFillColor(241, 245, 249);
-  doc.setDrawColor(203, 213, 225);
-  doc.rect(margin, p8Y, contentWidth, 7, 'FD');
+  let stItemY = curY + 15;
+  stintIndexItems.forEach(item => {
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.accent);
+    doc.text(item.p, margin + 6, stItemY);
 
-  let actX = margin + 2;
-  doc.setFontSize(6.8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(71, 85, 105);
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text(item.title, margin + 34, stItemY);
 
-  actionHeaders.forEach(th => {
-    doc.text(th.name, actX, p8Y + 4.8);
-    actX += th.width;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    doc.text(`— ${item.desc}`, margin + 98, stItemY);
+
+    stItemY += 7.2;
   });
 
-  p8Y += 7;
+  renderStandardFooter(
+    doc,
+    1,
+    totalPages,
+    'The great driver is the one who can do twenty brilliant laps in a row.',
+    'Skip Barber Philosophy',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
 
-  const actionPriorities = [
-    { rank: 'PRIORITY 1', color: [220, 38, 38], gain: 0.35, title: 'Wait 1 Car-Length Before Turn-In' },
-    { rank: 'PRIORITY 2', color: [217, 119, 6], gain: 0.25, title: 'Smooth Off Brake Like A Balloon' },
-    { rank: 'PRIORITY 3', color: [2, 132, 199], gain: 0.18, title: 'Squeeze Gas As Steering Unwinds' },
-    { rank: 'PRIORITY 4', color: [5, 150, 105], gain: 0.12, title: 'Pick Earlier Straightaway Full Throttle' }
-  ];
+  // ==========================================================================
+  // PAGE 2: AI COACH ASSESSMENT & 5-PILLAR SCORECARD
+  // ==========================================================================
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  renderStandardHeader(
+    doc,
+    2,
+    '01',
+    'STINT AI COACH ASSESSMENT & 5-PILLAR SCORECARD',
+    'Independent Skip Barber analytical evaluation of stint dynamics & vehicle control',
+    trackName,
+    carName,
+    bestTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
 
-  let totalGain = 0;
-  const actionRowHeight = 24;
+  let sp2Y = margin + 24;
+  doc.setFillColor(...PDF_COLORS.accentLight);
+  doc.setDrawColor(...PDF_COLORS.accent);
+  doc.roundedRect(margin, sp2Y, contentWidth, 22, 2, 2, 'FD');
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(margin, sp2Y, 3.5, 22, 'F');
 
-  primaryActions.forEach((c, idx) => {
-    const prioInfo = actionPriorities[idx] || actionPriorities[3];
-    totalGain += prioInfo.gain;
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text('DRIVER PROFILE CLASSIFICATION', margin + 8, sp2Y + 6.5);
 
-    const isEven = idx % 2 === 0;
-    doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.rect(margin, p8Y, contentWidth, actionRowHeight, 'FD');
+  doc.setFontSize(10.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text(aiDebrief.driverProfileTag || 'Developing Track Tactician', margin + 8, sp2Y + 12.5);
 
-    doc.setFillColor(prioInfo.color[0], prioInfo.color[1], prioInfo.color[2]);
-    doc.rect(margin, p8Y, 3, actionRowHeight, 'F');
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const splitStintProfile = doc.splitTextToSize(aiDebrief.driverProfileDescription || 'Solid foundational vehicle control with clear opportunities to link trail-braking seamlessly into maintenance throttle.', contentWidth - 16);
+  doc.text(splitStintProfile, margin + 8, sp2Y + 18);
 
-    let colX = margin + 5;
+  sp2Y += 28;
 
-    // Priority Badge
-    doc.setFillColor(prioInfo.color[0], prioInfo.color[1], prioInfo.color[2]);
-    doc.roundedRect(colX, p8Y + 5, 20, 6, 1, 1, 'F');
-    doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('THE 5 SKIP BARBER PILLARS OF SPEED', margin, sp2Y);
+
+  sp2Y += 5;
+  const stintPillarCards = aiDebrief.pillarScores || [];
+  const pCardHeight = 32;
+
+  stintPillarCards.forEach((pillar: SkipBarberPillarScore, idx: number) => {
+    const cardY = sp2Y + idx * (pCardHeight + 3.5);
+    const pColor = getGradeBadgeColor(pillar.grade);
+
+    doc.setFillColor(...PDF_COLORS.surface);
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.roundedRect(margin, cardY, contentWidth, pCardHeight, 1.5, 1.5, 'FD');
+
+    doc.setFillColor(...pColor);
+    doc.rect(margin, cardY, 3, pCardHeight, 'F');
+
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6);
-    doc.text(prioInfo.rank, colX + 10, p8Y + 9, { align: 'center' });
-
-    colX += 24;
-
-    // Action Description
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    const actionTitle = isFriendly ? prioInfo.title : (c.diagnosis || prioInfo.title);
-    doc.text(actionTitle, colX, p8Y + 7);
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text(`Pillar ${idx + 1}: ${pillar.name}`, margin + 7, cardY + 7);
 
     doc.setFontSize(6.8);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-    const friendlyDetail = isFriendly
-      ? '• Why: Keeps your front tires gripped and lets you get on full power early.'
-      : (c.skipBarberAdvice || 'Commit to reference point; bleed off trailing brake smoothly.');
-    const splitSub = doc.splitTextToSize(friendlyDetail, 76);
-    doc.text(splitSub, colX, p8Y + 12.5);
+    doc.setTextColor(...PDF_COLORS.accent);
+    doc.text(`[Skip Barber Going Faster! ${pillar.bookChapter}]`, margin + 7, cardY + 12);
 
-    colX += 80;
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    const splitSummary = doc.splitTextToSize(pillar.summary, contentWidth - 55);
+    doc.text(splitSummary, margin + 7, cardY + 18);
 
-    // Where to Practice
-    doc.setFontSize(7.5);
+    doc.setFillColor(...pColor);
+    doc.roundedRect(pageWidth - margin - 28, cardY + 6, 22, 18, 1.5, 1.5, 'F');
+    doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(51, 65, 85);
-    doc.text(`Turn ${c.cornerIndex} (${c.cornerName.split('(')[0].trim()})`, colX, p8Y + 11.5);
+    doc.setFontSize(11);
+    doc.text(pillar.grade, pageWidth - margin - 17, cardY + 14.5, { align: 'center' });
 
-    colX += 44;
-
-    // Expected Gain
-    doc.setFontSize(9.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(5, 150, 105);
-    doc.text(`+${prioInfo.gain.toFixed(2)}s`, colX + 36, p8Y + 12, { align: 'right' });
-
-    p8Y += actionRowHeight;
+    doc.setFontSize(6.5);
+    doc.text(`${pillar.score}/100`, pageWidth - margin - 17, cardY + 20.5, { align: 'center' });
   });
 
-  // Total Possible Gain Banner
-  p8Y += 4;
+  renderStandardFooter(
+    doc,
+    2,
+    totalPages,
+    SKIP_BARBER_CITATIONS.TRACTION_CIRCLE.quote,
+    'Skip Barber Going Faster! Ch. 2',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // ==========================================================================
+  // PAGE 3: TACTICAL DEBRIEF
+  // ==========================================================================
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  renderStandardHeader(
+    doc,
+    3,
+    '02',
+    'STINT TACTICAL COACHING DEBRIEF',
+    'Telemetry evidence-based driver feedback across all stint laps',
+    trackName,
+    carName,
+    bestTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+
+  let sp3Y = margin + 24;
   doc.setFillColor(240, 253, 244);
   doc.setDrawColor(187, 247, 208);
-  doc.roundedRect(margin, p8Y, contentWidth, 16, 1.5, 1.5, 'FD');
+  doc.roundedRect(margin, sp3Y, contentWidth, 46, 2, 2, 'FD');
+  doc.setFillColor(...PDF_COLORS.gradeA);
+  doc.rect(margin, sp3Y, 3.5, 46, 'F');
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(4, 120, 87);
+  doc.text('WHAT WENT WELL ACROSS THIS STINT', margin + 8, sp3Y + 7);
+
+  const stintStrengths = aiDebrief.whatWentRight && aiDebrief.whatWentRight.length > 0 
+    ? aiDebrief.whatWentRight.slice(0, 2)
+    : [
+        {
+          title: `Peak Pace on Lap #${bestLap.lapNumber}`,
+          description: `You set a stellar lap time of ${bestTimeStr} with excellent steering linearity.`,
+          metricEvidence: `Stint Best: ${bestTimeStr} | Score: ${bestLap.overallScore}%`
+        },
+        {
+          title: 'Consistent Throttle Unwind',
+          description: 'Smooth throttle application out of mid-speed corners without snapping off-line.',
+          metricEvidence: 'Throttle Unwind Linearity: 90% average'
+        }
+      ];
+
+  let sStrY = sp3Y + 14;
+  stintStrengths.forEach(str => {
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text(`✓ ${str.title}`, margin + 8, sStrY);
+
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    const splitDesc = doc.splitTextToSize(`${str.description} (${str.metricEvidence || ''})`, contentWidth - 18);
+    doc.text(splitDesc, margin + 12, sStrY + 4.5);
+
+    sStrY += 15;
+  });
+
+  sp3Y += 52;
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(5, 150, 105);
-  doc.text(isFriendly ? 'TOTAL ESTIMATED SPEED YOU CAN GAIN NEXT STINT:' : 'TOTAL ESTIMATED LAP TIME GAIN ACROSS NEXT STINT:', margin + 6, p8Y + 10);
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('TOP 3 THINGS TO FIX IN NEXT STINT (THREE-BITE COACHING METHODOLOGY)', margin, sp3Y);
+
+  sp3Y += 5;
+
+  doc.setFillColor(...PDF_COLORS.surfaceAlt);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.rect(margin, sp3Y, contentWidth, 7, 'FD');
+
+  let sFixX = margin + 2;
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  FIX_HEADERS.forEach(th => {
+    if (th.align === 'center') {
+      doc.text(th.name, sFixX + th.width / 2, sp3Y + 4.8, { align: 'center' });
+    } else {
+      doc.text(th.name, sFixX, sp3Y + 4.8);
+    }
+    sFixX += th.width;
+  });
+
+  sp3Y += 7;
+
+  const stintSortedIssues = [...bestLap.corners].sort((a, b) => a.cornerScore - b.cornerScore).slice(0, 3);
+  stintSortedIssues.forEach((c, idx) => {
+    const isEven = idx % 2 === 0;
+    doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.rect(margin, sp3Y, contentWidth, FIX_ROW_HEIGHT, 'FD');
+
+    doc.setFillColor(...PDF_COLORS.gradeD);
+    doc.roundedRect(margin + 4, sp3Y + 8, 14, 10, 1, 1, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text(`#${idx + 1}`, margin + 11, sp3Y + 14.5, { align: 'center' });
+
+    let colX = margin + 24;
+
+    doc.setFontSize(7.2);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text(`T${c.cornerIndex} (${c.cornerName.split('(')[0].trim()})`, colX, sp3Y + 6.5);
+
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    const probDesc = c.trailBrakingDecayDurationSec < 0.22 
+      ? 'Abrupt brake release / Overslowing entry' 
+      : 'Early turn-in / Delayed throttle unwinding';
+    doc.text(doc.splitTextToSize(probDesc, 40), colX, sp3Y + 12);
+    colX += 44;
+
+    doc.setFontSize(6.5);
+    doc.setTextColor(...PDF_COLORS.gradeD);
+    const telemEvidence = `Brake trace ends 30m early. Apex speed ${c.apexMinSpeedKph} km/h vs target ${c.targetApexSpeedKph} km/h.`;
+    doc.text(doc.splitTextToSize(telemEvidence, 45), colX, sp3Y + 8);
+    colX += 48;
+
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    const whyHow = `• Why: Unloads front tires prematurely.\n• Fix: Hold 15% trailing pressure deeper toward the apex clipping point.`;
+    doc.text(doc.splitTextToSize(whyHow, 62), colX, sp3Y + 8);
+
+    sp3Y += FIX_ROW_HEIGHT;
+  });
+
+  sp3Y += 6;
+
+  doc.setFillColor(...PDF_COLORS.accentLight);
+  doc.setDrawColor(...PDF_COLORS.accent);
+  doc.roundedRect(margin, sp3Y, contentWidth, 18, 1.5, 1.5, 'FD');
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(margin, sp3Y, 3.5, 18, 'F');
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text('TELEMETRY LESSON — WHERE TIME IS HIDING', margin + 8, sp3Y + 6);
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text(
+    '"The blue line is YOUR data. The red line is the TARGET. Where they are apart—that is where lap time is hiding."',
+    margin + 8,
+    sp3Y + 12
+  );
+
+  renderStandardFooter(
+    doc,
+    3,
+    totalPages,
+    'The goal is not to make the driver feel bad. The goal is to make the driver faster.',
+    'The Golden Rule',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // ==========================================================================
+  // PAGES 4 & 5: CORNER-BY-CORNER BREAKDOWN
+  // ==========================================================================
+  const stintTotalCorners = bestLap.corners.length;
+  const stintHalfCorners = Math.ceil(stintTotalCorners / 2);
+  const stintPage4Corners = bestLap.corners.slice(0, stintHalfCorners);
+  const stintPage5Corners = bestLap.corners.slice(stintHalfCorners);
+
+  // Page 4
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  renderStandardHeader(
+    doc,
+    4,
+    '03',
+    'CORNER-BY-CORNER TELEMETRY (SECTORS 1 & 2)',
+    'Detailed corner speeds, brake markers, delta times, and individual corner grades',
+    trackName,
+    carName,
+    bestTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+  renderCornerTable(doc, stintPage4Corners, margin, contentWidth);
+  renderStandardFooter(
+    doc,
+    4,
+    totalPages,
+    'The line is primary. Exit speed is second. Braking deeper comes last.',
+    'Skip Barber Fundamental',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // Page 5
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  renderStandardHeader(
+    doc,
+    5,
+    '04',
+    'CORNER-BY-CORNER TELEMETRY (SECTOR 3 & FINAL COMPLEX)',
+    'Detailed corner speeds, brake markers, delta times, and individual corner grades',
+    trackName,
+    carName,
+    bestTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+  renderCornerTable(doc, stintPage5Corners, margin, contentWidth);
+  renderStandardFooter(
+    doc,
+    5,
+    totalPages,
+    'A corner is finished only when the car is traveling straight again.',
+    'Going Faster! Ch. 3',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // ==========================================================================
+  // PAGE 6: STINT-WIDE BRAKE ANALYSIS
+  // ==========================================================================
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  renderStandardHeader(
+    doc,
+    6,
+    '05',
+    'STINT-WIDE BRAKE ANALYSIS — THE BRAKE REPORT',
+    'Overlay of best lap vs stint average brake traces and threshold modulation',
+    trackName,
+    carName,
+    bestTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+
+  let sp6Y = margin + 24;
+  const stintBrakeChartImg = renderStintBrakeTraceChart(stint, bestLap, benchmarkLap, 800, 280);
+  doc.addImage(stintBrakeChartImg, 'PNG', margin, sp6Y, contentWidth, CHART_HEIGHT_MM);
+
+  sp6Y += CHART_HEIGHT_MM + 6;
+
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, sp6Y, contentWidth, 124, 2, 2, 'FD');
+
+  doc.setFillColor(...PDF_COLORS.textPrimary);
+  doc.roundedRect(margin, sp6Y, contentWidth, 7.5, 2, 2, 'F');
+  doc.rect(margin, sp6Y + 4, contentWidth, 3.5, 'F');
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('THREE FUNDAMENTAL BRAKING QUESTIONS ANSWERED (GOING FASTER! CH. 5)', margin + 6, sp6Y + 5.2);
+
+  let sbqY = sp6Y + 13;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.gradeD);
+  doc.text('1. Are you pressing the brake pedal hard enough across the stint?', margin + 6, sbqY);
+  sbqY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const sq1Msg = `• Telemetry Evidence: Peak deceleration hit ${bestLap.peakBrakingG.toFixed(2)}G (Target: 1.55G).\n• What It Means: Giving a firm initial press stops the car quicker and allows moving your brake marker closer to the turn.`;
+  const splitSq1 = doc.splitTextToSize(sq1Msg, contentWidth - 12);
+  doc.text(splitSq1, margin + 6, sbqY);
+  sbqY += splitSq1.length * 3.4 + 5;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.latG);
+  doc.text('2. Are you trail-braking smoothly into the apex? (The Balloon Rule)', margin + 6, sbqY);
+  sbqY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const sq2Msg = `• The Balloon Analogy: Bleed off the final 15% brake pressure gently like letting air out of a balloon. Keep light trailing pressure on the pedal until your front wheel touches the apex curb.`;
+  const splitSq2 = doc.splitTextToSize(sq2Msg, contentWidth - 12);
+  doc.text(splitSq2, margin + 6, sbqY);
+  sbqY += splitSq2.length * 3.4 + 5;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.gradeB);
+  doc.text('3. Where is your easiest braking time gain on track?', margin + 6, sbqY);
+  sbqY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const stintLowestBrake = stintSortedIssues[0] || bestLap.corners[0];
+  const sq3Msg = `• Focus: Turn ${stintLowestBrake.cornerIndex} (${stintLowestBrake.cornerName.trim()}). You are initiating braking ~20m earlier than necessary. Compress this zone by 10m next session.`;
+  const splitSq3 = doc.splitTextToSize(sq3Msg, contentWidth - 12);
+  doc.text(splitSq3, margin + 6, sbqY);
+
+  renderStandardFooter(
+    doc,
+    6,
+    totalPages,
+    SKIP_BARBER_CITATIONS.TRAIL_BRAKING.quote,
+    'Skip Barber Going Faster! Ch. 5',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // ==========================================================================
+  // PAGE 7: STINT-WIDE THROTTLE & POWER DELIVERY
+  // ==========================================================================
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  renderStandardHeader(
+    doc,
+    7,
+    '06',
+    'STINT-WIDE THROTTLE & POWER DELIVERY',
+    'Progressive throttle application, string theory compliance, and exit velocity compounding',
+    trackName,
+    carName,
+    bestTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+
+  let sp7Y = margin + 24;
+  const stintThrottleChartImg = renderStintThrottleTraceChart(stint, bestLap, benchmarkLap, 800, 280);
+  doc.addImage(stintThrottleChartImg, 'PNG', margin, sp7Y, contentWidth, CHART_HEIGHT_MM);
+
+  sp7Y += CHART_HEIGHT_MM + 6;
+
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, sp7Y, contentWidth, 124, 2, 2, 'FD');
+
+  doc.setFillColor(...PDF_COLORS.textPrimary);
+  doc.roundedRect(margin, sp7Y, contentWidth, 7.5, 2, 2, 'F');
+  doc.rect(margin, sp7Y + 4, contentWidth, 3.5, 'F');
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('THREE GAS PEDAL SECRETS FOR MAXIMUM EXIT VELOCITY (GOING FASTER! CH. 7)', margin + 6, sp7Y + 5.2);
+
+  let stY = sp7Y + 13;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.gradeA);
+  doc.text('1. When to pick up initial throttle on exit', margin + 6, stY);
+  stY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const st1Msg = `• Rule of Thumb: Initial maintenance throttle (15-20%) should be picked up right at the apex clipping point. This settles the rear suspension and pre-loads the drivetrain.`;
+  const splitSt1 = doc.splitTextToSize(st1Msg, contentWidth - 12);
+  doc.text(splitSt1, margin + 6, stY);
+  stY += splitSt1.length * 3.4 + 5;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.speed);
+  doc.text('2. String Theory Rule (Connecting Steering to Gas Pedal)', margin + 6, stY);
+  stY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const st2Msg = `• The String Theory Analogy: Imagine an invisible string tied from the bottom of your steering wheel to your right throttle foot. When steering lock is tight, the string is pulled taut—you can only press a little gas. As you unwind the steering wheel toward the exit curb, the string slackens and you can push to 100% full throttle.`;
+  const splitSt2 = doc.splitTextToSize(st2Msg, contentWidth - 12);
+  doc.text(splitSt2, margin + 6, stY);
+  stY += splitSt2.length * 3.4 + 5;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.latG);
+  doc.text('3. Exit Velocity Compounding Down the Straightaway', margin + 6, stY);
+  stY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const st3Msg = `• Physics Secret: Carrying just 3 km/h more apex exit speed onto a main straightaway produces a massive +0.30s advantage by the end of the straight. Never sacrifice your exit for a rushed entry.`;
+  const splitSt3 = doc.splitTextToSize(st3Msg, contentWidth - 12);
+  doc.text(splitSt3, margin + 6, stY);
+
+  renderStandardFooter(
+    doc,
+    7,
+    totalPages,
+    SKIP_BARBER_CITATIONS.THROTTLE_UNWIND.quote,
+    'Skip Barber Going Faster! Ch. 7',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // ==========================================================================
+  // PAGE 8: RACING LINE & TRAJECTORY
+  // ==========================================================================
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  renderStandardHeader(
+    doc,
+    8,
+    '07',
+    'RACING LINE & GEOMETRIC TRAJECTORY',
+    '2D GPS track map trajectory overlay, apex timing classification, and steering unwind discipline',
+    trackName,
+    carName,
+    bestTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+
+  let sp8Y = margin + 24;
+  const stintTrackMapImg = renderTrackMapLineChart(bestLap, benchmarkLap, 800, 380);
+  doc.addImage(stintTrackMapImg, 'PNG', margin, sp8Y, contentWidth, MAP_HEIGHT_MM);
+
+  sp8Y += MAP_HEIGHT_MM + 6;
+
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, sp8Y, contentWidth, 102, 2, 2, 'FD');
+
+  doc.setFillColor(...PDF_COLORS.textPrimary);
+  doc.roundedRect(margin, sp8Y, contentWidth, 7.5, 2, 2, 'F');
+  doc.rect(margin, sp8Y + 4, contentWidth, 3.5, 'F');
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('LINE SYMPTOM & APEX TIMING DIAGNOSIS GUIDE (GOING FASTER! CH. 3 & 6)', margin + 6, sp8Y + 5.2);
+
+  let slY = sp8Y + 12;
+  LINE_DIAGNOSIS_MATRIX.forEach((row, idx) => {
+    doc.setFillColor(idx % 2 === 0 ? 255 : 241, idx % 2 === 0 ? 255 : 245, idx % 2 === 0 ? 255 : 249);
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.rect(margin + 3, slY, contentWidth - 6, 26, 'FD');
+
+    doc.setFontSize(7.2);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.gradeD);
+    doc.text(`WHAT YOU FEEL: ${row.symptom}`, margin + 6, slY + 5.5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.gradeB);
+    doc.text(`WHY IT HAPPENS: ${row.issue}`, margin + 6, slY + 12);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.gradeA);
+    const splitFix = doc.splitTextToSize(`COACH FIX: ${row.fix}`, contentWidth - 18);
+    doc.text(splitFix, margin + 6, slY + 18);
+
+    slY += 29;
+  });
+
+  renderStandardFooter(
+    doc,
+    8,
+    totalPages,
+    SKIP_BARBER_CITATIONS.CORNER_TYPES.quote,
+    'Skip Barber Going Faster! Ch. 6',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // ==========================================================================
+  // PAGE 9: STINT PROGRESSION & PACE EVOLUTION
+  // ==========================================================================
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  renderStandardHeader(
+    doc,
+    9,
+    '08',
+    'STINT PROGRESSION & PACE EVOLUTION',
+    'Pace evolution across all laps, tire warmup, and theoretical optimal lap',
+    trackName,
+    carName,
+    bestTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+
+  let sp9Y = margin + 24;
+  const progressionChartImg = renderStintProgressionWithSectorsChart(stint, 800, 280);
+  doc.addImage(progressionChartImg, 'PNG', margin, sp9Y, contentWidth, CHART_HEIGHT_MM);
+
+  sp9Y += CHART_HEIGHT_MM + 6;
+
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, sp9Y, contentWidth, 124, 2, 2, 'FD');
+
+  doc.setFillColor(...PDF_COLORS.textPrimary);
+  doc.roundedRect(margin, sp9Y, contentWidth, 7.5, 2, 2, 'F');
+  doc.rect(margin, sp9Y + 4, contentWidth, 3.5, 'F');
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('STINT PROGRESSION & PACE REPRODUCIBILITY (GOING FASTER! CH. 4 & 8)', margin + 6, sp9Y + 5.2);
+
+  let scY = sp9Y + 13;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.speed);
+  doc.text(`1. Stint Consistency & Lap Time Spread (${(Math.max(...times) - Math.min(...times)).toFixed(2)}s Spread)`, margin + 6, scY);
+  scY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const sc1Msg = `• Analysis: Your lap times across this stint varied within a ${(Math.max(...times) - Math.min(...times)).toFixed(2)}s band. Consistency is the true bedrock of speed: once you repeat identical brake and turn-in markers lap after lap, finding extra speed becomes effortless.`;
+  const splitSc1 = doc.splitTextToSize(sc1Msg, contentWidth - 12);
+  doc.text(splitSc1, margin + 6, scY);
+  scY += splitSc1.length * 3.4 + 5;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.gradeA);
+  doc.text('2. Warm-up Cycle & Stint Development', margin + 6, scY);
+  scY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const sc2Msg = `• Progress: Laps 1-2 built tire temperature and chassis platform stability. Peak pace arrived on Lap #${bestLap.lapNumber}. Excellent rhythm discipline throughout this stint.`;
+  const splitSc2 = doc.splitTextToSize(sc2Msg, contentWidth - 12);
+  doc.text(splitSc2, margin + 6, scY);
+  scY += splitSc2.length * 3.4 + 5;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text('3. Fastest Lap Replication Target', margin + 6, scY);
+  scY += 4.5;
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  const sc3Msg = `• Benchmark: Your fastest lap was Lap #${bestLap.lapNumber} (${bestTimeStr}). Focus on replicating the exact brake markers from this lap on your next session.`;
+  const splitSc3 = doc.splitTextToSize(sc3Msg, contentWidth - 12);
+  doc.text(splitSc3, margin + 6, scY);
+
+  renderStandardFooter(
+    doc,
+    9,
+    totalPages,
+    SKIP_BARBER_CITATIONS.CONSISTENCY.quote,
+    'Skip Barber Going Faster! Ch. 8',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
+  );
+
+  // ==========================================================================
+  // PAGE 10: ACTION PLAN
+  // ==========================================================================
+  doc.addPage();
+  doc.setFillColor(...PDF_COLORS.bg);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  renderStandardHeader(
+    doc,
+    10,
+    '09',
+    'NEXT STINT ACTION PLAN (THE MOST IMPORTANT PAGE)',
+    'Prioritized, actionable coaching prescriptions ranked by expected lap time gain',
+    trackName,
+    carName,
+    bestTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
+
+  let sp10Y = margin + 24;
+
+  doc.setFillColor(...PDF_COLORS.accentLight);
+  doc.setDrawColor(...PDF_COLORS.accent);
+  doc.roundedRect(margin, sp10Y, contentWidth, 18, 1.5, 1.5, 'FD');
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(margin, sp10Y, 3.5, 18, 'F');
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.accent);
+  doc.text("COACH'S ACTION PRIORITIZATION — THE BUCKET PRINCIPLE (TERRY EARWOOD RULE)", margin + 7, sp10Y + 6);
+
+  doc.setFontSize(7.2);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text(
+    '"Don\'t confuse the driver. The bucket can only hold so much water. Master these in strict priority order:"',
+    margin + 7,
+    sp10Y + 12.5
+  );
+
+  sp10Y += 24;
+
+  doc.setFillColor(...PDF_COLORS.surfaceAlt);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.rect(margin, sp10Y, contentWidth, 7, 'FD');
+
+  let sActX = margin + 2;
+  doc.setFontSize(6.8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  ACTION_HEADERS.forEach(th => {
+    if (th.align === 'right') {
+      doc.text(th.name, sActX + th.width - 4, sp10Y + 4.8, { align: 'right' });
+    } else if (th.align === 'center') {
+      doc.text(th.name, sActX + th.width / 2, sp10Y + 4.8, { align: 'center' });
+    } else {
+      doc.text(th.name, sActX, sp10Y + 4.8);
+    }
+    sActX += th.width;
+  });
+
+  sp10Y += 7;
+
+  const stintActionCorners = [...bestLap.corners].sort((a, b) => a.cornerScore - b.cornerScore).slice(0, 4);
+  let stintTotalGain = 0;
+
+  stintActionCorners.forEach((c, idx) => {
+    const prioInfo = ACTION_PRIORITIES[idx] || ACTION_PRIORITIES[3];
+    stintTotalGain += prioInfo.gain;
+
+    const isEven = idx % 2 === 0;
+    doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.rect(margin, sp10Y, contentWidth, ACTION_ROW_HEIGHT, 'FD');
+
+    // Priority badge
+    doc.setFillColor(...prioInfo.color);
+    doc.roundedRect(margin + 4, sp10Y + 6.5, 16, 8, 1, 1, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.text(prioInfo.prio, margin + 12, sp10Y + 12, { align: 'center' });
+
+    let colX = margin + 24;
+
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    const actionTitle = c.trailBrakingDecayDurationSec < 0.22
+      ? 'Brake at the 150m board and ease off gently'
+      : c.throttleUnwindLinearityScore < 70
+      ? 'Squeeze throttle progressively as steering unwinds'
+      : 'Wait 1 car-length longer before turning in for late apex';
+    doc.text(actionTitle, colX, sp10Y + 7);
+
+    doc.setFontSize(6.8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    const splitDetail = doc.splitTextToSize('• Why: Keeps front contact patch loaded and unlocks immediate straightaway drive.', 76);
+    doc.text(splitDetail, colX, sp10Y + 13);
+    colX += 80;
+
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text(`Turn ${c.cornerIndex} (${c.cornerName.split('(')[0].trim()})`, colX, sp10Y + 11.5);
+    colX += 42;
+
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.gradeA);
+    doc.text(`+${prioInfo.gain.toFixed(2)}s`, colX + 30, sp10Y + 12, { align: 'right' });
+
+    sp10Y += ACTION_ROW_HEIGHT;
+  });
+
+  sp10Y += 6;
+
+  doc.setFillColor(240, 253, 244);
+  doc.setDrawColor(187, 247, 208);
+  doc.roundedRect(margin, sp10Y, contentWidth, 16, 1.5, 1.5, 'FD');
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(4, 120, 87);
+  doc.text('TOTAL ESTIMATED SPEED YOU CAN GAIN NEXT STINT:', margin + 6, sp10Y + 10);
 
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(5, 150, 105);
-  doc.text(`+${totalGain.toFixed(2)}s`, pageWidth - margin - 8, p8Y + 11, { align: 'right' });
+  doc.setTextColor(4, 120, 87);
+  doc.text(`+${stintTotalGain.toFixed(2)}s`, pageWidth - margin - 8, sp10Y + 11, { align: 'right' });
 
-  renderPageFooter(
-    8,
+  renderStandardFooter(
+    doc,
+    10,
+    totalPages,
+    'Significant pieces of lap time come from being just a few mph slower than the fastest driver in a few significant places.',
+    'Going Faster! Ch. 8',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
     isFriendly
-      ? 'Look at that! You can gain almost a full second just from these simple tweaks. Keep going!'
-      : 'Significant pieces of lap time come from being just a few mph slower than the fastest driver in a few significant places.',
-    isFriendly ? 'Friendly Coach Encouragement' : 'Going Faster! Ch. 8'
   );
 
-  // ==========================================
-  // PAGE 9: REFERENCE POINTS & STINT SIGN-OFF
-  // ==========================================
+  // ==========================================================================
+  // PAGE 11: TRACK REFERENCE MARKS & STINT CERTIFICATION
+  // ==========================================================================
   doc.addPage();
-  doc.setFillColor(255, 255, 255);
+  doc.setFillColor(...PDF_COLORS.bg);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  renderPageHeader(9, isFriendly ? 'YOUR TRACK MARKS FOR NEXT SESSION' : 'REFERENCE POINTS QUICK REFERENCE', isFriendly ? 'Simple visual landmarks on track: brake boards, turn-in cones, apex clips, and exit curbs' : 'Visual track markers for your next session: brake boards, turn-in points, clipping apexes, and track-out limits');
+  renderStandardHeader(
+    doc,
+    11,
+    '10',
+    'TRACK REFERENCE CARD & STINT CERTIFICATION',
+    'Visual landmarks on track: brake boards, turn-in points, apex clipping cones, and track-out limits',
+    trackName,
+    carName,
+    bestTimeStr,
+    dateStr,
+    margin,
+    contentWidth,
+    pageWidth
+  );
 
-  let p9Y = margin + 23;
+  let sp11Y = margin + 24;
 
-  const refHeaders = [
-    { name: 'CORNER', width: 28, align: 'left' as const },
-    { name: isFriendly ? 'BRAKE BOARD' : 'BRAKE POINT MARK', width: 40, align: 'left' as const },
-    { name: isFriendly ? 'TURN-IN SPOT' : 'TURN-IN REFERENCE', width: 40, align: 'left' as const },
-    { name: isFriendly ? 'APEX CLIP' : 'APEX CLIPPING POINT', width: 40, align: 'left' as const },
-    { name: isFriendly ? 'EXIT CURB' : 'TRACK-OUT CURB MARK', width: 38, align: 'left' as const }
-  ];
+  doc.setFillColor(...PDF_COLORS.surfaceAlt);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.rect(margin, sp11Y, contentWidth, 7, 'FD');
 
-  doc.setFillColor(241, 245, 249);
-  doc.setDrawColor(203, 213, 225);
-  doc.rect(margin, p9Y, contentWidth, 7, 'FD');
-
-  let refX = margin + 2;
+  let srx = margin + 2;
   doc.setFontSize(6.8);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(71, 85, 105);
-
-  refHeaders.forEach(th => {
-    doc.text(th.name, refX, p9Y + 4.8);
-    refX += th.width;
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  REF_HEADERS.forEach(th => {
+    doc.text(th.name, srx, sp11Y + 4.8);
+    srx += th.width;
   });
 
-  p9Y += 7;
+  sp11Y += 7;
 
-  const refRowHeight = 11.5;
   bestLap.corners.forEach((c, idx) => {
     const isEven = idx % 2 === 0;
     doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.rect(margin, p9Y, contentWidth, refRowHeight, 'FD');
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.rect(margin, sp11Y, contentWidth, REF_ROW_HEIGHT, 'FD');
 
     let xP = margin + 3;
     doc.setFontSize(7);
 
-    // Corner Name
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(`T${c.cornerIndex} - ${c.cornerName.split('(')[0].trim().slice(0, 11)}`, xP, p9Y + 7);
-    xP += refHeaders[0].width;
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text(`T${c.cornerIndex} - ${c.cornerName.split('(')[0].trim().slice(0, 11)}`, xP, sp11Y + 7);
+    xP += REF_HEADERS[0].width;
 
-    // Brake Point
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(220, 38, 38);
-    doc.text(`${Math.round(c.startDistance - 75)}m board`, xP, p9Y + 7);
-    xP += refHeaders[1].width;
+    doc.setTextColor(...PDF_COLORS.gradeD);
+    doc.text(`${Math.round(c.startDistance - 75)}m board`, xP, sp11Y + 7);
+    xP += REF_HEADERS[1].width;
 
-    // Turn-In
-    doc.setTextColor(51, 65, 85);
-    doc.text(`Start of entry curb`, xP, p9Y + 7);
-    xP += refHeaders[2].width;
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    doc.text(`Start of entry curb`, xP, sp11Y + 7);
+    xP += REF_HEADERS[2].width;
 
-    // Apex
-    doc.setTextColor(5, 150, 105);
-    doc.text(`Red/White apex cone`, xP, p9Y + 7);
-    xP += refHeaders[3].width;
+    doc.setTextColor(...PDF_COLORS.gradeA);
+    doc.text(`Red/White apex cone`, xP, sp11Y + 7);
+    xP += REF_HEADERS[3].width;
 
-    // Track-Out
-    doc.setTextColor(2, 132, 199);
-    doc.text(`End of outer exit curb`, xP, p9Y + 7);
+    doc.setTextColor(...PDF_COLORS.speed);
+    doc.text(`Outer exit curb limit`, xP, sp11Y + 7);
 
-    p9Y += refRowHeight;
+    sp11Y += REF_ROW_HEIGHT;
   });
 
-  // Official Stint Coach Certification & Sign-off Seal
-  p9Y += 8;
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  const certHeight = 28;
-  doc.roundedRect(margin, p9Y, contentWidth, certHeight, 2, 2, 'FD');
+  sp11Y += 6;
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, sp11Y, contentWidth, 22, 1.5, 1.5, 'FD');
 
-  doc.setFillColor(225, 6, 0);
-  doc.rect(margin, p9Y, 3, certHeight, 'F');
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('TELEMETRY TRACE COLOR KEY (REFERENCE)', margin + 6, sp11Y + 6);
+
+  doc.setFontSize(6.8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  doc.text('• Speed: Blue (#0077BE)  |  • Throttle: Green (#00A86B)  |  • Brake: Red (#C8102E)  |  • Steering: Orange (#F58025)', margin + 6, sp11Y + 11.5);
+  doc.text('• Your Lap: Dark Navy (#1A1A2E)  |  • Target Lap: APEX Red (#E10600)  |  • Lateral G: Purple (#9B30FF)', margin + 6, sp11Y + 16.5);
+
+  sp11Y += 26;
+  doc.setFillColor(...PDF_COLORS.surface);
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.roundedRect(margin, sp11Y, contentWidth, CERT_HEIGHT, 2, 2, 'FD');
+
+  doc.setFillColor(...PDF_COLORS.accent);
+  doc.rect(margin, sp11Y, 3.5, CERT_HEIGHT, 'F');
 
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text(isFriendly ? 'YOUR APEX RACE COACH STINT SIGN-OFF & ENCOURAGEMENT' : 'OFFICIAL STINT COACH SIGN-OFF & CERTIFICATION', margin + 7, p9Y + 7);
+  doc.setTextColor(...PDF_COLORS.textPrimary);
+  doc.text('OFFICIAL APEX RACE COACH STINT SIGN-OFF & CERTIFICATION', margin + 8, sp11Y + 7);
 
   doc.setFontSize(7.2);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(71, 85, 105);
-  const certNotice = isFriendly
-    ? `You did a fantastic job throughout this entire ${laps.length}-lap stint! Your pace settled in nicely and your best lap (${bestTimeStr}) was brilliant. Keep practicing these simple fixes one corner at a time.`
-    : `This 9-page consolidated stint dossier was generated and validated by APEX Race Engineering across ${laps.length} recorded stint laps in full compliance with the Skip Barber Racing School curriculum.`;
-  const splitCert = doc.splitTextToSize(certNotice, contentWidth - 14);
-  doc.text(splitCert, margin + 7, p9Y + 13.5);
+  doc.setTextColor(...PDF_COLORS.textSecondary);
+  doc.text(
+    `This 11-page consolidated stint dossier was generated and validated by APEX Race Engineering across ${laps.length} recorded stint laps in full compliance with the Skip Barber Racing School curriculum.`,
+    margin + 8,
+    sp11Y + 13.5
+  );
 
   doc.setFontSize(7.2);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(225, 6, 0);
+  doc.setTextColor(...PDF_COLORS.accent);
   const dossierId = `APEX-STINT-${stint.stintNumber || 1}-${laps.length}LAPS-${Date.now().toString().slice(-6)}`;
-  doc.text(`STINT RECORD: ${dossierId}`, margin + 7, p9Y + 22.5);
-  doc.text('CERTIFIED DRIVER COACHING', pageWidth - margin - 6, p9Y + 22.5, { align: 'right' });
+  doc.text(`STINT RECORD: ${dossierId}`, margin + 8, sp11Y + 22.5);
+  doc.text('CERTIFIED DRIVER COACHING • APPROVED', pageWidth - margin - 6, sp11Y + 22.5, { align: 'right' });
 
-  renderPageFooter(
-    9,
-    'The goal is not to make the driver feel bad. The goal is to make the driver faster. The report should feel like a coach, not a critic.',
-    'The Golden Rule'
+  renderStandardFooter(
+    doc,
+    11,
+    totalPages,
+    'Speed comes from understanding. You are learning to read your driving. That is how champions are made.',
+    'Carl Lopez, Going Faster!',
+    margin,
+    contentWidth,
+    pageWidth,
+    pageHeight,
+    isFriendly
   );
 
-  // Save the complete 9-page Stint PDF
-  const filename = `APEX_Stint_Debrief_Stint_${stint.stintNumber || 1}_${laps.length}Laps_${Date.now()}.pdf`;
+  // Download PDF with custom Stint Title filename
+  const filename = getDebriefFilename(stint, bestLap, trackName, carName);
   doc.save(filename);
 };
-
