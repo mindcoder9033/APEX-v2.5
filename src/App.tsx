@@ -72,6 +72,7 @@ export function App() {
   const activeStintLapsRef = useRef<LapAnalysis[]>([]);
   const currentLapNumRef = useRef<number | null>(null);
   const wasCurrentLapRewoundRef = useRef(false);
+  const consecutiveReversePacketsRef = useRef(0);
   const lastPacketTimestampRef = useRef<number | null>(null);
   const lastDistanceTraveledRef = useRef<number | null>(null);
   const rewindDebounceTimerRef = useRef<any>(null);
@@ -211,9 +212,38 @@ export function App() {
                 const ts = packet.timestampMs;
 
                 // --- Forza Rewind Detection & Real-Time Buffer Rollback ---
-                const isTimeRewound = lastPacketTimestampRef.current !== null && ts < (lastPacketTimestampRef.current - 80);
-                const isDistRewound = lastDistanceTraveledRef.current !== null && rawDist < (lastDistanceTraveledRef.current - 1.5) && rawDist >= 0;
+                let isTimeRewound = false;
+                let isDistRewound = false;
                 const isLapRewound = currentLapNumRef.current !== null && packet.lapNumber < currentLapNumRef.current;
+
+                const isLapBoundaryAdvancing = currentLapNumRef.current !== null && packet.lapNumber > currentLapNumRef.current;
+                const isLapDistanceWrap = lastDistanceTraveledRef.current !== null && lastDistanceTraveledRef.current > 500 && rawDist < 200;
+
+                if (lastPacketTimestampRef.current !== null) {
+                  const timeDelta = ts - lastPacketTimestampRef.current;
+                  if (timeDelta < -1000) {
+                    // Substantial backward time jump (> 1.0s) -> definitive rewind
+                    isTimeRewound = true;
+                    consecutiveReversePacketsRef.current = 0;
+                  } else if (timeDelta < -40) {
+                    // Reverse time packet -> count consecutive frames to eliminate single-packet UDP jitter
+                    consecutiveReversePacketsRef.current += 1;
+                    if (consecutiveReversePacketsRef.current >= 3) {
+                      isTimeRewound = true;
+                    }
+                  } else if (timeDelta > 0) {
+                    // Forward time progress
+                    consecutiveReversePacketsRef.current = 0;
+                  }
+                }
+
+                // Distance rewind: only if NOT a lap boundary wrap/advance, and drop is substantial (>15m) with non-advancing time
+                if (!isLapBoundaryAdvancing && !isLapDistanceWrap && lastDistanceTraveledRef.current !== null) {
+                  const distDelta = rawDist - lastDistanceTraveledRef.current;
+                  if (distDelta < -15 && rawDist >= 0 && lastPacketTimestampRef.current !== null && ts <= lastPacketTimestampRef.current) {
+                    isDistRewound = true;
+                  }
+                }
 
                 const isRewindDetected = isTimeRewound || isDistRewound || isLapRewound;
 
@@ -305,6 +335,7 @@ export function App() {
                     setActiveStintLaps([...activeStintLapsRef.current]);
                     currentLapBufferRef.current = [frame];
                     wasCurrentLapRewoundRef.current = false;
+                    consecutiveReversePacketsRef.current = 0;
                   }
                   currentLapNumRef.current = packet.lapNumber;
                 }
@@ -378,6 +409,7 @@ export function App() {
     setActiveLapBufferLength(0);
     currentLapNumRef.current = null;
     wasCurrentLapRewoundRef.current = false;
+    consecutiveReversePacketsRef.current = 0;
     lastPacketTimestampRef.current = null;
     lastDistanceTraveledRef.current = null;
   };
