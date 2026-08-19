@@ -190,3 +190,77 @@ export interface StintSession {
   sessionTitle?: string;
 }
 
+export type SkipBarberPillarId = 
+  | 'traction_budget' 
+  | 'trail_braking' 
+  | 'corner_priority' 
+  | 'throttle_unwind' 
+  | 'stint_consistency';
+
+export interface SkipBarberPillarScore {
+  id: SkipBarberPillarId;
+  name: string;
+  score: number; // 0 - 100
+  grade: string; // A+, A, B, C, D
+  bookChapter: string;
+  summary: string;
+}
+
+export interface CoachFeedbackItem {
+  id: string;
+  type: 'strength' | 'weakness' | 'drill';
+  title: string;
+  description: string;
+  bookCitation: string;
+  metricEvidence?: string;
+  cornerIndex?: number;
+  cornerName?: string;
+  priority?: 1 | 2 | 3;
+}
+
+export interface CornerCoachAdvice {
+  cornerIndex: number;
+  cornerName: string;
+  cornerType: 'hairpin' | 'medium' | 'fast_sweeper' | 'chicane' | 'kink';
+  priorityType: 'Type 1 (Exit Priority)' | 'Type 2 (Entry Priority)' | 'Type 3 (Sequence Priority)';
+  score: number;
+  grade: string;
+  whatWentRight: string;
+  whatWentWrong: string;
+  howToImprove: string;
+  bookCitation: string;
+  metrics: {
+    trailBrakingScore: number;
+    trailDecayMs: number;
+    coastingHesitationMs: number;
+    throttleUnwindScore: number;
+    apexMinSpeedKph: number;
+    targetApexSpeedKph: number;
+    gripUtilizationPct: number;
+    balance: 'neutral' | 'understeer' | 'oversteer';
+  };
+  coastingZoneMeters?: [number, number];
+  brakeZoneMeters?: [number, number];
+}
+
+export interface AICoachDebrief {
+  stintId?: string;
+  lapId?: string;
+  stintGrade: string;
+  overallScore: number;
+  driverProfileTag: string;
+  driverProfileDescription: string;
+  pillarScores: SkipBarberPillarScore[];
+  whatWentRight: CoachFeedbackItem[];
+  whatWentWrong: CoachFeedbackItem[];
+  howToImprove: CoachFeedbackItem[];
+  cornerAnalyses: CornerCoachAdvice[];
+  stintConsistencySummary?: {
+    lapDeltaStdDevSec: number;
+    brakingMarkerVarianceMeters: number;
+    apexSpeedVarianceKph: number;
+    fastestLapNum: number;
+    paceTrend: 'improving' | 'consistent' | 'fading';
+  };
+}
+

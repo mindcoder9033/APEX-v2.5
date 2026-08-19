@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { LapAnalysis, CornerTelemetryAnalysis, StintSession } from '../types/telemetry';
 import { Module, Session } from '../types/curriculum';
+import { generateAICoachDebrief } from '../engine/aiCoachEngine';
 import {
   renderBrakeTraceChart,
   renderThrottleTraceChart,

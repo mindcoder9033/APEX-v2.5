@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { LapAnalysis, StintSession } from '../../types/telemetry';
 import { Module, Session } from '../../types/curriculum';
 import { TelemetryTraces } from '../telemetry/TelemetryTraces';
@@ -6,11 +6,13 @@ import { FrictionCirclePlot } from '../telemetry/FrictionCirclePlot';
 import { TrackMapViewer } from '../telemetry/TrackMapViewer';
 import { DiagnosticScorecard } from './DiagnosticScorecard';
 import { ActionPlanCard } from '../adjust/ActionPlanCard';
+import { AICoachPanel } from './AICoachPanel';
+import { generateAICoachDebrief } from '../../engine/aiCoachEngine';
 import { generateOfficialPdf, generateStintOfficialPdf } from '../../utils/pdfGenerator';
 import { 
   Activity, FileDown, Radio, Award, Trash2, Clock, 
   Calendar, CheckCircle2, AlertCircle, ArrowRight, BookOpen, Play, Loader2,
-  Car, MapPin, Star, Layers, X, Sparkles, Shield, BarChart3, Check
+  Car, MapPin, Star, Layers, X, Sparkles, Shield, BarChart3, Check, Bot, LineChart
 } from 'lucide-react';
 
 interface DebriefViewProps {
@@ -152,6 +154,23 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
 
   // Selected lap inside the active stint
   const selectedLap: LapAnalysis | null = activeSelectedStint?.laps?.[selectedLapIndex] || activeSelectedStint?.laps?.[0] || currentLap || null;
+
+  // Workspace sub-view mode: 'coach' | 'telemetry' | 'both'
+  const [workspaceMode, setWorkspaceMode] = useState<'coach' | 'telemetry' | 'both'>('coach');
+  const [focusedCornerIndex, setFocusedCornerIndex] = useState<number | null>(null);
+
+  // Generate 100% local Skip Barber AI Coach Debrief
+  const aiCoachDebrief = useMemo(() => {
+    return generateAICoachDebrief(activeSelectedStint, selectedLap);
+  }, [activeSelectedStint, selectedLap]);
+
+  const handleFocusCornerFromCoach = (cornerIdx: number) => {
+    setFocusedCornerIndex(cornerIdx);
+    const targetCorner = selectedLap?.corners?.find(c => c.cornerIndex === cornerIdx);
+    if (targetCorner) {
+      setCursorDist(targetCorner.apexDistance);
+    }
+  };
 
   // Sync cursor when selectedLap changes
   useEffect(() => {
@@ -423,6 +442,43 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                 </div>
 
                 <div className="flex items-center space-x-3">
+                  {/* Mode Switcher: AI Coach vs Telemetry Traces vs Split View */}
+                  <div className="flex items-center bg-[#14141E] p-1 border border-[#262638] rounded-lg">
+                    <button
+                      onClick={() => setWorkspaceMode('coach')}
+                      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                        workspaceMode === 'coach'
+                          ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-950/40'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Bot className="w-3.5 h-3.5" />
+                      <span>AI Coach</span>
+                    </button>
+                    <button
+                      onClick={() => setWorkspaceMode('telemetry')}
+                      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                        workspaceMode === 'telemetry'
+                          ? 'bg-[#E10600] text-white shadow-md shadow-red-950/40'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <LineChart className="w-3.5 h-3.5" />
+                      <span>Telemetry Traces</span>
+                    </button>
+                    <button
+                      onClick={() => setWorkspaceMode('both')}
+                      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                        workspaceMode === 'both'
+                          ? 'bg-slate-700 text-white shadow-md'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>Split View</span>
+                    </button>
+                  </div>
+
                   <button
                     onClick={handleOpenPdfGeneration}
                     disabled={isGeneratingPdf}
@@ -518,58 +574,83 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
                 </div>
               </div>
 
-              {/* Summary KPI Strip for Current Selected Lap */}
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Lap Time</span>
-                    {selectedLap.wasRewound && (
-                      <span className="text-[9px] font-mono font-bold text-amber-400 bg-amber-950/60 px-1 border border-amber-500/40">REWOUND</span>
-                    )}
+              {/* 1. SKIP BARBER AI COACH VIEW */}
+              {(workspaceMode === 'coach' || workspaceMode === 'both') && (
+                <div className="p-1">
+                  <AICoachPanel
+                    debrief={aiCoachDebrief}
+                    currentStint={activeSelectedStint}
+                    activeLap={selectedLap}
+                    onSelectCorner={handleFocusCornerFromCoach}
+                    selectedCornerIndex={focusedCornerIndex}
+                  />
+                </div>
+              )}
+
+              {/* 2. RAW TELEMETRY & TRACES VIEW */}
+              {(workspaceMode === 'telemetry' || workspaceMode === 'both') && (
+                <div className="space-y-4 pt-2">
+                  {workspaceMode === 'both' && (
+                    <div className="border-t border-slate-800 pt-4 flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      <LineChart className="w-4 h-4 text-[#00F0FF]" />
+                      Synchronized Telemetry Traces & Vehicle Dynamics
+                    </div>
+                  )}
+
+                  {/* Summary KPI Strip for Current Selected Lap */}
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                    <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Lap Time</span>
+                        {selectedLap.wasRewound && (
+                          <span className="text-[9px] font-mono font-bold text-amber-400 bg-amber-950/60 px-1 border border-amber-500/40">REWOUND</span>
+                        )}
+                      </div>
+                      <strong className="text-base font-mono font-bold text-white tabular-nums">{formatLapTime(selectedLap.lapTimeSec)}</strong>
+                    </div>
+                    <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
+                      <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Peak Velocity</span>
+                      <strong className="text-base font-hud-clean font-bold text-[#00F0FF] tabular-nums">{selectedLap.maxSpeedKph} <span className="text-xs font-tech">km/h</span></strong>
+                    </div>
+                    <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
+                      <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Traction Budget %</span>
+                      <strong className="text-base font-hud-clean font-bold text-emerald-400 tabular-nums">{selectedLap.avgTractionBudgetPct}%</strong>
+                    </div>
+                    <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
+                      <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Max Lateral G</span>
+                      <strong className="text-base font-mono font-bold text-purple-400 tabular-nums">{selectedLap.peakLatG}G</strong>
+                    </div>
+                    <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
+                      <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Max Braking G</span>
+                      <strong className="text-base font-mono font-bold text-[#FF1801] tabular-nums">{selectedLap.peakBrakingG}G</strong>
+                    </div>
+                    <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
+                      <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Mastery Grade</span>
+                      <strong className="text-base font-hud-clean font-bold text-amber-400 tabular-nums">{selectedLap.overallScore}%</strong>
+                    </div>
                   </div>
-                  <strong className="text-base font-mono font-bold text-white tabular-nums">{formatLapTime(selectedLap.lapTimeSec)}</strong>
-                </div>
-                <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
-                  <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Peak Velocity</span>
-                  <strong className="text-base font-hud-clean font-bold text-[#00F0FF] tabular-nums">{selectedLap.maxSpeedKph} <span className="text-xs font-tech">km/h</span></strong>
-                </div>
-                <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
-                  <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Traction Budget %</span>
-                  <strong className="text-base font-hud-clean font-bold text-emerald-400 tabular-nums">{selectedLap.avgTractionBudgetPct}%</strong>
-                </div>
-                <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
-                  <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Max Lateral G</span>
-                  <strong className="text-base font-mono font-bold text-purple-400 tabular-nums">{selectedLap.peakLatG}G</strong>
-                </div>
-                <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
-                  <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Max Braking G</span>
-                  <strong className="text-base font-mono font-bold text-[#FF1801] tabular-nums">{selectedLap.peakBrakingG}G</strong>
-                </div>
-                <div className="bg-[#14141E] p-3.5 border border-[#232332] hud-bracket">
-                  <span className="text-[10px] text-slate-400 font-tech uppercase tracking-wider font-semibold block">Mastery Grade</span>
-                  <strong className="text-base font-hud-clean font-bold text-amber-400 tabular-nums">{selectedLap.overallScore}%</strong>
-                </div>
-              </div>
 
-              {/* Synchronized Lap Telemetry */}
-              <TelemetryTraces
-                frames={selectedLap.frames}
-                cursorDistance={cursorDist}
-                onCursorChange={setCursorDist}
-                height={280}
-              />
+                  {/* Synchronized Lap Telemetry */}
+                  <TelemetryTraces
+                    frames={selectedLap.frames}
+                    cursorDistance={cursorDist}
+                    onCursorChange={setCursorDist}
+                    height={280}
+                  />
 
-              {/* G-G Friction Circle & Track Map */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FrictionCirclePlot frames={selectedLap.frames} currentFrame={closestFrame} />
-                <TrackMapViewer frames={selectedLap.frames} currentDistance={cursorDist} />
-              </div>
+                  {/* G-G Friction Circle & Track Map */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FrictionCirclePlot frames={selectedLap.frames} currentFrame={closestFrame} />
+                    <TrackMapViewer frames={selectedLap.frames} currentDistance={cursorDist} />
+                  </div>
 
-              {/* Turn-by-Turn Diagnostics */}
-              <DiagnosticScorecard corners={selectedLap.corners} onFocusCorner={setCursorDist} />
+                  {/* Turn-by-Turn Diagnostics */}
+                  <DiagnosticScorecard corners={selectedLap.corners} onFocusCorner={setCursorDist} />
 
-              {/* Action Plan */}
-              <ActionPlanCard actionItems={selectedLap.actionItems} />
+                  {/* Action Plan */}
+                  <ActionPlanCard actionItems={selectedLap.actionItems} />
+                </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center min-h-[450px]">
