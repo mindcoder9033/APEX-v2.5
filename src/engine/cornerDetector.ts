@@ -7,14 +7,14 @@ import { PredefinedCornerDef } from '../data/trackCorners';
  */
 export function extractDynamicCorners(
   frames: TelemetryFrame[],
-  trackLengthMeters: number = 3800
+  trackLengthMeters?: number
 ): PredefinedCornerDef[] {
   if (!frames || frames.length < 15) {
     return [];
   }
 
   const maxDist = frames.reduce((max, f) => (f.distance > max ? f.distance : max), 0);
-  const effectiveTrackLength = maxDist > 500 ? maxDist : trackLengthMeters;
+  const effectiveTrackLength = maxDist > 500 ? maxDist : (trackLengthMeters || maxDist || 2414);
 
   // 1. Identify cornering regions where lateral load or steering exceeds threshold
   const LAT_G_THRESHOLD = 0.50;

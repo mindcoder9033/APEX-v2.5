@@ -47,7 +47,7 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
     }
 
     const lastFrame = frames[frames.length - 1];
-    const maxDist = Math.max(100, (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : 3800);
+    const maxDist = Math.max(100, (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : (frames.reduce((m, f) => (f.distance > m ? f.distance : m), 0) || 2414));
 
     // Subdivided channels layout
     const speedH = h * 0.40;
@@ -199,7 +199,7 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
     if (!canvas || frames.length === 0) return;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    const maxDist = frames[frames.length - 1].distance || 3800;
+    const maxDist = (frames[frames.length - 1]?.distance > 0 ? frames[frames.length - 1].distance : frames.reduce((m, f) => (f.distance > m ? f.distance : m), 0)) || 2414;
     const dist = (x / rect.width) * maxDist;
     if (onCursorChange) {
       onCursorChange(Math.max(0, Math.min(maxDist, dist)));

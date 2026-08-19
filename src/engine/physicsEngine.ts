@@ -34,7 +34,7 @@ export function analyzeLapTelemetry(
   const detectedTrackResult = detectTrackFromFrames(sanitizedFrames, maxRecordedDist > 500 ? maxRecordedDist : trackLengthMeters);
   const effectiveTrackName = customTrackName || (detectedTrackResult !== 'Unknown Track' ? detectedTrackResult : undefined);
   
-  const resolvedTrackLength = trackLengthMeters || (effectiveTrackName ? getTrackLength(effectiveTrackName) : (maxRecordedDist > 500 ? maxRecordedDist : 3800));
+  const resolvedTrackLength = trackLengthMeters || (effectiveTrackName ? getTrackLength(effectiveTrackName) : (maxRecordedDist > 500 ? maxRecordedDist : 2414));
   const effectiveTrackLength = maxRecordedDist > 500 ? maxRecordedDist : resolvedTrackLength;
 
   let maxSpeedKph = 0;
@@ -78,7 +78,7 @@ export function analyzeLapTelemetry(
     const cornerFrames = frames.filter(f => f.distance >= startDist && f.distance <= endDist);
     if (cornerFrames.length === 0) {
       return {
-        ...createDummyCornerAnalysis(cDef),
+        ...createDummyCornerAnalysis(cDef, effectiveTrackLength),
         sector,
         sectorName: `Sector ${sector}`
       };
@@ -283,7 +283,8 @@ export function rebindLapToTrack(
   if (!lap || !trackName) return lap;
 
   const targetCornerDefs = getTrackCorners(trackName);
-  const resolvedLength = customTrackLength || getTrackLength(trackName, 3800);
+  const frameMaxDist = (lap.frames && lap.frames.length > 0) ? lap.frames[lap.frames.length - 1].distance : undefined;
+  const resolvedLength = customTrackLength || getTrackLength(trackName, frameMaxDist || 2414);
 
   // If frames exist, re-analyze telemetry with the exact canonical track corners and length
   if (lap.frames && lap.frames.length >= 10) {
@@ -317,7 +318,7 @@ export function rebindLapToTrack(
       const endDist = cDef.endPct * resolvedLength;
       const sector: 1 | 2 | 3 = apexDist <= resolvedLength * 0.33 ? 1 : apexDist <= resolvedLength * 0.66 ? 2 : 3;
 
-      const dummy = createDummyCornerAnalysis(cDef);
+      const dummy = createDummyCornerAnalysis(cDef, resolvedLength);
       return {
         ...dummy,
         startDistance: startDist,
@@ -347,7 +348,7 @@ export function rebindLapToTrack(
  */
 export function segmentFramesIntoLaps(
   frames: TelemetryFrame[],
-  trackLengthMeters: number = 3800,
+  trackLengthMeters?: number,
   wasRewound: boolean = false,
   customTrackName?: string
 ): LapAnalysis[] {
@@ -356,7 +357,7 @@ export function segmentFramesIntoLaps(
   }
 
   const maxRecorded = frames.reduce((max, f) => (f.distance > max ? f.distance : max), 0);
-  const effectiveTrackLen = maxRecorded > 500 ? maxRecorded : (customTrackName ? getTrackLength(customTrackName, trackLengthMeters) : trackLengthMeters);
+  const effectiveTrackLen = maxRecorded > 500 ? maxRecorded : (customTrackName ? getTrackLength(customTrackName, trackLengthMeters) : (trackLengthMeters || 2414));
 
   const lapSegments: TelemetryFrame[][] = [];
   let currentSegment: TelemetryFrame[] = [frames[0]];
@@ -444,13 +445,13 @@ export function adaptiveDownsampleFrames(frames: TelemetryFrame[], maxTargetFram
   return result;
 }
 
-function createDummyCornerAnalysis(cDef: PredefinedCornerDef): CornerTelemetryAnalysis {
+function createDummyCornerAnalysis(cDef: PredefinedCornerDef, trackLength: number = 2414): CornerTelemetryAnalysis {
   return {
     cornerIndex: cDef.index,
     cornerName: cDef.name,
-    startDistance: cDef.startPct * 3800,
-    apexDistance: cDef.apexPct * 3800,
-    endDistance: cDef.endPct * 3800,
+    startDistance: cDef.startPct * trackLength,
+    apexDistance: cDef.apexPct * trackLength,
+    endDistance: cDef.endPct * trackLength,
     type: cDef.type,
     brakingHitRateMs: 110,
     peakBrakePressure: 0.95,

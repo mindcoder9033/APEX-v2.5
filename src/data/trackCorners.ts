@@ -140,6 +140,74 @@ export const SUZUKA_FULL_CORNERS: PredefinedCornerDef[] = [
   { index: 18, name: 'Turn 18 (Casio Triangle Exit)', startPct: 0.995, apexPct: 1.0, endPct: 1.0, type: 'kink', targetApexSpeedKph: 145, description: 'Full throttle onto front straight.' }
 ];
 
+// 8. Circuit de Barcelona-Catalunya (GP - 16 Turns)
+export const BARCELONA_GP_CORNERS: PredefinedCornerDef[] = [
+  { index: 1, name: 'Turn 1 (Elf)', startPct: 0.05, apexPct: 0.08, endPct: 0.11, type: 'medium', targetApexSpeedKph: 135, description: 'Heavy braking into right downhill entry.' },
+  { index: 2, name: 'Turn 2', startPct: 0.11, apexPct: 0.13, endPct: 0.15, type: 'medium', targetApexSpeedKph: 140, description: 'Left transition leading into Renault curve.' },
+  { index: 3, name: 'Turn 3 (Renault)', startPct: 0.15, apexPct: 0.20, endPct: 0.25, type: 'fast_sweeper', targetApexSpeedKph: 210, description: 'Long high-G uphill right sweeper.' },
+  { index: 4, name: 'Turn 4 (Repsol)', startPct: 0.27, apexPct: 0.30, endPct: 0.33, type: 'medium', targetApexSpeedKph: 125, description: 'Downhill 90° right. Trail-brake to rotate.' },
+  { index: 5, name: 'Turn 5 (Seat)', startPct: 0.36, apexPct: 0.39, endPct: 0.42, type: 'hairpin', targetApexSpeedKph: 85, description: 'Tight downhill off-camber left hairpin.' },
+  { index: 6, name: 'Turn 6', startPct: 0.43, apexPct: 0.45, endPct: 0.47, type: 'kink', targetApexSpeedKph: 195, description: 'Uphill acceleration curve.' },
+  { index: 7, name: 'Turn 7 (Wurth)', startPct: 0.49, apexPct: 0.52, endPct: 0.55, type: 'medium', targetApexSpeedKph: 130, description: 'Uphill left flick over crest.' },
+  { index: 8, name: 'Turn 8', startPct: 0.55, apexPct: 0.57, endPct: 0.59, type: 'medium', targetApexSpeedKph: 145, description: 'Right turn leading to Campsa.' },
+  { index: 9, name: 'Turn 9 (Campsa)', startPct: 0.60, apexPct: 0.63, endPct: 0.66, type: 'fast_sweeper', targetApexSpeedKph: 205, description: 'Blind uphill crest right hander.' },
+  { index: 10, name: 'Turn 10 (La Caixa)', startPct: 0.72, apexPct: 0.75, endPct: 0.78, type: 'hairpin', targetApexSpeedKph: 88, description: 'Heavy braking into stadium left hairpin.' },
+  { index: 11, name: 'Turn 11', startPct: 0.79, apexPct: 0.81, endPct: 0.83, type: 'kink', targetApexSpeedKph: 165, description: 'Short left connecting section.' },
+  { index: 12, name: 'Turn 12 (Banco Sabadell)', startPct: 0.84, apexPct: 0.87, endPct: 0.90, type: 'medium', targetApexSpeedKph: 120, description: 'Long right-hander in the stadium.' },
+  { index: 13, name: 'Turn 13 (Europcar)', startPct: 0.91, apexPct: 0.93, endPct: 0.95, type: 'fast_sweeper', targetApexSpeedKph: 175, description: 'Fast right opening onto final corner.' },
+  { index: 14, name: 'Turn 14 (New Chicane Entry)', startPct: 0.95, apexPct: 0.965, endPct: 0.975, type: 'chicane', targetApexSpeedKph: 95, description: 'Weight shift over inner curb.' },
+  { index: 15, name: 'Turn 15 (Chicane Exit)', startPct: 0.975, apexPct: 0.985, endPct: 0.99, type: 'chicane', targetApexSpeedKph: 110, description: 'Right exit flick.' },
+  { index: 16, name: 'Turn 16 (Catalunya Exit)', startPct: 0.99, apexPct: 0.995, endPct: 1.0, type: 'fast_sweeper', targetApexSpeedKph: 185, description: 'Flat-out exit onto 1km front straight.' }
+];
+
+// 9. Le Mans - Circuit International de la Sarthe (Full - 12 Key Sections)
+export const LE_MANS_FULL_CORNERS: PredefinedCornerDef[] = [
+  { index: 1, name: 'Turn 1 (Dunlop Curve)', startPct: 0.03, apexPct: 0.05, endPct: 0.07, type: 'fast_sweeper', targetApexSpeedKph: 220, description: 'Fast right sweep under Dunlop Bridge.' },
+  { index: 2, name: 'Turn 2 (Dunlop Chicane)', startPct: 0.07, apexPct: 0.09, endPct: 0.11, type: 'chicane', targetApexSpeedKph: 110, description: 'Left-right chicane over curbs.' },
+  { index: 3, name: 'Turn 3 (Tertre Rouge)', startPct: 0.14, apexPct: 0.16, endPct: 0.18, type: 'fast_sweeper', targetApexSpeedKph: 185, description: 'Crucial exit speed onto the 6km Mulsanne Straight.' },
+  { index: 4, name: 'Turn 4 (First Mulsanne Chicane)', startPct: 0.28, apexPct: 0.30, endPct: 0.32, type: 'chicane', targetApexSpeedKph: 105, description: 'Heavy 330+ kph braking into right chicane.' },
+  { index: 5, name: 'Turn 5 (Second Mulsanne Chicane)', startPct: 0.42, apexPct: 0.44, endPct: 0.46, type: 'chicane', targetApexSpeedKph: 112, description: 'Heavy braking into left chicane.' },
+  { index: 6, name: 'Turn 6 (Mulsanne Corner)', startPct: 0.54, apexPct: 0.56, endPct: 0.58, type: 'hairpin', targetApexSpeedKph: 78, description: 'Heavy braking 90° right onto Indianapolis run.' },
+  { index: 7, name: 'Turn 7 (Indianapolis Entry)', startPct: 0.67, apexPct: 0.69, endPct: 0.71, type: 'fast_sweeper', targetApexSpeedKph: 215, description: 'High speed right kink before heavy left braking.' },
+  { index: 8, name: 'Turn 8 (Indianapolis Corner)', startPct: 0.71, apexPct: 0.73, endPct: 0.75, type: 'medium', targetApexSpeedKph: 105, description: 'Banked left turn.' },
+  { index: 9, name: 'Turn 9 (Arnage)', startPct: 0.78, apexPct: 0.80, endPct: 0.82, type: 'hairpin', targetApexSpeedKph: 70, description: 'Slowest corner on circuit. 90° right.' },
+  { index: 10, name: 'Turn 10 (Porsche Curves Entry)', startPct: 0.86, apexPct: 0.88, endPct: 0.90, type: 'fast_sweeper', targetApexSpeedKph: 200, description: 'Terrifying high-speed right transition.' },
+  { index: 11, name: 'Turn 11 (Porsche Curves Mid)', startPct: 0.90, apexPct: 0.92, endPct: 0.94, type: 'fast_sweeper', targetApexSpeedKph: 195, description: 'Left-right flow near armco barriers.' },
+  { index: 12, name: 'Turn 12 (Ford Chicanes)', startPct: 0.97, apexPct: 0.985, endPct: 1.0, type: 'chicane', targetApexSpeedKph: 90, description: 'Double chicane onto start/finish straight.' }
+];
+
+// 10. Virginia International Raceway (VIR Full - 16 Turns)
+export const VIR_FULL_CORNERS: PredefinedCornerDef[] = [
+  { index: 1, name: 'Turn 1 (Horseshoe Entry)', startPct: 0.04, apexPct: 0.07, endPct: 0.10, type: 'hairpin', targetApexSpeedKph: 85, description: 'Heavy braking into 180° right hairpin.' },
+  { index: 2, name: 'Turn 2', startPct: 0.10, apexPct: 0.12, endPct: 0.14, type: 'kink', targetApexSpeedKph: 160, description: 'Short left transition.' },
+  { index: 3, name: 'Turn 3 (NASCAR Bend)', startPct: 0.14, apexPct: 0.17, endPct: 0.20, type: 'medium', targetApexSpeedKph: 125, description: 'Sweeping left onto Left Kink.' },
+  { index: 4, name: 'Turn 4 (Left Kink)', startPct: 0.21, apexPct: 0.23, endPct: 0.25, type: 'kink', targetApexSpeedKph: 175, description: 'Fast kink.' },
+  { index: 5, name: 'Turn 5 (The Snake Entry)', startPct: 0.26, apexPct: 0.28, endPct: 0.30, type: 'medium', targetApexSpeedKph: 130, description: 'Right flick.' },
+  { index: 6, name: 'Turn 6 (The Snake Exit)', startPct: 0.30, apexPct: 0.32, endPct: 0.34, type: 'medium', targetApexSpeedKph: 135, description: 'Left flick.' },
+  { index: 7, name: 'Turn 7 (Climbing Esses 1)', startPct: 0.36, apexPct: 0.38, endPct: 0.40, type: 'fast_sweeper', targetApexSpeedKph: 195, description: 'Uphill right compression.' },
+  { index: 8, name: 'Turn 8 (Climbing Esses 2)', startPct: 0.40, apexPct: 0.42, endPct: 0.44, type: 'fast_sweeper', targetApexSpeedKph: 205, description: 'Uphill left transition.' },
+  { index: 9, name: 'Turn 9 (Climbing Esses 3)', startPct: 0.44, apexPct: 0.46, endPct: 0.48, type: 'fast_sweeper', targetApexSpeedKph: 215, description: 'Crest right.' },
+  { index: 10, name: 'Turn 10 (South Bend)', startPct: 0.50, apexPct: 0.53, endPct: 0.56, type: 'fast_sweeper', targetApexSpeedKph: 170, description: 'Blind crest fast left.' },
+  { index: 11, name: 'Turn 11 (Oak Tree Entry)', startPct: 0.62, apexPct: 0.64, endPct: 0.66, type: 'hairpin', targetApexSpeedKph: 75, description: 'Heavy braking into right hairpin.' },
+  { index: 12, name: 'Turn 12 (Oak Tree Exit)', startPct: 0.66, apexPct: 0.68, endPct: 0.70, type: 'hairpin', targetApexSpeedKph: 80, description: 'Tight right exit onto Back Straight.' },
+  { index: 13, name: 'Turn 13', startPct: 0.84, apexPct: 0.86, endPct: 0.88, type: 'kink', targetApexSpeedKph: 220, description: 'Fast crest on back straight.' },
+  { index: 14, name: 'Turn 14 (Roller Coaster)', startPct: 0.89, apexPct: 0.91, endPct: 0.93, type: 'medium', targetApexSpeedKph: 115, description: 'Steep downhill plunge right.' },
+  { index: 15, name: 'Turn 15 (Hog Pen Entry)', startPct: 0.94, apexPct: 0.96, endPct: 0.97, type: 'medium', targetApexSpeedKph: 128, description: 'Left hander onto final curve.' },
+  { index: 16, name: 'Turn 16 (Hog Pen Exit)', startPct: 0.97, apexPct: 0.985, endPct: 1.0, type: 'fast_sweeper', targetApexSpeedKph: 165, description: 'Long right opening onto front straight.' }
+];
+
+// 11. Kyalami Grand Prix Circuit (8 Turns)
+export const KYALAMI_GP_CORNERS: PredefinedCornerDef[] = [
+  { index: 1, name: 'Turn 1 (Crowthorne)', startPct: 0.05, apexPct: 0.09, endPct: 0.13, type: 'medium', targetApexSpeedKph: 110, description: 'Heavy downhill braking into right.' },
+  { index: 2, name: 'Turn 2 (Jukskei Sweep)', startPct: 0.16, apexPct: 0.20, endPct: 0.24, type: 'fast_sweeper', targetApexSpeedKph: 185, description: 'Fast downhill left sweep.' },
+  { index: 3, name: 'Turn 3 (Barbeque)', startPct: 0.27, apexPct: 0.31, endPct: 0.35, type: 'medium', targetApexSpeedKph: 130, description: 'Uphill right turn.' },
+  { index: 4, name: 'Turn 4 (Sunset)', startPct: 0.40, apexPct: 0.44, endPct: 0.48, type: 'fast_sweeper', targetApexSpeedKph: 160, description: 'Downhill long right hander.' },
+  { index: 5, name: 'Turn 5 (Clubhouse)', startPct: 0.54, apexPct: 0.57, endPct: 0.60, type: 'hairpin', targetApexSpeedKph: 85, description: 'Uphill left hairpin.' },
+  { index: 6, name: 'Turn 6 (The Esses)', startPct: 0.66, apexPct: 0.70, endPct: 0.74, type: 'chicane', targetApexSpeedKph: 140, description: 'Uphill left-right transition.' },
+  { index: 7, name: 'Turn 7 (Leeukop)', startPct: 0.79, apexPct: 0.83, endPct: 0.87, type: 'hairpin', targetApexSpeedKph: 90, description: 'Blind right hairpin onto Mineshaft.' },
+  { index: 8, name: 'Turn 8 (Mineshaft)', startPct: 0.91, apexPct: 0.95, endPct: 1.0, type: 'fast_sweeper', targetApexSpeedKph: 215, description: 'Steep downhill acceleration sweep to start/finish.' }
+];
+
 // Helper database mapping canonical track layout names to Corner arrays
 export const FM23_TRACK_CORNERS_REGISTRY: Record<string, PredefinedCornerDef[]> = {
   // Lime Rock
@@ -151,6 +219,7 @@ export const FM23_TRACK_CORNERS_REGISTRY: Record<string, PredefinedCornerDef[]> 
   // Laguna Seca
   'weathertech-raceway-laguna-seca': LAGUNA_SECA_CORNERS,
   'laguna-seca': LAGUNA_SECA_CORNERS,
+  'laguna-seca-full': LAGUNA_SECA_CORNERS,
   'laguna-seca-short': LAGUNA_SECA_CORNERS.filter(c => c.index !== 5 && c.index !== 6 && c.index !== 7),
 
   // Spa
@@ -167,10 +236,12 @@ export const FM23_TRACK_CORNERS_REGISTRY: Record<string, PredefinedCornerDef[]> 
   'silverstone-grand-prix': SILVERSTONE_GP_CORNERS,
   'silverstone-gp': SILVERSTONE_GP_CORNERS,
   'silverstone': SILVERSTONE_GP_CORNERS,
+  'silverstone-international': SILVERSTONE_GP_CORNERS.filter(c => c.index <= 5 || c.index >= 14),
   'silverstone-national': SILVERSTONE_GP_CORNERS.filter(c => c.index >= 6 && c.index <= 11),
 
   // Road America
   'road-america-full-course': ROAD_AMERICA_CORNERS,
+  'road-america-full': ROAD_AMERICA_CORNERS,
   'road-america': ROAD_AMERICA_CORNERS,
   'road-america-east': ROAD_AMERICA_CORNERS.slice(0, 10),
 
@@ -178,7 +249,33 @@ export const FM23_TRACK_CORNERS_REGISTRY: Record<string, PredefinedCornerDef[]> 
   'suzuka-circuit-full': SUZUKA_FULL_CORNERS,
   'suzuka-full': SUZUKA_FULL_CORNERS,
   'suzuka': SUZUKA_FULL_CORNERS,
-  'suzuka-east': SUZUKA_FULL_CORNERS.slice(0, 8)
+  'suzuka-east': SUZUKA_FULL_CORNERS.slice(0, 8),
+
+  // Barcelona-Catalunya
+  'circuit-de-barcelona-catalunya': BARCELONA_GP_CORNERS,
+  'circuit-de-barcelona-catalunya-gp': BARCELONA_GP_CORNERS,
+  'barcelona-gp': BARCELONA_GP_CORNERS,
+  'barcelona': BARCELONA_GP_CORNERS,
+  'circuit-de-barcelona-catalunya-national': BARCELONA_GP_CORNERS.slice(0, 7),
+  'circuit-de-barcelona-catalunya-national-alt': BARCELONA_GP_CORNERS.slice(0, 7),
+
+  // Le Mans
+  'le-mans-circuit-international-de-la-sarthe': LE_MANS_FULL_CORNERS,
+  'le-mans-la-sarthe-full': LE_MANS_FULL_CORNERS,
+  'le-mans-old-mulsanne': LE_MANS_FULL_CORNERS.filter(c => c.index !== 4 && c.index !== 5),
+  'le-mans': LE_MANS_FULL_CORNERS,
+
+  // VIR
+  'virginia-international-raceway': VIR_FULL_CORNERS,
+  'vir-full': VIR_FULL_CORNERS,
+  'vir-grand-east': VIR_FULL_CORNERS,
+  'vir-grand-west': VIR_FULL_CORNERS,
+  'vir-north': VIR_FULL_CORNERS.slice(0, 10),
+  'vir-south': VIR_FULL_CORNERS.slice(8, 16),
+
+  // Kyalami
+  'kyalami-grand-prix-circuit': KYALAMI_GP_CORNERS,
+  'kyalami': KYALAMI_GP_CORNERS
 };
 
 /**

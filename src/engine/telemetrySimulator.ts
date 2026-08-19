@@ -8,7 +8,7 @@ export interface SimulatorOptions {
 }
 
 export function generateSyntheticLapFrames(lapNumber: number = 1, options: SimulatorOptions = {}): TelemetryFrame[] {
-  const trackLength = options.trackLengthMeters || 3800;
+  const trackLength = options.trackLengthMeters || 2414;
   const style = options.drivingStyle || 'pro';
   const frames: TelemetryFrame[] = [];
 

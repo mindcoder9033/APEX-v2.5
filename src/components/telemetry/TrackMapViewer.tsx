@@ -116,7 +116,7 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
 
       // Draw Corner Markers
       const lastFrame = frames[frames.length - 1];
-      const maxDist = (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : 3800;
+      const maxDist = (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : 2414;
 
       if (corners && corners.length > 0) {
         corners.forEach((c) => {
@@ -222,7 +222,7 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
             let closestFrame: TelemetryFrame | null = null;
             let minDist = Infinity;
             const lastFrame = frames[frames.length - 1];
-            const maxDist = (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : 3800;
+            const maxDist = (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : 2414;
 
             const padding = 28;
             let minX = 99999, maxX = -99999, minZ = 99999, maxZ = -99999;
