@@ -2,6 +2,7 @@ import { UserProgressState, ChallengeResult, GraduationResult } from '../types/c
 import { LapAnalysis, StintSession } from '../types/telemetry';
 import { adaptiveDownsampleFrames, rebindLapToTrack } from '../engine/physicsEngine';
 import { getTrackCorners } from '../data/trackCorners';
+import { PracticeViewLayout, DEFAULT_PRACTICE_LAYOUT } from '../types/widgets';
 
 const STORAGE_KEY_PROGRESS = 'apex_user_progress_v2_5';
 const STORAGE_KEY_SESSIONS = 'apex_saved_sessions_v2_5';
@@ -277,4 +278,29 @@ export function recordGraduationCompletion(
 
   saveUserProgress(updated);
   return updated;
+}
+
+const STORAGE_KEY_PRACTICE_LAYOUT = 'apex_practice_layout_v2_5';
+
+export function loadPracticeViewLayout(): PracticeViewLayout {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PRACTICE_LAYOUT);
+    if (!raw) return DEFAULT_PRACTICE_LAYOUT;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.preset && Array.isArray(parsed.widgets)) {
+      return parsed;
+    }
+    return DEFAULT_PRACTICE_LAYOUT;
+  } catch (e) {
+    console.error('Error loading practice view layout:', e);
+    return DEFAULT_PRACTICE_LAYOUT;
+  }
+}
+
+export function savePracticeViewLayout(layout: PracticeViewLayout): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_PRACTICE_LAYOUT, JSON.stringify(layout));
+  } catch (e) {
+    console.error('Error saving practice view layout:', e);
+  }
 }

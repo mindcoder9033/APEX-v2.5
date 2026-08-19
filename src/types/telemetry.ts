@@ -110,6 +110,14 @@ export interface TelemetryFrame {
   carOrdinal?: number;
   carClass?: number;
   carPI?: number;
+  tireTempFL?: number;
+  tireTempFR?: number;
+  tireTempRL?: number;
+  tireTempRR?: number;
+  suspensionTravelFL?: number;
+  suspensionTravelFR?: number;
+  suspensionTravelRL?: number;
+  suspensionTravelRR?: number;
 }
 
 export interface CornerTelemetryAnalysis {

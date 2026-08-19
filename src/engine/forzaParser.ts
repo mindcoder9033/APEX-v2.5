@@ -262,6 +262,14 @@ export function convertPacketToTelemetryFrame(packet: ForzaCarDashPacket, lapDis
     posZ: packet.positionZ,
     carOrdinal: packet.carOrdinal,
     carClass: packet.carClass,
-    carPI: packet.carPerformanceIndex
+    carPI: packet.carPerformanceIndex,
+    tireTempFL: packet.tireTempFL,
+    tireTempFR: packet.tireTempFR,
+    tireTempRL: packet.tireTempRL,
+    tireTempRR: packet.tireTempRR,
+    suspensionTravelFL: packet.normalizedSuspensionTravelFL,
+    suspensionTravelFR: packet.normalizedSuspensionTravelFR,
+    suspensionTravelRL: packet.normalizedSuspensionTravelRL,
+    suspensionTravelRR: packet.normalizedSuspensionTravelRR
   };
 }
