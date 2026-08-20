@@ -197,15 +197,9 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
             );
           })}
         </div>
-
-        {/* Quick Module Tagline / Indicator on wide screens */}
-        {activeModule && (
-          <div className="hidden lg:flex items-center space-x-2 text-[11px] font-mono text-slate-400 shrink-0">
-            <span className="text-slate-500">Active:</span>
-            <span className="text-slate-200 font-semibold truncate max-w-[240px]">{activeModule.title}</span>
-          </div>
-        )}
       </div>
+
+
 
       {/* Main Module Detail & Sessions Progression View (Full Width) */}
       {activeModule && (
