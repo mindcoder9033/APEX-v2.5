@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Award, BarChart3, Radio, Maximize2, Minimize2, Clock, Wifi } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Clock, Wifi, Award, Radio, Activity, BarChart3, LayoutDashboard } from 'lucide-react';
 
-export type AppView = 'curriculum' | 'practice' | 'debrief' | 'history';
+export type AppView = 'dashboard' | 'curriculum' | 'practice' | 'debrief' | 'history';
 
 export interface NetworkInfo {
   directIps: string[];
@@ -12,19 +12,21 @@ export interface NetworkInfo {
 
 interface HeaderProps {
   currentView: AppView;
-  setCurrentView: (view: AppView) => void;
+  setCurrentView?: (view: AppView) => void;
+  isSidebarCollapsed?: boolean;
+  setIsSidebarCollapsed?: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
   isUdpConnected: boolean;
   isBridgeConnected?: boolean;
-  totalMasteredModules: number;
+  totalMasteredModules?: number;
   networkInfo?: NetworkInfo | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentView,
-  setCurrentView,
+  isSidebarCollapsed = false,
+  setIsSidebarCollapsed,
   isUdpConnected,
   isBridgeConnected = false,
-  totalMasteredModules,
   networkInfo
 }) => {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
@@ -78,74 +80,75 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="h-16 bg-[#0E0E14] border-b border-[#232332] px-6 flex items-center justify-between select-none z-30 shrink-0">
-      {/* Brand Logo */}
-      <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 chamfer-btn-sm bg-gradient-to-br from-[#E10600] to-[#880400] flex items-center justify-center shadow-lg shadow-red-950/50 border border-red-500/40">
-          <span className="font-racing font-bold text-xl text-white tracking-wider">A</span>
-        </div>
-        <div>
-          <div className="flex items-center space-x-2">
-            <span className="font-racing font-bold text-xl tracking-wider text-white">APEX</span>
-            <span className="chamfer-badge bg-[#E10600]/20 text-[#FF4D4D] text-[10px] font-mono font-bold px-2 py-0.5 border border-[#E10600]/40">v2.5</span>
+      {/* Brand Logo & Sidebar Toggle */}
+      <div className="flex items-center space-x-4">
+        {setIsSidebarCollapsed && (
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+            className="p-2 bg-[#14141E] hover:bg-[#1C1C28] border border-[#232332] text-slate-400 hover:text-white transition-all active:scale-95"
+            title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            aria-label={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4 text-slate-300" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4 text-slate-300" />
+            )}
+          </button>
+        )}
+
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 chamfer-btn-sm bg-gradient-to-br from-[#E10600] to-[#880400] flex items-center justify-center shadow-lg shadow-red-950/50 border border-red-500/40">
+            <span className="font-racing font-bold text-xl text-white tracking-wider">A</span>
           </div>
-          <p className="text-[11px] text-[#8E8E9F] font-medium tracking-tight font-sans">Analytical Simracing Coach</p>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="font-racing font-bold text-xl tracking-wider text-white">APEX</span>
+              <span className="chamfer-badge bg-[#E10600]/20 text-[#FF4D4D] text-[10px] font-mono font-bold px-2 py-0.5 border border-[#E10600]/40">v2.5</span>
+            </div>
+            <p className="text-[11px] text-[#8E8E9F] font-medium tracking-tight font-sans">Analytical Simracing Coach</p>
+          </div>
         </div>
       </div>
 
-      {/* Primary Navigation Tabs */}
-      <nav className="flex items-center space-x-1 bg-[#14141E] p-1 border border-[#232332]">
-        <button
-          onClick={() => setCurrentView('curriculum')}
-          className={`flex items-center space-x-2 px-4 py-2 text-xs font-semibold transition-all ${currentView === 'curriculum'
-              ? 'bg-[#E10600] text-white chamfer-tab shadow-md shadow-red-900/40'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-[#1C1C28]'
-            }`}
-        >
-          <Award className="w-4 h-4" />
-          <span>Curriculum Academy</span>
-          {totalMasteredModules > 0 && (
-            <span className="bg-white/20 text-[10px] px-1.5 py-0.5 font-mono font-bold">
-              {totalMasteredModules}/14
-            </span>
+      {/* Active View Context Breadcrumb */}
+      <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-[#14141E] border border-[#232332] text-xs font-mono">
+        <span className="text-slate-500 uppercase text-[10px] tracking-wider font-sans">View</span>
+        <span className="text-slate-600 font-bold">/</span>
+        <span className="text-slate-200 font-semibold tracking-wide flex items-center space-x-1.5">
+          {currentView === 'dashboard' && (
+            <>
+              <LayoutDashboard className="w-3.5 h-3.5 text-[#00F0FF]" />
+              <span>Dashboard</span>
+            </>
           )}
-        </button>
-
-        <button
-          onClick={() => setCurrentView('practice')}
-          className={`flex items-center space-x-2 px-4 py-2 text-xs font-semibold transition-all ${currentView === 'practice'
-              ? 'bg-[#E10600] text-white chamfer-tab shadow-md shadow-red-900/40'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-[#1C1C28]'
-            }`}
-        >
-          <Radio className="w-4 h-4" />
-          <span>Live Ingest & Practice</span>
-          {isUdpConnected && (
-            <span className="w-1.5 h-1.5 diamond-pip bg-emerald-400 animate-pulse"></span>
+          {currentView === 'curriculum' && (
+            <>
+              <Award className="w-3.5 h-3.5 text-[#FF5C5C]" />
+              <span>Academy</span>
+            </>
           )}
-        </button>
-
-        <button
-          onClick={() => setCurrentView('debrief')}
-          className={`flex items-center space-x-2 px-4 py-2 text-xs font-semibold transition-all ${currentView === 'debrief'
-              ? 'bg-[#E10600] text-white chamfer-tab shadow-md shadow-red-900/40'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-[#1C1C28]'
-            }`}
-        >
-          <Activity className="w-4 h-4" />
-          <span>Telemetry & Debrief</span>
-        </button>
-
-        <button
-          onClick={() => setCurrentView('history')}
-          className={`flex items-center space-x-2 px-4 py-2 text-xs font-semibold transition-all ${currentView === 'history'
-              ? 'bg-[#E10600] text-white chamfer-tab shadow-md shadow-red-900/40'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-[#1C1C28]'
-            }`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          <span>Driver History</span>
-        </button>
-      </nav>
+          {currentView === 'practice' && (
+            <>
+              <Radio className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Live Stint</span>
+            </>
+          )}
+          {currentView === 'debrief' && (
+            <>
+              <Activity className="w-3.5 h-3.5 text-[#00F0FF]" />
+              <span>Analysis</span>
+            </>
+          )}
+          {currentView === 'history' && (
+            <>
+              <BarChart3 className="w-3.5 h-3.5 text-amber-400" />
+              <span>Stint Records</span>
+            </>
+          )}
+        </span>
+      </div>
 
       {/* Right Controls: Ingest Status, Network Info & Actions */}
       <div className="flex items-center space-x-2.5">

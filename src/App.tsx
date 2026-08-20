@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Header, AppView } from './components/layout/Header';
+import { Sidebar } from './components/layout/Sidebar';
+import { DashboardView } from './components/dashboard/DashboardView';
 import { CurriculumTree } from './components/curriculum/CurriculumTree';
 import { SessionStepperView } from './components/curriculum/SessionStepperView';
 import { GraduationExamView } from './components/challenge/GraduationExamView';
@@ -22,7 +24,24 @@ import { detectTrackFromFrames } from './engine/trackDetector';
 import { offloadInactiveLaps, offloadLap } from './engine/lapMemoryManager';
 
 export function App() {
-  const [currentView, setCurrentView] = useState<AppView>('curriculum');
+  const [currentView, setCurrentView] = useState<AppView>('dashboard');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('apex_sidebar_collapsed');
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('apex_sidebar_collapsed', JSON.stringify(isSidebarCollapsed));
+    } catch {
+      // ignore
+    }
+  }, [isSidebarCollapsed]);
+
   const [progress, setProgress] = useState<UserProgressState>(loadUserProgress);
   const [stintHistory, setStintHistory] = useState<StintSession[]>(loadStintHistory);
   const [savedLaps, setSavedLaps] = useState<LapAnalysis[]>(loadLapHistory);
@@ -728,18 +747,57 @@ export function App() {
       {/* Top Application Header */}
       <Header
         currentView={currentView}
-        setCurrentView={(view) => {
-          setCurrentView(view);
-        }}
+        isSidebarCollapsed={isSidebarCollapsed}
+        setIsSidebarCollapsed={setIsSidebarCollapsed}
         isUdpConnected={isUdpConnected}
         isBridgeConnected={isBridgeConnected}
         totalMasteredModules={progress.graduatedModuleIds.length}
         networkInfo={networkInfo}
       />
 
+      {/* Main Layout Body: Left Sidebar + Dynamic Main View */}
+      <div className="flex-1 flex overflow-hidden">
+        <Sidebar
+          currentView={currentView}
+          setCurrentView={setCurrentView}
+          isCollapsed={isSidebarCollapsed}
+          setIsCollapsed={setIsSidebarCollapsed}
+          totalMasteredModules={progress.graduatedModuleIds.length}
+          isUdpConnected={isUdpConnected}
+          isRecording={isRecording}
+          recordingDurationSec={recordingDurationSec}
+          recordedLapsCount={activeStintLaps.length}
+          stintCount={stintHistory.length}
+        />
 
-      {/* Main View Container */}
-      <main className="flex-1 flex overflow-hidden">
+        {/* Main View Container */}
+        <main className="flex-1 flex overflow-hidden bg-[#0A0A0E]">
+        {currentView === 'dashboard' && (
+          <DashboardView
+            progress={progress}
+            modules={SKIP_BARBER_MODULES}
+            savedLaps={savedLaps}
+            savedStints={stintHistory}
+            isUdpConnected={isUdpConnected}
+            isBridgeConnected={isBridgeConnected}
+            liveFrame={liveFrame}
+            onNavigateToAcademy={(module, session) => {
+              if (module && session) {
+                setGraduatingModule(null);
+                setActiveSessionSelection({ module, session });
+              }
+              setCurrentView('curriculum');
+            }}
+            onNavigateToPractice={() => setCurrentView('practice')}
+            onNavigateToDebrief={(stint, lap) => {
+              if (stint) setCurrentStint(stint);
+              if (lap) setCurrentLap(lap);
+              setCurrentView('debrief');
+            }}
+            onNavigateToHistory={() => setCurrentView('history')}
+          />
+        )}
+
         {currentView === 'curriculum' && (
           activeSessionSelection ? (
             <SessionStepperView
@@ -839,6 +897,7 @@ export function App() {
           />
         )}
       </main>
+      </div>
 
       {/* Save Stint Metadata Modal */}
       {(() => {
