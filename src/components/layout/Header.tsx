@@ -112,58 +112,21 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Active View Context Breadcrumb */}
-      <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-[#14141E] border border-[#232332] text-xs font-mono">
-        <span className="text-slate-500 uppercase text-[10px] tracking-wider font-sans">View</span>
-        <span className="text-slate-600 font-bold">/</span>
-        <span className="text-slate-200 font-semibold tracking-wide flex items-center space-x-1.5">
-          {currentView === 'dashboard' && (
-            <>
-              <LayoutDashboard className="w-3.5 h-3.5 text-[#00F0FF]" />
-              <span>Dashboard</span>
-            </>
-          )}
-          {currentView === 'curriculum' && (
-            <>
-              <Award className="w-3.5 h-3.5 text-[#FF5C5C]" />
-              <span>Academy</span>
-            </>
-          )}
-          {currentView === 'practice' && (
-            <>
-              <Radio className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Live Stint</span>
-            </>
-          )}
-          {currentView === 'debrief' && (
-            <>
-              <Activity className="w-3.5 h-3.5 text-[#00F0FF]" />
-              <span>Analysis</span>
-            </>
-          )}
-          {currentView === 'history' && (
-            <>
-              <BarChart3 className="w-3.5 h-3.5 text-amber-400" />
-              <span>Stint Records</span>
-            </>
-          )}
-        </span>
-      </div>
 
       {/* Right Controls: Ingest Status, Network Info & Actions */}
       <div className="flex items-center space-x-2.5">
         {/* UDP Connection Status Pill */}
         <div className={`flex items-center space-x-2 px-3 py-1.5 border text-xs font-mono font-medium ${isUdpConnected
-            ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-            : isBridgeConnected
-              ? 'bg-amber-950/40 border-amber-500/40 text-amber-300'
-              : 'bg-[#181822] border-[#2A2A3C] text-slate-400'
+          ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+          : isBridgeConnected
+            ? 'bg-amber-950/40 border-amber-500/40 text-amber-300'
+            : 'bg-[#181822] border-[#2A2A3C] text-slate-400'
           }`}>
           <div className={`w-2 h-2 diamond-pip ${isUdpConnected
-              ? 'bg-emerald-400 animate-ping'
-              : isBridgeConnected
-                ? 'bg-amber-400 animate-pulse'
-                : 'bg-slate-500'
+            ? 'bg-emerald-400 animate-ping'
+            : isBridgeConnected
+              ? 'bg-amber-400 animate-pulse'
+              : 'bg-slate-500'
             }`} />
           <span>
             {isUdpConnected
@@ -194,8 +157,8 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </div>
               <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 border ${isBridgeConnected
-                  ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300'
-                  : 'bg-red-950/60 border-red-500/50 text-red-300'
+                ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300'
+                : 'bg-red-950/60 border-red-500/50 text-red-300'
                 }`}>
                 {isBridgeConnected ? 'BRIDGE ONLINE' : 'BRIDGE STANDBY'}
               </span>
@@ -242,8 +205,8 @@ export const Header: React.FC<HeaderProps> = ({
           title={isFullscreen ? 'Exit Fullscreen (Esc)' : 'Enter Fullscreen (F11)'}
           aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
           className={`p-2 border text-xs transition-all flex items-center justify-center ${isFullscreen
-              ? 'bg-[#E10600]/15 border-[#E10600]/40 text-[#FF5C5C] hover:bg-[#E10600]/25 shadow-sm shadow-red-950/40'
-              : 'bg-[#14141E] border-[#232332] text-slate-400 hover:text-white hover:bg-[#1C1C28] hover:border-slate-600'
+            ? 'bg-[#E10600]/15 border-[#E10600]/40 text-[#FF5C5C] hover:bg-[#E10600]/25 shadow-sm shadow-red-950/40'
+            : 'bg-[#14141E] border-[#232332] text-slate-400 hover:text-white hover:bg-[#1C1C28] hover:border-slate-600'
             }`}
         >
           {isFullscreen ? (
