@@ -4,6 +4,8 @@ import { resolveForzaCar } from '../data/carMapping';
 import { detectTrackFromFrames, getTrackLength } from './trackDetector';
 import { getTrackCorners, DEFAULT_TRACK_CORNERS, PredefinedCornerDef } from '../data/trackCorners';
 import { extractDynamicCorners } from './cornerDetector';
+import { downsampleTelemetryLOD, LOD_PRESETS } from './lodDownsampler';
+import { packTelemetryFrames } from './telemetryBuffer';
 
 export { DEFAULT_TRACK_CORNERS };
 export type { PredefinedCornerDef };
@@ -250,6 +252,7 @@ export function analyzeLapTelemetry(
     : undefined;
 
   const detectedTrackName = detectTrackFromFrames(sanitizedFrames, effectiveTrackLength);
+  const compactBuffer = sanitizedFrames.length > 500 ? packTelemetryFrames(sanitizedFrames) : undefined;
 
   return {
     lapId: `lap-${Date.now()}-${lapNumber}`,
@@ -265,6 +268,7 @@ export function analyzeLapTelemetry(
     overallScore,
     corners,
     frames: adaptiveDownsampleFrames(sanitizedFrames),
+    compactBuffer,
     actionItems,
     detectedCarName,
     detectedTrackName: effectiveTrackName || (detectedTrackName !== 'Unknown Track' ? detectedTrackName : undefined)
@@ -404,45 +408,11 @@ export function segmentFramesIntoLaps(
 }
 
 /**
- * Adaptively downsamples telemetry frames to reduce memory and storage footprint by ~75%
- * while strictly preserving critical dynamics extrema (peak braking, apex speed, peak lateral G, start/finish).
+ * Adaptively downsamples telemetry frames using LTTB + extrema preservation
+ * to reduce memory and storage footprint while strictly preserving dynamics extrema.
  */
-export function adaptiveDownsampleFrames(frames: TelemetryFrame[], maxTargetFrames: number = 1000): TelemetryFrame[] {
-  if (!frames || frames.length <= maxTargetFrames) return frames || [];
-
-  const step = Math.ceil(frames.length / maxTargetFrames);
-  const criticalIndices = new Set<number>();
-
-  criticalIndices.add(0);
-  criticalIndices.add(frames.length - 1);
-
-  for (let i = 1; i < frames.length - 1; i++) {
-    const prev = frames[i - 1];
-    const curr = frames[i];
-    const next = frames[i + 1];
-
-    // Local peak in braking pressure
-    if (curr.brake > 0.3 && curr.brake >= prev.brake && curr.brake >= next.brake) {
-      criticalIndices.add(i);
-    }
-    // Local minimum in speed during lateral load (corner apex)
-    if (curr.speedKph < prev.speedKph && curr.speedKph <= next.speedKph && Math.abs(curr.latG) > 0.5) {
-      criticalIndices.add(i);
-    }
-    // Local peak in lateral grip
-    if (Math.abs(curr.latG) > 1.0 && Math.abs(curr.latG) >= Math.abs(prev.latG) && Math.abs(curr.latG) >= Math.abs(next.latG)) {
-      criticalIndices.add(i);
-    }
-  }
-
-  const result: TelemetryFrame[] = [];
-  for (let i = 0; i < frames.length; i++) {
-    if (i % step === 0 || criticalIndices.has(i)) {
-      result.push(frames[i]);
-    }
-  }
-
-  return result;
+export function adaptiveDownsampleFrames(frames: TelemetryFrame[], maxTargetFrames: number = LOD_PRESETS.GRAPH_HIGH): TelemetryFrame[] {
+  return downsampleTelemetryLOD(frames, maxTargetFrames);
 }
 
 function createDummyCornerAnalysis(cDef: PredefinedCornerDef, trackLength: number = 2414): CornerTelemetryAnalysis {

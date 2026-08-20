@@ -19,6 +19,7 @@ import { analyzeLapTelemetry, rebindLapToTrack } from './engine/physicsEngine';
 import { parseForzaBuffer, convertPacketToTelemetryFrame } from './engine/forzaParser';
 import { resolveForzaCar } from './data/carMapping';
 import { detectTrackFromFrames } from './engine/trackDetector';
+import { offloadInactiveLaps, offloadLap } from './engine/lapMemoryManager';
 
 export function App() {
   const [currentView, setCurrentView] = useState<AppView>('curriculum');
@@ -297,12 +298,12 @@ export function App() {
                       effectiveTrack
                     );
                     const lapNumber = activeStintLapsRef.current.length + 1;
-                    const analyzedLap: LapAnalysis = {
+                    const analyzedLap: LapAnalysis = offloadLap({
                       ...completedLap,
                       lapNumber,
                       source: 'practice',
                       recordedAt: new Date().toISOString()
-                    };
+                    });
                     
                     activeStintLapsRef.current = [...activeStintLapsRef.current, analyzedLap];
                     setActiveStintLaps([...activeStintLapsRef.current]);
@@ -448,7 +449,7 @@ export function App() {
     const stintId = `stint-${Date.now()}`;
     const stintNumber = stintHistory.length + 1;
 
-    const newStint: StintSession = {
+    const baseStint: StintSession = {
       stintId,
       stintNumber,
       title: metadata.title || `Practice Stint #${stintNumber}`,
@@ -463,6 +464,8 @@ export function App() {
       wasRewound: hasAnyRewind,
       laps: finalLaps.map(l => ({ ...l, stintId }))
     };
+
+    const newStint: StintSession = offloadInactiveLaps(baseStint, 0);
 
     const updatedStints = [newStint, ...stintHistory.filter(s => s.stintId !== stintId)];
     setStintHistory(updatedStints);

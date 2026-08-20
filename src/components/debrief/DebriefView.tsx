@@ -9,6 +9,7 @@ import { ActionPlanCard } from '../adjust/ActionPlanCard';
 import { AICoachPanel } from './AICoachPanel';
 import { generateAICoachDebrief } from '../../engine/aiCoachEngine';
 import { generateOfficialPdf, generateStintOfficialPdf } from '../../utils/pdfGenerator';
+import { inflateLap } from '../../engine/lapMemoryManager';
 import { 
   Activity, FileDown, Radio, Award, Trash2, Clock, 
   Calendar, CheckCircle2, AlertCircle, ArrowRight, BookOpen, Play, Loader2,
@@ -154,8 +155,11 @@ export const DebriefView: React.FC<DebriefViewProps> = ({
     }
   };
 
-  // Selected lap inside the active stint
-  const selectedLap: LapAnalysis | null = activeSelectedStint?.laps?.[selectedLapIndex] || activeSelectedStint?.laps?.[0] || currentLap || null;
+  // Selected lap inside the active stint - inflated on-demand to full precision
+  const rawSelectedLap = activeSelectedStint?.laps?.[selectedLapIndex] || activeSelectedStint?.laps?.[0] || currentLap || null;
+  const selectedLap: LapAnalysis | null = useMemo(() => {
+    return rawSelectedLap ? inflateLap(rawSelectedLap) : null;
+  }, [rawSelectedLap]);
 
   // Workspace sub-view mode: 'coach' | 'telemetry' | 'both'
   const [workspaceMode, setWorkspaceMode] = useState<'coach' | 'telemetry' | 'both'>('coach');

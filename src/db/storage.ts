@@ -3,6 +3,7 @@ import { LapAnalysis, StintSession } from '../types/telemetry';
 import { adaptiveDownsampleFrames, rebindLapToTrack } from '../engine/physicsEngine';
 import { getTrackCorners } from '../data/trackCorners';
 import { PracticeViewLayout, DEFAULT_PRACTICE_LAYOUT } from '../types/widgets';
+import { downsampleTelemetryLOD, LOD_PRESETS } from '../engine/lodDownsampler';
 
 const STORAGE_KEY_PROGRESS = 'apex_user_progress_v2_5';
 const STORAGE_KEY_SESSIONS = 'apex_saved_sessions_v2_5';
@@ -52,8 +53,9 @@ function sanitizeStintSession(stint: StintSession, isHistorical: boolean = false
       ...lap,
       // For older history (> 5 stints back), preserve only summary corner metrics and compact frames
       frames: isHistorical 
-        ? adaptiveDownsampleFrames(lap.frames, 300)
-        : adaptiveDownsampleFrames(lap.frames, 800)
+        ? downsampleTelemetryLOD(lap.frames, LOD_PRESETS.SUMMARY)
+        : downsampleTelemetryLOD(lap.frames, LOD_PRESETS.GRAPH_MED),
+      compactBuffer: undefined // Omit binary typed arrays from JSON localStorage payload
     }))
   };
 }

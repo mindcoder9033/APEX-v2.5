@@ -1,5 +1,6 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { TelemetryFrame } from '../../types/telemetry';
+import { downsampleTelemetryLOD, LOD_PRESETS } from '../../engine/lodDownsampler';
 
 interface FrictionCirclePlotProps {
   frames: TelemetryFrame[];
@@ -15,6 +16,13 @@ export const FrictionCirclePlot: React.FC<FrictionCirclePlotProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const sizeRef = useRef<{ width: number; height: number; dpr: number }>({ width: 240, height: 240, dpr: 1 });
+
+  // Downsample to LOD summary level for crisp, instant G-G plot without rendering 30,000 redundant points
+  const renderFrames = useMemo(() => {
+    if (!frames || frames.length === 0) return [];
+    if (frames.length <= LOD_PRESETS.SUMMARY) return frames;
+    return downsampleTelemetryLOD(frames, LOD_PRESETS.SUMMARY);
+  }, [frames]);
 
   // Handle canvas sizing only on mount & container resize to prevent GPU buffer recreation
   useEffect(() => {
@@ -90,11 +98,9 @@ export const FrictionCirclePlot: React.FC<FrictionCirclePlotProps> = ({
       ctx.fillText('RIGHT', size - 20, center - 4);
 
       // Plot frame points in G-G space
-      if (frames.length > 0) {
-        // Subsample for canvas if frames array is very large
-        const step = frames.length > 300 ? Math.ceil(frames.length / 300) : 1;
-        for (let i = 0; i < frames.length; i += step) {
-          const f = frames[i];
+      if (renderFrames.length > 0) {
+        for (let i = 0; i < renderFrames.length; i++) {
+          const f = renderFrames[i];
           const px = center + (f.latG / maxG) * radius;
           const py = center - (f.lonG / maxG) * radius;
 

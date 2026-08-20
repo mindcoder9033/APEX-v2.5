@@ -158,6 +158,8 @@ export interface LapAnalysis {
   overallScore: number; // 0 - 100
   corners: CornerTelemetryAnalysis[];
   frames: TelemetryFrame[];
+  compactBuffer?: import('../engine/telemetryBuffer').CompactTelemetryBuffer;
+  isOffloaded?: boolean;
   actionItems: string[];
   wasRewound?: boolean;
   source?: 'academy' | 'practice';

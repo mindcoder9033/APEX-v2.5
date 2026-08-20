@@ -1,5 +1,6 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { TelemetryFrame } from '../../types/telemetry';
+import { downsampleTelemetryLOD, LOD_PRESETS } from '../../engine/lodDownsampler';
 
 interface TelemetryTracesProps {
   frames: TelemetryFrame[];
@@ -18,6 +19,19 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [hoverFrame, setHoverFrame] = useState<TelemetryFrame | null>(null);
+
+  // Dynamic Level-Of-Detail (LOD) downsampling for ultra-fast canvas path drawing
+  const renderFrames = useMemo(() => {
+    if (!frames || frames.length === 0) return [];
+    if (frames.length <= LOD_PRESETS.GRAPH_HIGH) return frames;
+    return downsampleTelemetryLOD(frames, LOD_PRESETS.GRAPH_HIGH);
+  }, [frames]);
+
+  const renderComparisonFrames = useMemo(() => {
+    if (!comparisonFrames || comparisonFrames.length === 0) return undefined;
+    if (comparisonFrames.length <= LOD_PRESETS.GRAPH_HIGH) return comparisonFrames;
+    return downsampleTelemetryLOD(comparisonFrames, LOD_PRESETS.GRAPH_HIGH);
+  }, [comparisonFrames]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -38,7 +52,7 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
     ctx.fillStyle = '#0E0E16';
     ctx.fillRect(0, 0, w, h);
 
-    if (frames.length < 2) {
+    if (renderFrames.length < 2) {
       ctx.fillStyle = '#6E6E82';
       ctx.font = '12px Inter, sans-serif';
       ctx.textAlign = 'center';
@@ -46,8 +60,8 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
       return;
     }
 
-    const lastFrame = frames[frames.length - 1];
-    const maxDist = Math.max(100, (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : (frames.reduce((m, f) => (f.distance > m ? f.distance : m), 0) || 2414));
+    const lastFrame = renderFrames[renderFrames.length - 1];
+    const maxDist = Math.max(100, (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : (renderFrames.reduce((m, f) => (f.distance > m ? f.distance : m), 0) || 2414));
 
     // Subdivided channels layout
     const speedH = h * 0.40;
@@ -92,8 +106,8 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
     ctx.strokeStyle = '#00F0FF';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    for (let i = 0; i < frames.length; i++) {
-      const f = frames[i];
+    for (let i = 0; i < renderFrames.length; i++) {
+      const f = renderFrames[i];
       const x = (f.distance / maxDist) * w;
       const y = ySpeed + speedH - (Math.min(280, f.speedKph) / 280) * (speedH - 20) - 10;
       if (i === 0) ctx.moveTo(x, y);
@@ -102,13 +116,13 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
     ctx.stroke();
 
     // Comparison lap speed if available (dashed gray)
-    if (comparisonFrames && comparisonFrames.length > 1) {
+    if (renderComparisonFrames && renderComparisonFrames.length > 1) {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
       ctx.setLineDash([4, 4]);
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      for (let i = 0; i < comparisonFrames.length; i++) {
-        const f = comparisonFrames[i];
+      for (let i = 0; i < renderComparisonFrames.length; i++) {
+        const f = renderComparisonFrames[i];
         const x = (f.distance / maxDist) * w;
         const y = ySpeed + speedH - (Math.min(280, f.speedKph) / 280) * (speedH - 20) - 10;
         if (i === 0) ctx.moveTo(x, y);
@@ -128,8 +142,8 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
     ctx.strokeStyle = '#00FF66';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    for (let i = 0; i < frames.length; i++) {
-      const f = frames[i];
+    for (let i = 0; i < renderFrames.length; i++) {
+      const f = renderFrames[i];
       const x = (f.distance / maxDist) * w;
       const y = yPedal + pedalH - f.throttle * (pedalH - 22) - 8;
       if (i === 0) ctx.moveTo(x, y);
@@ -141,8 +155,8 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
     ctx.strokeStyle = '#FF1801';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    for (let i = 0; i < frames.length; i++) {
-      const f = frames[i];
+    for (let i = 0; i < renderFrames.length; i++) {
+      const f = renderFrames[i];
       const x = (f.distance / maxDist) * w;
       const y = yPedal + pedalH - f.brake * (pedalH - 22) - 8;
       if (i === 0) ctx.moveTo(x, y);
@@ -165,8 +179,8 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
     ctx.strokeStyle = '#FFAA00';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    for (let i = 0; i < frames.length; i++) {
-      const f = frames[i];
+    for (let i = 0; i < renderFrames.length; i++) {
+      const f = renderFrames[i];
       const x = (f.distance / maxDist) * w;
       const y = midSteerY - f.steering * (steerH / 2 - 10);
       if (i === 0) ctx.moveTo(x, y);
@@ -186,13 +200,21 @@ export const TelemetryTraces: React.FC<TelemetryTracesProps> = ({
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Find closest frame to cursor
-      const closest = frames.reduce((prev, curr) => 
-        Math.abs(curr.distance - cursorDistance) < Math.abs(prev.distance - cursorDistance) ? curr : prev
-      );
-      setHoverFrame(closest);
+      // Find closest frame to cursor using fast binary search or renderFrames
+      if (renderFrames.length > 0) {
+        let closest = renderFrames[0];
+        let minDist = Math.abs(closest.distance - cursorDistance);
+        for (let i = 1; i < renderFrames.length; i++) {
+          const d = Math.abs(renderFrames[i].distance - cursorDistance);
+          if (d < minDist) {
+            minDist = d;
+            closest = renderFrames[i];
+          }
+        }
+        setHoverFrame(closest);
+      }
     }
-  }, [frames, comparisonFrames, cursorDistance, height]);
+  }, [renderFrames, renderComparisonFrames, cursorDistance, height]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

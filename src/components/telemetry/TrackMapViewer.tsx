@@ -1,6 +1,7 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { TelemetryFrame, CornerTelemetryAnalysis } from '../../types/telemetry';
 import { DEFAULT_TRACK_CORNERS } from '../../engine/physicsEngine';
+import { downsampleTrackPoints, LOD_PRESETS } from '../../engine/lodDownsampler';
 
 interface TrackMapViewerProps {
   frames: TelemetryFrame[];
@@ -20,6 +21,13 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const sizeRef = useRef<{ width: number; height: number; dpr: number }>({ width: 240, height: 240, dpr: 1 });
+
+  // Efficient LOD downsampled frames for drawing
+  const renderFrames = useMemo(() => {
+    if (!frames || frames.length === 0) return [];
+    if (frames.length <= LOD_PRESETS.SUMMARY) return frames;
+    return downsampleTrackPoints(frames, LOD_PRESETS.SUMMARY);
+  }, [frames]);
 
   // Handle canvas sizing only on mount & container resize to prevent GPU buffer recreation
   useEffect(() => {
@@ -60,7 +68,7 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
       ctx.fillStyle = '#0E0E16';
       ctx.fillRect(0, 0, w, h);
 
-      if (frames.length < 5) {
+      if (renderFrames.length < 5) {
         ctx.fillStyle = '#6E6E82';
         ctx.font = '11px Inter, sans-serif';
         ctx.textAlign = 'center';
@@ -71,10 +79,8 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
 
       // Find bounds of posX and posZ
       let minX = 99999, maxX = -99999, minZ = 99999, maxZ = -99999;
-      // Subsample bounds search for high performance
-      const boundsStep = Math.max(1, Math.floor(frames.length / 100));
-      for (let i = 0; i < frames.length; i += boundsStep) {
-        const f = frames[i];
+      for (let i = 0; i < renderFrames.length; i++) {
+        const f = renderFrames[i];
         if (f.posX < minX) minX = f.posX;
         if (f.posX > maxX) maxX = f.posX;
         if (f.posZ < minZ) minZ = f.posZ;
@@ -94,10 +100,9 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      const drawStep = Math.max(1, Math.floor(frames.length / 250));
-      for (let i = 0; i < frames.length - drawStep; i += drawStep) {
-        const f1 = frames[i];
-        const f2 = frames[i + drawStep];
+      for (let i = 0; i < renderFrames.length - 1; i++) {
+        const f1 = renderFrames[i];
+        const f2 = renderFrames[i + 1];
 
         // Red for heavy braking, Green for full throttle, Cyan for cruising
         if (f1.brake > 0.4) {
@@ -115,15 +120,15 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
       }
 
       // Draw Corner Markers
-      const lastFrame = frames[frames.length - 1];
+      const lastFrame = renderFrames[renderFrames.length - 1];
       const maxDist = (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : 2414;
 
       if (corners && corners.length > 0) {
         corners.forEach((c) => {
           const cornerApexDist = c.apexDistance;
-          const closest = frames.reduce((prev, curr) =>
+          const closest = renderFrames.reduce((prev, curr) =>
             Math.abs(curr.distance - cornerApexDist) < Math.abs(prev.distance - cornerApexDist) ? curr : prev
-          , frames[0]);
+          , renderFrames[0]);
 
           if (closest) {
             const tx = transformX(closest.posX);
@@ -144,9 +149,9 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
       } else {
         DEFAULT_TRACK_CORNERS.forEach((c) => {
           const cornerApexDist = c.apexPct * maxDist;
-          const closest = frames.reduce((prev, curr) =>
+          const closest = renderFrames.reduce((prev, curr) =>
             Math.abs(curr.distance - cornerApexDist) < Math.abs(prev.distance - cornerApexDist) ? curr : prev
-          , frames[0]);
+          , renderFrames[0]);
 
           if (closest) {
             const tx = transformX(closest.posX);
@@ -167,10 +172,10 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
       }
 
       // Draw Current Vehicle Position
-      if (currentDistance >= 0 && frames.length > 0) {
-        const currentPosFrame = frames.reduce((prev, curr) =>
+      if (currentDistance >= 0 && renderFrames.length > 0) {
+        const currentPosFrame = renderFrames.reduce((prev, curr) =>
           Math.abs(curr.distance - currentDistance) < Math.abs(prev.distance - currentDistance) ? curr : prev
-        , frames[0]);
+        , renderFrames[0]);
 
         if (currentPosFrame) {
           const vx = transformX(currentPosFrame.posX);
@@ -194,7 +199,7 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
 
     animId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animId);
-  }, [frames, currentDistance, corners]);
+  }, [renderFrames, currentDistance, corners]);
 
   return (
     <div className="bg-[#0E0E16] border border-[#232332] p-4 flex flex-col items-center shadow-lg hud-bracket">
@@ -213,7 +218,7 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
           ref={canvasRef}
           className="w-full h-full block cursor-crosshair"
           onClick={(e) => {
-            if (!onCornerSelect || !frames.length) return;
+            if (!onCornerSelect || !renderFrames.length) return;
             const rect = e.currentTarget.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
@@ -221,12 +226,10 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
             // Find closest frame to click
             let closestFrame: TelemetryFrame | null = null;
             let minDist = Infinity;
-            const lastFrame = frames[frames.length - 1];
-            const maxDist = (lastFrame && lastFrame.distance > 0) ? lastFrame.distance : 2414;
 
             const padding = 28;
             let minX = 99999, maxX = -99999, minZ = 99999, maxZ = -99999;
-            for (const f of frames) {
+            for (const f of renderFrames) {
               if (f.posX < minX) minX = f.posX;
               if (f.posX > maxX) maxX = f.posX;
               if (f.posZ < minZ) minZ = f.posZ;
@@ -234,7 +237,7 @@ export const TrackMapViewer: React.FC<TrackMapViewerProps> = ({
             }
             const scale = Math.min((rect.width - padding * 2) / (maxX - minX || 1), (rect.height - padding * 2) / (maxZ - minZ || 1));
 
-            for (const f of frames) {
+            for (const f of renderFrames) {
               const fx = padding + (f.posX - minX) * scale;
               const fy = padding + (f.posZ - minZ) * scale;
               const d = Math.hypot(fx - clickX, fy - clickY);
