@@ -14,10 +14,16 @@ import {
   loadUserProgress, saveUserProgress, loadLapHistory, saveLapHistory,
   loadStintHistory, saveStintHistory,
   loadUserProgressFromDisk, loadStintHistoryFromDisk,
-  recordChallengeCompletion, recordGraduationCompletion 
+  recordChallengeCompletion, recordGraduationCompletion,
+  loadProfilesManifest, saveProfilesManifest, loadProfilesManifestFromDisk,
+  getActiveProfile, setActiveProfileId,
+  createDriverProfile, updateDriverProfile, deleteDriverProfile
 } from './db/storage';
 import { Module, Session, UserProgressState, ChallengeResult, GraduationResult } from './types/curriculum';
 import { LapAnalysis, StintSession, TelemetryFrame } from './types/telemetry';
+import { DriverProfile, ProfilesManifest, DEFAULT_DRIVER_PROFILE } from './types/profile';
+import { DriverGatewayModal } from './components/profile/DriverGatewayModal';
+import { DriverProfileModal } from './components/profile/DriverProfileModal';
 import { analyzeLapTelemetry, rebindLapToTrack } from './engine/physicsEngine';
 import { parseForzaBuffer, convertPacketToTelemetryFrame } from './engine/forzaParser';
 import { resolveForzaCar } from './data/carMapping';
@@ -43,21 +49,101 @@ export function App() {
     }
   }, [isSidebarCollapsed]);
 
-  const [progress, setProgress] = useState<UserProgressState>(loadUserProgress);
-  const [stintHistory, setStintHistory] = useState<StintSession[]>(loadStintHistory);
-  const [savedLaps, setSavedLaps] = useState<LapAnalysis[]>(loadLapHistory);
+  // Driver Profiles State & Gateway
+  const [manifest, setManifest] = useState<ProfilesManifest>(loadProfilesManifest);
+  const activeProfile = getActiveProfile(manifest);
+  const [isGatewayOpen, setIsGatewayOpen] = useState<boolean>(() => {
+    const initManifest = loadProfilesManifest();
+    return !initManifest.autoLoginLastDriver;
+  });
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileModalMode, setProfileModalMode] = useState<'create' | 'edit'>('create');
+  const [profileToEdit, setProfileToEdit] = useState<DriverProfile | null>(null);
+
+  const [progress, setProgress] = useState<UserProgressState>(() => loadUserProgress(activeProfile.id));
+  const [stintHistory, setStintHistory] = useState<StintSession[]>(() => loadStintHistory(activeProfile.id));
+  const [savedLaps, setSavedLaps] = useState<LapAnalysis[]>(() => loadLapHistory(activeProfile.id));
 
   // Hydrate full state directly from PC disk on mount (~/Documents/APEX/)
   useEffect(() => {
-    loadUserProgressFromDisk().then((diskProg) => {
-      if (diskProg) setProgress(diskProg);
-    });
-    loadStintHistoryFromDisk().then((diskStints) => {
-      if (diskStints && diskStints.length > 0) {
-        setStintHistory(diskStints);
+    loadProfilesManifestFromDisk().then((diskManifest) => {
+      if (diskManifest && Array.isArray(diskManifest.profiles) && diskManifest.profiles.length > 0) {
+        setManifest(diskManifest);
+        const currentActive = getActiveProfile(diskManifest);
+        loadUserProgressFromDisk(currentActive.id).then((diskProg) => {
+          if (diskProg) setProgress(diskProg);
+        });
+        loadStintHistoryFromDisk(currentActive.id).then((diskStints) => {
+          if (diskStints && diskStints.length > 0) {
+            setStintHistory(diskStints);
+          }
+        });
       }
     });
   }, []);
+
+  // Driver Profile Lifecycle Handlers
+  const handleSelectProfile = (profileId: string) => {
+    const updatedManifest = setActiveProfileId(profileId);
+    setManifest(updatedManifest);
+
+    // Re-hydrate local state for the selected profile
+    const newProg = loadUserProgress(profileId);
+    setProgress(newProg);
+    const newStints = loadStintHistory(profileId);
+    setStintHistory(newStints);
+    const newLaps = loadLapHistory(profileId);
+    setSavedLaps(newLaps);
+
+    if (newStints.length > 0) {
+      setCurrentStint(newStints[0]);
+      setCurrentLap(newStints[0].laps?.[0] || null);
+    } else {
+      setCurrentStint(null);
+      setCurrentLap(newLaps.length > 0 ? newLaps[0] : null);
+    }
+
+    setIsGatewayOpen(false);
+
+    // Asynchronously pull any newer disk files for this profile
+    loadUserProgressFromDisk(profileId).then(p => { if (p) setProgress(p); });
+    loadStintHistoryFromDisk(profileId).then(s => { if (s && s.length > 0) setStintHistory(s); });
+  };
+
+  const handleSaveProfileModal = (data: {
+    id?: string;
+    name: string;
+    racingNumber: string;
+    nickname?: string;
+    avatarId: string;
+    colorAccent: string;
+    experienceLevel: import('./types/profile').DriverExperienceLevel;
+    coachTone: import('./types/profile').CoachTone;
+  }) => {
+    if (profileModalMode === 'create' || !data.id) {
+      const { manifest: updatedManifest, newProfile } = createDriverProfile(data);
+      setManifest(updatedManifest);
+      handleSelectProfile(newProfile.id);
+    } else {
+      const updatedManifest = updateDriverProfile(data.id, data);
+      setManifest(updatedManifest);
+    }
+  };
+
+  const handleDeleteProfileModal = (profileId: string) => {
+    const updatedManifest = deleteDriverProfile(profileId);
+    setManifest(updatedManifest);
+    handleSelectProfile(updatedManifest.activeProfileId);
+  };
+
+  const handleToggleAutoLogin = (autoLogin: boolean) => {
+    const updated: ProfilesManifest = {
+      ...manifest,
+      autoLoginLastDriver: autoLogin
+    };
+    setManifest(updated);
+    saveProfilesManifest(updated);
+  };
 
   // Active session and graduation state for Curriculum Academy
   const [activeSessionSelection, setActiveSessionSelection] = useState<{ module: Module; session: Session } | null>(null);
@@ -65,16 +151,16 @@ export function App() {
 
   // Current active Stint & Lap for Debrief
   const [currentStint, setCurrentStint] = useState<StintSession | null>(() => {
-    const initialStints = loadStintHistory();
+    const initialStints = loadStintHistory(activeProfile.id);
     return initialStints.length > 0 ? initialStints[0] : null;
   });
 
   const [currentLap, setCurrentLap] = useState<LapAnalysis | null>(() => {
-    const initialStints = loadStintHistory();
+    const initialStints = loadStintHistory(activeProfile.id);
     if (initialStints.length > 0 && initialStints[0].laps.length > 0) {
       return initialStints[0].laps[0];
     }
-    const initialLaps = loadLapHistory();
+    const initialLaps = loadLapHistory(activeProfile.id);
     return initialLaps.length > 0 ? initialLaps[0] : null;
   });
 
@@ -766,6 +852,20 @@ export function App() {
         isBridgeConnected={isBridgeConnected}
         totalMasteredModules={progress.graduatedModuleIds.length}
         networkInfo={networkInfo}
+        manifest={manifest}
+        activeProfile={activeProfile}
+        onSelectProfile={handleSelectProfile}
+        onCreateProfile={() => {
+          setProfileModalMode('create');
+          setProfileToEdit(null);
+          setIsProfileModalOpen(true);
+        }}
+        onEditActiveProfile={() => {
+          setProfileModalMode('edit');
+          setProfileToEdit(activeProfile);
+          setIsProfileModalOpen(true);
+        }}
+        onOpenGateway={() => setIsGatewayOpen(true)}
       />
 
       {/* Main Layout Body: Left Sidebar + Dynamic Main View */}
@@ -945,6 +1045,37 @@ export function App() {
           />
         );
       })()}
+
+      {/* Driver Selection "Who is Driving?" Gateway Modal */}
+      <DriverGatewayModal
+        isOpen={isGatewayOpen}
+        manifest={manifest}
+        activeProfileId={activeProfile.id}
+        onSelectProfile={handleSelectProfile}
+        onCreateProfile={() => {
+          setProfileModalMode('create');
+          setProfileToEdit(null);
+          setIsProfileModalOpen(true);
+        }}
+        onEditProfile={(profile) => {
+          setProfileModalMode('edit');
+          setProfileToEdit(profile);
+          setIsProfileModalOpen(true);
+        }}
+        onToggleAutoLogin={handleToggleAutoLogin}
+        onClose={() => setIsGatewayOpen(false)}
+      />
+
+      {/* Create / Edit Driver Profile Modal */}
+      <DriverProfileModal
+        isOpen={isProfileModalOpen}
+        mode={profileModalMode}
+        profileToEdit={profileToEdit}
+        canDelete={manifest.profiles.length > 1}
+        onClose={() => setIsProfileModalOpen(false)}
+        onSave={handleSaveProfileModal}
+        onDelete={handleDeleteProfileModal}
+      />
     </div>
   );
 }

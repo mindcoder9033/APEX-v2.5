@@ -1,11 +1,16 @@
 import { UserProgressState } from '../types/curriculum';
 import { StintSession } from '../types/telemetry';
+import { DriverProfile, ProfilesManifest } from '../types/profile';
 
 export interface StorageInfo {
   success: boolean;
   storageRoot: string;
+  activeProfileId?: string;
+  profilesCount?: number;
   directories: {
     root: string;
+    profiles?: string;
+    profileRoot?: string;
     stints: string;
     reports: string;
     raw_telemetry: string;
@@ -37,11 +42,62 @@ export interface PdfReportInfo {
 const BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
 /**
+ * Fetch profiles manifest from PC disk (~/Documents/APEX/profiles_manifest.json)
+ */
+export async function getProfilesManifest(): Promise<ProfilesManifest | null> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/storage/profiles`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.success && data.manifest) {
+      return data.manifest as ProfilesManifest;
+    }
+    return null;
+  } catch (err) {
+    console.warn('[Disk Storage] Failed to get profiles manifest from disk:', err);
+    return null;
+  }
+}
+
+/**
+ * Save profiles manifest or individual profile to PC disk
+ */
+export async function saveProfilesManifest(manifest: ProfilesManifest | DriverProfile): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/storage/profiles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(manifest)
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('[Disk Storage] Failed to save profiles manifest to disk:', err);
+    return false;
+  }
+}
+
+/**
+ * Delete a profile from PC disk
+ */
+export async function deleteProfileFromDisk(profileId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/storage/profiles?id=${encodeURIComponent(profileId)}`, {
+      method: 'DELETE'
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('[Disk Storage] Failed to delete profile from disk:', err);
+    return false;
+  }
+}
+
+/**
  * Fetch local PC storage status and paths
  */
-export async function getStorageInfo(): Promise<StorageInfo | null> {
+export async function getStorageInfo(profileId?: string): Promise<StorageInfo | null> {
   try {
-    const res = await fetch(`${BASE_URL}/api/storage/info`);
+    const query = profileId ? `?profileId=${encodeURIComponent(profileId)}` : '';
+    const res = await fetch(`${BASE_URL}/api/storage/info${query}`);
     if (!res.ok) return null;
     return await res.json();
   } catch (err) {
@@ -51,11 +107,12 @@ export async function getStorageInfo(): Promise<StorageInfo | null> {
 }
 
 /**
- * Load user progress state from PC disk (~/Documents/APEX/progress/progress.json)
+ * Load user progress state from PC disk (~/Documents/APEX/Profiles/[profileId]/progress/progress.json)
  */
-export async function loadProgressFromDisk(): Promise<UserProgressState | null> {
+export async function loadProgressFromDisk(profileId?: string): Promise<UserProgressState | null> {
   try {
-    const res = await fetch(`${BASE_URL}/api/storage/progress`);
+    const query = profileId ? `?profileId=${encodeURIComponent(profileId)}` : '';
+    const res = await fetch(`${BASE_URL}/api/storage/progress${query}`);
     if (!res.ok) return null;
     const data = await res.json();
     if (data && typeof data === 'object' && !('exists' in data && data.exists === false)) {
@@ -69,11 +126,12 @@ export async function loadProgressFromDisk(): Promise<UserProgressState | null> 
 }
 
 /**
- * Save user progress state directly to PC disk (~/Documents/APEX/progress/progress.json)
+ * Save user progress state directly to PC disk (~/Documents/APEX/Profiles/[profileId]/progress/progress.json)
  */
-export async function saveProgressToDisk(state: UserProgressState): Promise<boolean> {
+export async function saveProgressToDisk(state: UserProgressState, profileId?: string): Promise<boolean> {
   try {
-    const res = await fetch(`${BASE_URL}/api/storage/progress`, {
+    const query = profileId ? `?profileId=${encodeURIComponent(profileId)}` : '';
+    const res = await fetch(`${BASE_URL}/api/storage/progress${query}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(state)
@@ -86,11 +144,12 @@ export async function saveProgressToDisk(state: UserProgressState): Promise<bool
 }
 
 /**
- * Load all saved stints from PC disk (~/Documents/APEX/stints/*.json)
+ * Load all saved stints from PC disk (~/Documents/APEX/Profiles/[profileId]/stints/*.json)
  */
-export async function loadStintsFromDisk(): Promise<StintSession[]> {
+export async function loadStintsFromDisk(profileId?: string): Promise<StintSession[]> {
   try {
-    const res = await fetch(`${BASE_URL}/api/storage/stints`);
+    const query = profileId ? `?profileId=${encodeURIComponent(profileId)}` : '';
+    const res = await fetch(`${BASE_URL}/api/storage/stints${query}`);
     if (!res.ok) return [];
     const data = await res.json();
     if (data.success && Array.isArray(data.stints)) {
@@ -104,11 +163,12 @@ export async function loadStintsFromDisk(): Promise<StintSession[]> {
 }
 
 /**
- * Save a stint session to PC disk (~/Documents/APEX/stints/stint_<id>_<track>.json)
+ * Save a stint session to PC disk (~/Documents/APEX/Profiles/[profileId]/stints/stint_<id>_<track>.json)
  */
-export async function saveStintToDisk(stint: StintSession): Promise<boolean> {
+export async function saveStintToDisk(stint: StintSession, profileId?: string): Promise<boolean> {
   try {
-    const res = await fetch(`${BASE_URL}/api/storage/stints`, {
+    const query = profileId ? `?profileId=${encodeURIComponent(profileId)}` : '';
+    const res = await fetch(`${BASE_URL}/api/storage/stints${query}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(stint)
@@ -123,9 +183,13 @@ export async function saveStintToDisk(stint: StintSession): Promise<boolean> {
 /**
  * Delete a stint session from PC disk
  */
-export async function deleteStintFromDisk(stintId: string): Promise<boolean> {
+export async function deleteStintFromDisk(stintId: string, profileId?: string): Promise<boolean> {
   try {
-    const res = await fetch(`${BASE_URL}/api/storage/stints?id=${encodeURIComponent(stintId)}`, {
+    const queryParams = new URLSearchParams();
+    queryParams.set('id', stintId);
+    if (profileId) queryParams.set('profileId', profileId);
+
+    const res = await fetch(`${BASE_URL}/api/storage/stints?${queryParams.toString()}`, {
       method: 'DELETE'
     });
     return res.ok;
@@ -136,11 +200,12 @@ export async function deleteStintFromDisk(stintId: string): Promise<boolean> {
 }
 
 /**
- * Save PDF report directly to PC disk (~/Documents/APEX/reports/<fileName>.pdf)
+ * Save PDF report directly to PC disk (~/Documents/APEX/Profiles/[profileId]/reports/<fileName>.pdf)
  */
-export async function savePdfReportToDisk(fileName: string, base64Data: string): Promise<{ success: boolean; filePath?: string }> {
+export async function savePdfReportToDisk(fileName: string, base64Data: string, profileId?: string): Promise<{ success: boolean; filePath?: string }> {
   try {
-    const res = await fetch(`${BASE_URL}/api/storage/reports`, {
+    const query = profileId ? `?profileId=${encodeURIComponent(profileId)}` : '';
+    const res = await fetch(`${BASE_URL}/api/storage/reports${query}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fileName, base64Data })
@@ -157,9 +222,10 @@ export async function savePdfReportToDisk(fileName: string, base64Data: string):
 /**
  * Fetch list of generated PDF reports on PC
  */
-export async function getReportsList(): Promise<PdfReportInfo[]> {
+export async function getReportsList(profileId?: string): Promise<PdfReportInfo[]> {
   try {
-    const res = await fetch(`${BASE_URL}/api/storage/reports`);
+    const query = profileId ? `?profileId=${encodeURIComponent(profileId)}` : '';
+    const res = await fetch(`${BASE_URL}/api/storage/reports${query}`);
     if (!res.ok) return [];
     const data = await res.json();
     return data.reports || [];

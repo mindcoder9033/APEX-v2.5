@@ -1,77 +1,6 @@
 import type { Plugin, ViteDevServer } from 'vite';
 import * as dgram from 'dgram';
 import * as os from 'os';
-import { WebSocketServer, WebSocket } from 'ws';
-
-export interface NetworkInterfaceInfo {
-  directIps: string[];
-  broadcastIps: string[];
-  udpPort: number;
-  secondaryUdpPort: number;
-}
-
-/**
- * Calculates subnet broadcast address from an IPv4 address and netmask.
- */
-function calculateBroadcastIp(ip: string, netmask: string): string {
-  try {
-    const ipParts = ip.split('.').map(Number);
-    const maskParts = netmask.split('.').map(Number);
-    if (ipParts.length !== 4 || maskParts.length !== 4) return '255.255.255.255';
-
-    const ipInt = (ipParts[0] << 24) | (ipParts[1] << 16) | (ipParts[2] << 8) | ipParts[3];
-    const maskInt = (maskParts[0] << 24) | (maskParts[1] << 16) | (maskParts[2] << 8) | maskParts[3];
-    const broadcastInt = (ipInt & maskInt) | (~maskInt & 0xffffffff);
-
-    return [
-      (broadcastInt >>> 24) & 255,
-      (broadcastInt >>> 16) & 255,
-      (broadcastInt >>> 8) & 255,
-      broadcastInt & 255
-    ].join('.');
-  } catch {
-    return '255.255.255.255';
-  }
-}
-
-/**
- * Discovers active non-internal IPv4 addresses and their subnet broadcast targets.
- */
-export function getActiveNetworkInfo(udpPort = 5300, secondaryUdpPort = 20777): NetworkInterfaceInfo {
-  const interfaces = os.networkInterfaces();
-  const directIps: string[] = [];
-  const broadcastIps = new Set<string>();
-
-  for (const ifaceName of Object.keys(interfaces)) {
-    for (const net of interfaces[ifaceName] || []) {
-      if (net.family === 'IPv4' && !net.internal) {
-        directIps.push(net.address);
-        if (net.netmask) {
-          const bcast = calculateBroadcastIp(net.address, net.netmask);
-          if (bcast) broadcastIps.add(bcast);
-        }
-      }
-    }
-  }
-
-  // Always include global fallback broadcast
-  broadcastIps.add('255.255.255.255');
-
-  return {
-    directIps: directIps.length > 0 ? directIps : ['127.0.0.1'],
-    broadcastIps: Array.from(broadcastIps),
-    udpPort,
-    secondaryUdpPort
-  };
-}
-
-/**
- * Custom Vite Plugin to automatically run the UDP Ingestion socket and WebSocket bridge
- * inside the Vite dev server process.
- */
-import type { Plugin, ViteDevServer } from 'vite';
-import * as dgram from 'dgram';
-import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -88,11 +17,119 @@ const USER_HOME = os.homedir();
 const APEX_DOCS_ROOT = path.join(USER_HOME, 'Documents', 'APEX');
 export const APEX_STORAGE_DIRS = {
   root: APEX_DOCS_ROOT,
+  profiles: path.join(APEX_DOCS_ROOT, 'Profiles'),
   stints: path.join(APEX_DOCS_ROOT, 'stints'),
   reports: path.join(APEX_DOCS_ROOT, 'reports'),
   raw_telemetry: path.join(APEX_DOCS_ROOT, 'raw_telemetry'),
   progress: path.join(APEX_DOCS_ROOT, 'progress')
 };
+
+export const PROFILES_MANIFEST_FILE = path.join(APEX_DOCS_ROOT, 'profiles_manifest.json');
+
+export function getProfileDirs(profileId: string) {
+  const safeId = (profileId || 'driver_default').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const profileRoot = path.join(APEX_STORAGE_DIRS.profiles, safeId);
+  const dirs = {
+    root: profileRoot,
+    progress: path.join(profileRoot, 'progress'),
+    stints: path.join(profileRoot, 'stints'),
+    reports: path.join(profileRoot, 'reports')
+  };
+
+  try {
+    Object.values(dirs).forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    });
+  } catch (err: any) {
+    console.warn(`[APEX Storage] Could not initialize profile dir (${safeId}):`, err?.message);
+  }
+
+  return dirs;
+}
+
+function loadOrInitProfilesManifest() {
+  try {
+    if (fs.existsSync(PROFILES_MANIFEST_FILE)) {
+      const content = fs.readFileSync(PROFILES_MANIFEST_FILE, 'utf-8');
+      const manifest = JSON.parse(content);
+      if (manifest && Array.isArray(manifest.profiles) && manifest.profiles.length > 0) {
+        return manifest;
+      }
+    }
+  } catch (err) {
+    console.warn('[APEX Storage] Failed to parse existing manifest:', err);
+  }
+
+  // Create initial manifest and migrate legacy data if available
+  const defaultProfile = {
+    id: 'driver_default',
+    name: 'Default Driver',
+    racingNumber: '01',
+    nickname: 'Apex Driver',
+    avatarId: 'helmet_red',
+    colorAccent: '#E10600',
+    experienceLevel: 'Beginner',
+    coachTone: 'friendly_coach',
+    createdAt: new Date().toISOString(),
+    lastActiveAt: new Date().toISOString(),
+    isDefault: true
+  };
+
+  const initialManifest = {
+    version: '2.5',
+    activeProfileId: 'driver_default',
+    autoLoginLastDriver: false,
+    profiles: [defaultProfile]
+  };
+
+  try {
+    const defaultDirs = getProfileDirs('driver_default');
+
+    // Migrate legacy progress.json if present
+    const legacyProgress = path.join(APEX_STORAGE_DIRS.progress, 'progress.json');
+    const targetProgress = path.join(defaultDirs.progress, 'progress.json');
+    if (fs.existsSync(legacyProgress) && !fs.existsSync(targetProgress)) {
+      fs.copyFileSync(legacyProgress, targetProgress);
+      console.log('[APEX Storage] Migrated legacy progress to Profiles/driver_default/');
+    }
+
+    // Migrate legacy stints if present
+    if (fs.existsSync(APEX_STORAGE_DIRS.stints)) {
+      const legacyStintFiles = fs.readdirSync(APEX_STORAGE_DIRS.stints).filter(f => f.endsWith('.json'));
+      for (const file of legacyStintFiles) {
+        const srcPath = path.join(APEX_STORAGE_DIRS.stints, file);
+        const dstPath = path.join(defaultDirs.stints, file);
+        if (!fs.existsSync(dstPath)) {
+          fs.copyFileSync(srcPath, dstPath);
+        }
+      }
+      if (legacyStintFiles.length > 0) {
+        console.log(`[APEX Storage] Migrated ${legacyStintFiles.length} legacy stints to Profiles/driver_default/`);
+      }
+    }
+
+    // Migrate legacy reports if present
+    if (fs.existsSync(APEX_STORAGE_DIRS.reports)) {
+      const legacyReports = fs.readdirSync(APEX_STORAGE_DIRS.reports).filter(f => f.endsWith('.pdf'));
+      for (const file of legacyReports) {
+        const srcPath = path.join(APEX_STORAGE_DIRS.reports, file);
+        const dstPath = path.join(defaultDirs.reports, file);
+        if (!fs.existsSync(dstPath)) {
+          fs.copyFileSync(srcPath, dstPath);
+        }
+      }
+    }
+
+    fs.writeFileSync(PROFILES_MANIFEST_FILE, JSON.stringify(initialManifest, null, 2), 'utf-8');
+    console.log('[APEX Storage] Initialized profiles_manifest.json with Default Driver');
+  } catch (err: any) {
+    console.warn('[APEX Storage] Could not write initial profiles manifest:', err?.message);
+  }
+
+  return initialManifest;
+}
 
 function ensureStorageDirs() {
   try {
@@ -101,6 +138,7 @@ function ensureStorageDirs() {
         fs.mkdirSync(dir, { recursive: true });
       }
     });
+    loadOrInitProfilesManifest();
   } catch (err: any) {
     console.warn('[APEX Storage] Could not initialize Documents/APEX folders:', err?.message);
   }
@@ -212,11 +250,131 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
         res.end(JSON.stringify(freshNetworkInfo));
       });
 
-      // 1.2 Storage Info: /api/storage/info
-      server.middlewares.use('/api/storage/info', (_req, res) => {
+      // 1.2 Profiles Manifest API: /api/storage/profiles
+      server.middlewares.use('/api/storage/profiles', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+        if (req.method === 'OPTIONS') {
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        const url = req.url || '';
+
+        // GET - Load profiles manifest
+        if (req.method === 'GET') {
+          try {
+            const manifest = loadOrInitProfilesManifest();
+            return res.end(JSON.stringify({ success: true, manifest }));
+          } catch (err: any) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+        }
+
+        // POST - Update manifest or save/create profile
+        if (req.method === 'POST') {
+          try {
+            const bodyBuffer = await readRequestBody(req);
+            const payload = JSON.parse(bodyBuffer.toString('utf-8'));
+
+            let currentManifest = loadOrInitProfilesManifest();
+
+            if (payload && payload.profiles && Array.isArray(payload.profiles)) {
+              // Full manifest update
+              currentManifest = {
+                ...currentManifest,
+                ...payload,
+                version: '2.5'
+              };
+            } else if (payload && payload.id) {
+              // Single profile upsert
+              const existingIdx = currentManifest.profiles.findIndex((p: any) => p.id === payload.id);
+              if (existingIdx >= 0) {
+                currentManifest.profiles[existingIdx] = { ...currentManifest.profiles[existingIdx], ...payload };
+              } else {
+                currentManifest.profiles.push(payload);
+              }
+            }
+
+            // Ensure profile directory structures exist for all registered profiles
+            currentManifest.profiles.forEach((p: any) => {
+              getProfileDirs(p.id);
+            });
+
+            fs.writeFileSync(PROFILES_MANIFEST_FILE, JSON.stringify(currentManifest, null, 2), 'utf-8');
+            return res.end(JSON.stringify({ success: true, manifest: currentManifest }));
+          } catch (err: any) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+        }
+
+        // DELETE - Delete a profile
+        if (req.method === 'DELETE') {
+          try {
+            const parsedUrl = new URL(url, 'http://localhost');
+            const profileId = parsedUrl.searchParams.get('id');
+            if (!profileId) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ success: false, error: 'Missing profile id' }));
+            }
+
+            const currentManifest = loadOrInitProfilesManifest();
+            if (currentManifest.profiles.length <= 1) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ success: false, error: 'Cannot delete the only remaining profile' }));
+            }
+
+            const remainingProfiles = currentManifest.profiles.filter((p: any) => p.id !== profileId);
+            let activeProfileId = currentManifest.activeProfileId;
+            if (activeProfileId === profileId) {
+              activeProfileId = remainingProfiles[0].id;
+            }
+
+            const updatedManifest = {
+              ...currentManifest,
+              activeProfileId,
+              profiles: remainingProfiles
+            };
+
+            fs.writeFileSync(PROFILES_MANIFEST_FILE, JSON.stringify(updatedManifest, null, 2), 'utf-8');
+
+            // Move or rename deleted profile folder
+            try {
+              const profileDir = path.join(APEX_STORAGE_DIRS.profiles, profileId);
+              if (fs.existsSync(profileDir)) {
+                const deletedDir = path.join(APEX_STORAGE_DIRS.profiles, `${profileId}_deleted_${Date.now()}`);
+                fs.renameSync(profileDir, deletedDir);
+              }
+            } catch (fsErr) {
+              console.warn('[APEX Storage] Could not archive deleted profile dir:', fsErr);
+            }
+
+            return res.end(JSON.stringify({ success: true, manifest: updatedManifest }));
+          } catch (err: any) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+        }
+
+        res.statusCode = 405;
+        res.end(JSON.stringify({ error: 'Method not allowed' }));
+      });
+
+      // 1.3 Storage Info: /api/storage/info
+      server.middlewares.use('/api/storage/info', (req, res) => {
         try {
-          const stintCount = fs.existsSync(APEX_STORAGE_DIRS.stints) ? fs.readdirSync(APEX_STORAGE_DIRS.stints).length : 0;
-          const reportCount = fs.existsSync(APEX_STORAGE_DIRS.reports) ? fs.readdirSync(APEX_STORAGE_DIRS.reports).length : 0;
+          const parsedUrl = new URL(req.url || '', 'http://localhost');
+          const manifest = loadOrInitProfilesManifest();
+          const targetProfileId = parsedUrl.searchParams.get('profileId') || manifest.activeProfileId || 'driver_default';
+          const pDirs = getProfileDirs(targetProfileId);
+
+          const stintCount = fs.existsSync(pDirs.stints) ? fs.readdirSync(pDirs.stints).length : 0;
+          const reportCount = fs.existsSync(pDirs.reports) ? fs.readdirSync(pDirs.reports).length : 0;
           const rawCount = fs.existsSync(APEX_STORAGE_DIRS.raw_telemetry) ? fs.readdirSync(APEX_STORAGE_DIRS.raw_telemetry).length : 0;
 
           res.setHeader('Content-Type', 'application/json');
@@ -224,7 +382,15 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
           res.end(JSON.stringify({
             success: true,
             storageRoot: APEX_STORAGE_DIRS.root,
-            directories: APEX_STORAGE_DIRS,
+            activeProfileId: targetProfileId,
+            profilesCount: manifest.profiles.length,
+            directories: {
+              ...APEX_STORAGE_DIRS,
+              profileRoot: pDirs.root,
+              stints: pDirs.stints,
+              reports: pDirs.reports,
+              progress: pDirs.progress
+            },
             stats: {
               stints: stintCount,
               reports: reportCount,
@@ -237,7 +403,7 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
         }
       });
 
-      // 1.3 Driver Progress API: /api/storage/progress
+      // 1.4 Driver Progress API: /api/storage/progress
       server.middlewares.use('/api/storage/progress', async (req, res) => {
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Access-Control-Allow-Origin', '*');
@@ -249,7 +415,11 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
           return res.end();
         }
 
-        const progressFile = path.join(APEX_STORAGE_DIRS.progress, 'progress.json');
+        const parsedUrl = new URL(req.url || '', 'http://localhost');
+        const manifest = loadOrInitProfilesManifest();
+        const targetProfileId = parsedUrl.searchParams.get('profileId') || manifest.activeProfileId || 'driver_default';
+        const pDirs = getProfileDirs(targetProfileId);
+        const progressFile = path.join(pDirs.progress, 'progress.json');
 
         if (req.method === 'GET') {
           try {
@@ -271,7 +441,7 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
             // Validate JSON
             JSON.parse(content);
             fs.writeFileSync(progressFile, content, 'utf-8');
-            return res.end(JSON.stringify({ success: true, savedAt: Date.now() }));
+            return res.end(JSON.stringify({ success: true, profileId: targetProfileId, savedAt: Date.now() }));
           } catch (err: any) {
             res.statusCode = 400;
             return res.end(JSON.stringify({ success: false, error: err.message }));
@@ -282,7 +452,7 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
         res.end(JSON.stringify({ error: 'Method not allowed' }));
       });
 
-      // 1.4 Stints History API: /api/storage/stints
+      // 1.5 Stints History API: /api/storage/stints
       server.middlewares.use('/api/storage/stints', async (req, res) => {
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Access-Control-Allow-Origin', '*');
@@ -295,15 +465,19 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
         }
 
         const url = req.url || '';
+        const parsedUrl = new URL(url, 'http://localhost');
+        const manifest = loadOrInitProfilesManifest();
+        const targetProfileId = parsedUrl.searchParams.get('profileId') || manifest.activeProfileId || 'driver_default';
+        const pDirs = getProfileDirs(targetProfileId);
 
-        // GET all stints
+        // GET all stints for this profile
         if (req.method === 'GET') {
           try {
-            const files = fs.readdirSync(APEX_STORAGE_DIRS.stints).filter(f => f.endsWith('.json'));
+            const files = fs.readdirSync(pDirs.stints).filter(f => f.endsWith('.json'));
             const stints: any[] = [];
             for (const file of files) {
               try {
-                const filePath = path.join(APEX_STORAGE_DIRS.stints, file);
+                const filePath = path.join(pDirs.stints, file);
                 const fileContent = fs.readFileSync(filePath, 'utf-8');
                 const parsed = JSON.parse(fileContent);
                 stints.push(parsed);
@@ -311,7 +485,7 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
             }
             // Sort by timestamp descending
             stints.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-            return res.end(JSON.stringify({ success: true, stints, count: stints.length }));
+            return res.end(JSON.stringify({ success: true, profileId: targetProfileId, stints, count: stints.length }));
           } catch (err: any) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ success: false, error: err.message }));
@@ -323,13 +497,13 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
           try {
             const bodyBuffer = await readRequestBody(req);
             const stint = JSON.parse(bodyBuffer.toString('utf-8'));
-            const stintId = stint.id || `stint_${Date.now()}`;
+            const stintId = stint.stintId || stint.id || `stint_${Date.now()}`;
             const safeTrack = (stint.trackName || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
             const fileName = `stint_${stintId}_${safeTrack}.json`;
-            const filePath = path.join(APEX_STORAGE_DIRS.stints, fileName);
+            const filePath = path.join(pDirs.stints, fileName);
 
             fs.writeFileSync(filePath, JSON.stringify(stint, null, 2), 'utf-8');
-            return res.end(JSON.stringify({ success: true, stintId, fileName, path: filePath }));
+            return res.end(JSON.stringify({ success: true, profileId: targetProfileId, stintId, fileName, path: filePath }));
           } catch (err: any) {
             res.statusCode = 400;
             return res.end(JSON.stringify({ success: false, error: err.message }));
@@ -339,22 +513,21 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
         // DELETE - Delete a stint by id
         if (req.method === 'DELETE') {
           try {
-            const parsedUrl = new URL(url, 'http://localhost');
             const stintId = parsedUrl.searchParams.get('id');
             if (!stintId) {
               res.statusCode = 400;
               return res.end(JSON.stringify({ success: false, error: 'Missing stint id' }));
             }
 
-            const files = fs.readdirSync(APEX_STORAGE_DIRS.stints);
+            const files = fs.readdirSync(pDirs.stints);
             let deleted = false;
             for (const file of files) {
               if (file.includes(stintId)) {
-                fs.unlinkSync(path.join(APEX_STORAGE_DIRS.stints, file));
+                fs.unlinkSync(path.join(pDirs.stints, file));
                 deleted = true;
               }
             }
-            return res.end(JSON.stringify({ success: true, deleted }));
+            return res.end(JSON.stringify({ success: true, profileId: targetProfileId, deleted }));
           } catch (err: any) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ success: false, error: err.message }));
@@ -365,7 +538,7 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
         res.end(JSON.stringify({ error: 'Method not allowed' }));
       });
 
-      // 1.5 PDF Reports API: /api/storage/reports
+      // 1.6 PDF Reports API: /api/storage/reports
       server.middlewares.use('/api/storage/reports', async (req, res) => {
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Access-Control-Allow-Origin', '*');
@@ -377,12 +550,17 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
           return res.end();
         }
 
+        const parsedUrl = new URL(req.url || '', 'http://localhost');
+        const manifest = loadOrInitProfilesManifest();
+        const targetProfileId = parsedUrl.searchParams.get('profileId') || manifest.activeProfileId || 'driver_default';
+        const pDirs = getProfileDirs(targetProfileId);
+
         if (req.method === 'GET') {
           try {
-            const files = fs.readdirSync(APEX_STORAGE_DIRS.reports)
+            const files = fs.readdirSync(pDirs.reports)
               .filter(f => f.endsWith('.pdf'))
               .map(fileName => {
-                const filePath = path.join(APEX_STORAGE_DIRS.reports, fileName);
+                const filePath = path.join(pDirs.reports, fileName);
                 const stat = fs.statSync(filePath);
                 return {
                   fileName,
@@ -392,7 +570,7 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
                 };
               });
             files.sort((a, b) => b.createdAt - a.createdAt);
-            return res.end(JSON.stringify({ success: true, reports: files }));
+            return res.end(JSON.stringify({ success: true, profileId: targetProfileId, reports: files }));
           } catch (err: any) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ success: false, error: err.message }));
@@ -410,14 +588,15 @@ export function telemetryPlugin(udpPort = 5300, secondaryUdpPort = 20777): Plugi
             }
 
             const cleanFileName = fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`;
-            const filePath = path.join(APEX_STORAGE_DIRS.reports, cleanFileName);
+            const filePath = path.join(pDirs.reports, cleanFileName);
             const binaryData = Buffer.from(base64Data.replace(/^data:application\/pdf;base64,/, ''), 'base64');
 
             fs.writeFileSync(filePath, binaryData);
-            console.log(`📄 [APEX PDF Storage] Report saved to PC: ${filePath} (${(binaryData.length / 1024).toFixed(1)} KB)`);
+            console.log(`📄 [APEX PDF Storage] Report saved to PC (${targetProfileId}): ${filePath} (${(binaryData.length / 1024).toFixed(1)} KB)`);
 
             return res.end(JSON.stringify({
               success: true,
+              profileId: targetProfileId,
               fileName: cleanFileName,
               filePath,
               sizeBytes: binaryData.length

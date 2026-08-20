@@ -23,6 +23,8 @@ import {
   RecordingStatus,
   StorageInfo
 } from '../../services/diskStorage';
+import { DriverProfile, ProfilesManifest } from '../../types/profile';
+import { DriverProfileSwitcher } from '../profile/DriverProfileSwitcher';
 
 export type AppView = 'dashboard' | 'curriculum' | 'practice' | 'debrief' | 'history';
 
@@ -42,6 +44,12 @@ interface HeaderProps {
   isBridgeConnected?: boolean;
   totalMasteredModules?: number;
   networkInfo?: NetworkInfo | null;
+  manifest?: ProfilesManifest;
+  activeProfile?: DriverProfile;
+  onSelectProfile?: (profileId: string) => void;
+  onCreateProfile?: () => void;
+  onEditActiveProfile?: () => void;
+  onOpenGateway?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -50,7 +58,13 @@ export const Header: React.FC<HeaderProps> = ({
   setIsSidebarCollapsed,
   isUdpConnected,
   isBridgeConnected = false,
-  networkInfo
+  networkInfo,
+  manifest,
+  activeProfile,
+  onSelectProfile,
+  onCreateProfile,
+  onEditActiveProfile,
+  onOpenGateway
 }) => {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
     return typeof document !== 'undefined' ? Boolean(document.fullscreenElement) : false;
@@ -198,6 +212,18 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right Controls: Ingest Status, REC Toggle, Storage Info & Actions */}
       <div className="flex items-center space-x-2.5">
+        {/* Driver Profile Quick-Switcher */}
+        {manifest && activeProfile && onSelectProfile && onCreateProfile && onEditActiveProfile && onOpenGateway && (
+          <DriverProfileSwitcher
+            manifest={manifest}
+            activeProfile={activeProfile}
+            onSelectProfile={onSelectProfile}
+            onCreateProfile={onCreateProfile}
+            onEditActiveProfile={onEditActiveProfile}
+            onOpenGateway={onOpenGateway}
+          />
+        )}
+
         {/* Notification Toast if any */}
         {recordingNotification && (
           <div className="hidden lg:flex items-center space-x-2 px-3 py-1 bg-red-950/80 border border-red-500/60 text-red-200 text-xs font-mono animate-fade-in shadow-lg shadow-red-950/50">
