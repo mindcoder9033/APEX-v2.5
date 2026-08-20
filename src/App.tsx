@@ -13,6 +13,7 @@ import { SKIP_BARBER_MODULES } from './data/skipBarberCurriculum';
 import { 
   loadUserProgress, saveUserProgress, loadLapHistory, saveLapHistory,
   loadStintHistory, saveStintHistory,
+  loadUserProgressFromDisk, loadStintHistoryFromDisk,
   recordChallengeCompletion, recordGraduationCompletion 
 } from './db/storage';
 import { Module, Session, UserProgressState, ChallengeResult, GraduationResult } from './types/curriculum';
@@ -45,6 +46,18 @@ export function App() {
   const [progress, setProgress] = useState<UserProgressState>(loadUserProgress);
   const [stintHistory, setStintHistory] = useState<StintSession[]>(loadStintHistory);
   const [savedLaps, setSavedLaps] = useState<LapAnalysis[]>(loadLapHistory);
+
+  // Hydrate full state directly from PC disk on mount (~/Documents/APEX/)
+  useEffect(() => {
+    loadUserProgressFromDisk().then((diskProg) => {
+      if (diskProg) setProgress(diskProg);
+    });
+    loadStintHistoryFromDisk().then((diskStints) => {
+      if (diskStints && diskStints.length > 0) {
+        setStintHistory(diskStints);
+      }
+    });
+  }, []);
 
   // Active session and graduation state for Curriculum Academy
   const [activeSessionSelection, setActiveSessionSelection] = useState<{ module: Module; session: Session } | null>(null);

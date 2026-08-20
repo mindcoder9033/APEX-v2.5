@@ -1,5 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Clock, Wifi, Award, Radio, Activity, BarChart3, LayoutDashboard } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  PanelLeftClose,
+  PanelLeftOpen,
+  Maximize2,
+  Minimize2,
+  Clock,
+  Wifi,
+  Award,
+  Radio,
+  Activity,
+  BarChart3,
+  LayoutDashboard,
+  CircleDot,
+  HardDrive,
+  FolderCheck
+} from 'lucide-react';
+import {
+  startRawUdpRecording,
+  stopRawUdpRecording,
+  getRecordingStatus,
+  getStorageInfo,
+  RecordingStatus,
+  StorageInfo
+} from '../../services/diskStorage';
 
 export type AppView = 'dashboard' | 'curriculum' | 'practice' | 'debrief' | 'history';
 
@@ -36,6 +59,66 @@ export const Header: React.FC<HeaderProps> = ({
   const [timeStr, setTimeStr] = useState<string>(() => {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
   });
+
+  // Raw UDP Recording State
+  const [isRecordingUdp, setIsRecordingUdp] = useState(false);
+  const [recordingStatus, setRecordingStatus] = useState<RecordingStatus | null>(null);
+  const [isRecordingBusy, setIsRecordingBusy] = useState(false);
+  const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
+  const [recordingNotification, setRecordingNotification] = useState<string | null>(null);
+
+  // Poll recording status & storage info
+  useEffect(() => {
+    getStorageInfo().then(setStorageInfo);
+    getRecordingStatus().then((status) => {
+      if (status) {
+        setIsRecordingUdp(status.isRecording);
+        setRecordingStatus(status);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    let interval: any = null;
+    if (isRecordingUdp) {
+      interval = setInterval(() => {
+        getRecordingStatus().then((status) => {
+          if (status) {
+            setRecordingStatus(status);
+          }
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRecordingUdp]);
+
+  const handleToggleRecording = async () => {
+    if (isRecordingBusy) return;
+    setIsRecordingBusy(true);
+
+    try {
+      if (!isRecordingUdp) {
+        const res = await startRawUdpRecording();
+        if (res.success) {
+          setIsRecordingUdp(true);
+          setRecordingNotification('Raw UDP dump started → Documents/APEX/raw_telemetry');
+          setTimeout(() => setRecordingNotification(null), 4000);
+        }
+      } else {
+        const res = await stopRawUdpRecording();
+        if (res.success) {
+          setIsRecordingUdp(false);
+          setRecordingStatus(null);
+          setRecordingNotification(`Saved ${res.packetCount} packets (${(res.bytesWritten / 1024).toFixed(1)} KB) to PC!`);
+          setTimeout(() => setRecordingNotification(null), 5000);
+        }
+      }
+    } finally {
+      setIsRecordingBusy(false);
+    }
+  };
 
   useEffect(() => {
     const updateClock = () => {
@@ -113,8 +196,37 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
 
-      {/* Right Controls: Ingest Status, Network Info & Actions */}
+      {/* Right Controls: Ingest Status, REC Toggle, Storage Info & Actions */}
       <div className="flex items-center space-x-2.5">
+        {/* Notification Toast if any */}
+        {recordingNotification && (
+          <div className="hidden lg:flex items-center space-x-2 px-3 py-1 bg-red-950/80 border border-red-500/60 text-red-200 text-xs font-mono animate-fade-in shadow-lg shadow-red-950/50">
+            <HardDrive className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+            <span>{recordingNotification}</span>
+          </div>
+        )}
+
+        {/* Raw UDP Stream Recorder Button */}
+        <button
+          type="button"
+          onClick={handleToggleRecording}
+          disabled={isRecordingBusy}
+          title={isRecordingUdp ? 'Stop Recording Raw UDP to PC' : 'Record Raw High-Frequency UDP Stream to PC'}
+          className={`flex items-center space-x-2 px-3 py-1.5 border text-xs font-mono font-bold transition-all active:scale-95 ${
+            isRecordingUdp
+              ? 'bg-red-950/80 border-red-500 text-red-100 shadow-md shadow-red-950/60 animate-pulse'
+              : 'bg-[#14141E] hover:bg-[#1C1C28] border-[#2E2E42] text-slate-300 hover:text-white hover:border-red-500/50'
+          }`}
+        >
+          <div className={`w-2.5 h-2.5 rounded-full ${isRecordingUdp ? 'bg-red-500 animate-ping' : 'bg-red-500/60'}`} />
+          <span>{isRecordingUdp ? 'REC ON' : 'REC UDP'}</span>
+          {isRecordingUdp && recordingStatus && (
+            <span className="bg-red-900/60 px-1.5 py-0.2 border border-red-500/40 text-[10px] text-red-200">
+              {Math.floor(recordingStatus.durationSec / 60)}:{(recordingStatus.durationSec % 60).toString().padStart(2, '0')} ({recordingStatus.packetCount} pkts)
+            </span>
+          )}
+        </button>
+
         {/* UDP Connection Status Pill */}
         <div className={`flex items-center space-x-2 px-3 py-1.5 border text-xs font-mono font-medium ${isUdpConnected
           ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
@@ -135,6 +247,60 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'Bridge Ready • Waiting for Forza'
                 : 'Bridge Offline (Port 5300)'}
           </span>
+        </div>
+
+        {/* PC Disk Storage Tooltip */}
+        <div className="relative group">
+          <button
+            type="button"
+            aria-label="PC Storage Directory Information"
+            className="w-8 h-8 flex items-center justify-center bg-[#14141E] hover:bg-[#1C1C28] border border-[#232332] hover:border-[#00F0FF]/60 text-slate-300 hover:text-[#00F0FF] font-mono transition-all shadow-sm cursor-help active:scale-95"
+          >
+            <HardDrive className="w-4 h-4 text-cyan-400" />
+          </button>
+
+          {/* Storage Directory Info Card */}
+          <div className="absolute right-0 top-full mt-2 w-84 bg-[#101018]/95 backdrop-blur-md border border-[#2E2E42] shadow-2xl p-4 hidden group-hover:block z-50 transition-all pointer-events-none">
+            <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-[#232332]">
+              <div className="flex items-center space-x-2">
+                <FolderCheck className="w-3.5 h-3.5 text-[#00F0FF]" />
+                <span className="text-[11px] font-racing font-bold tracking-wider text-slate-200 uppercase">
+                  PC Local Storage
+                </span>
+              </div>
+              <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 border bg-cyan-950/60 border-cyan-500/50 text-cyan-300">
+                ACTIVE
+              </span>
+            </div>
+
+            <div className="space-y-2 text-[11px] font-mono">
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-sans font-semibold">Storage Root:</span>
+                <span className="text-white font-bold text-[11px] bg-[#181824] px-1.5 py-0.5 border border-[#28283C] inline-block mt-0.5 break-all">
+                  {storageInfo?.storageRoot || 'Documents\\APEX'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-[#1C1C28] text-center">
+                <div className="bg-[#14141E] p-1.5 border border-[#232332]">
+                  <span className="text-[10px] text-slate-400 block">Stints</span>
+                  <strong className="text-emerald-400 text-xs">{storageInfo?.stats.stints ?? 0}</strong>
+                </div>
+                <div className="bg-[#14141E] p-1.5 border border-[#232332]">
+                  <span className="text-[10px] text-slate-400 block">PDFs</span>
+                  <strong className="text-amber-400 text-xs">{storageInfo?.stats.reports ?? 0}</strong>
+                </div>
+                <div className="bg-[#14141E] p-1.5 border border-[#232332]">
+                  <span className="text-[10px] text-slate-400 block">Raw Logs</span>
+                  <strong className="text-cyan-400 text-xs">{storageInfo?.stats.rawLogs ?? 0}</strong>
+                </div>
+              </div>
+
+              <div className="pt-2 text-[10px] font-sans text-slate-400 leading-snug border-t border-[#1C1C28]">
+                📁 Stints, reports, progress, and UDP logs are saved directly to your PC Documents folder.
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Network IP & Port Helper Hover Tooltip */}
@@ -216,6 +382,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
       </div>
+
     </header>
   );
 };

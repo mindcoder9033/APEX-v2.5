@@ -4,6 +4,12 @@ import { adaptiveDownsampleFrames, rebindLapToTrack } from '../engine/physicsEng
 import { getTrackCorners } from '../data/trackCorners';
 import { PracticeViewLayout, DEFAULT_PRACTICE_LAYOUT } from '../types/widgets';
 import { downsampleTelemetryLOD, LOD_PRESETS } from '../engine/lodDownsampler';
+import {
+  loadProgressFromDisk,
+  saveProgressToDisk,
+  loadStintsFromDisk,
+  saveStintToDisk
+} from '../services/diskStorage';
 
 const STORAGE_KEY_PROGRESS = 'apex_user_progress_v2_5';
 const STORAGE_KEY_SESSIONS = 'apex_saved_sessions_v2_5';
@@ -35,9 +41,29 @@ export function loadUserProgress(): UserProgressState {
   }
 }
 
+/**
+ * Loads progress from PC disk (~/Documents/APEX/progress/progress.json) and updates localStorage
+ */
+export async function loadUserProgressFromDisk(): Promise<UserProgressState> {
+  try {
+    const diskProgress = await loadProgressFromDisk();
+    if (diskProgress) {
+      localStorage.setItem(STORAGE_KEY_PROGRESS, JSON.stringify(diskProgress));
+      return { ...INITIAL_PROGRESS_STATE, ...diskProgress };
+    }
+  } catch (e) {
+    console.warn('[APEX Storage] Could not hydrate progress from disk:', e);
+  }
+  return loadUserProgress();
+}
+
 export function saveUserProgress(state: UserProgressState): void {
   try {
     localStorage.setItem(STORAGE_KEY_PROGRESS, JSON.stringify(state));
+    // Asynchronously sync to local PC disk
+    saveProgressToDisk(state).catch((err) => {
+      console.warn('[APEX Storage] Failed to sync progress to PC disk:', err);
+    });
   } catch (e) {
     console.error('Error saving progress state:', e);
   }
@@ -62,6 +88,14 @@ function sanitizeStintSession(stint: StintSession, isHistorical: boolean = false
 
 export function saveStintHistory(stints: StintSession[]): void {
   try {
+    // 1. Sync full high-fidelity stints directly to PC disk
+    stints.forEach((stint) => {
+      saveStintToDisk(stint).catch((err) => {
+        console.warn(`[APEX Storage] Could not save stint ${stint.stintId} to PC disk:`, err);
+      });
+    });
+
+    // 2. Save compact copy in localStorage for immediate client-side queries
     const sanitized = stints.slice(0, 50).map((s, idx) => sanitizeStintSession(s, idx >= 5));
     localStorage.setItem(STORAGE_KEY_STINTS, JSON.stringify(sanitized));
 
@@ -69,7 +103,7 @@ export function saveStintHistory(stints: StintSession[]): void {
     const flattenedLaps = sanitized.flatMap(s => s.laps).slice(0, 100);
     localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(flattenedLaps));
   } catch (e) {
-    console.warn('Storage quota warning when saving stint history, attempting FIFO purge:', e);
+    console.warn('Storage quota warning when saving stint history to localStorage, attempting FIFO purge:', e);
     try {
       // Graceful fallback: keep top 10 most recent stints with reduced frame count
       const compact = stints.slice(0, 10).map(s => sanitizeStintSession(s, true));
@@ -77,9 +111,29 @@ export function saveStintHistory(stints: StintSession[]): void {
       const compactLaps = compact.flatMap(s => s.laps).slice(0, 30);
       localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(compactLaps));
     } catch (fallbackError) {
-      console.error('Failed to save stint history even after purge:', fallbackError);
+      console.error('Failed to save stint history to localStorage even after purge:', fallbackError);
     }
   }
+}
+
+/**
+ * Loads all stints from PC disk (~/Documents/APEX/stints/*.json) and falls back to localStorage
+ */
+export async function loadStintHistoryFromDisk(): Promise<StintSession[]> {
+  try {
+    const diskStints = await loadStintsFromDisk();
+    if (diskStints && diskStints.length > 0) {
+      // Update local storage cache
+      try {
+        const sanitized = diskStints.slice(0, 50).map((s, idx) => sanitizeStintSession(s, idx >= 5));
+        localStorage.setItem(STORAGE_KEY_STINTS, JSON.stringify(sanitized));
+      } catch (_) {}
+      return diskStints;
+    }
+  } catch (e) {
+    console.warn('[APEX Storage] Could not hydrate stints from disk:', e);
+  }
+  return loadStintHistory();
 }
 
 export function loadStintHistory(): StintSession[] {

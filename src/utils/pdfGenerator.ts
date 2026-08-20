@@ -11,6 +11,7 @@ import {
   renderStintThrottleTraceChart,
   renderStintProgressionWithSectorsChart
 } from './pdfCharts';
+import { savePdfReportToDisk } from '../services/diskStorage';
 
 // ============================================================================
 // DESIGN SYSTEM CONSTANTS & TOKENS (PDF DESIGN.md)
@@ -1893,8 +1894,21 @@ export const generateOfficialPdf = async (
     isFriendly
   );
 
-  // Download PDF with custom Stint Title filename
+  // Download PDF and simultaneously save directly to local PC disk (~/Documents/APEX/reports/)
   const filename = getDebriefFilename(stintSession, lap, trackName, carName);
+  try {
+    const pdfDataUri = doc.output('datauristring');
+    savePdfReportToDisk(filename, pdfDataUri).then((res) => {
+      if (res.success && res.filePath) {
+        console.log(`[APEX PDF] Report saved directly to PC: ${res.filePath}`);
+      }
+    }).catch((err) => {
+      console.warn('[APEX PDF] Failed to save report to PC disk:', err);
+    });
+  } catch (err) {
+    console.warn('[APEX PDF] Could not extract PDF binary for disk sync:', err);
+  }
+
   doc.save(filename);
 };
 
@@ -3199,7 +3213,20 @@ export const generateStintOfficialPdf = async (
     isFriendly
   );
 
-  // Download PDF with custom Stint Title filename
+  // Download PDF and simultaneously save directly to local PC disk (~/Documents/APEX/reports/)
   const filename = getDebriefFilename(stint, bestLap, trackName, carName);
+  try {
+    const pdfDataUri = doc.output('datauristring');
+    savePdfReportToDisk(filename, pdfDataUri).then((res) => {
+      if (res.success && res.filePath) {
+        console.log(`[APEX PDF] Stint Dossier saved directly to PC: ${res.filePath}`);
+      }
+    }).catch((err) => {
+      console.warn('[APEX PDF] Failed to save stint report to PC disk:', err);
+    });
+  } catch (err) {
+    console.warn('[APEX PDF] Could not extract PDF binary for disk sync:', err);
+  }
+
   doc.save(filename);
 };
