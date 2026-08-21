@@ -14,6 +14,8 @@ import {
   Car, MapPin, Flag, Sun, CloudRain, RotateCw, Square, WifiOff,
   History, ChevronDown, ChevronUp, Eye, Sparkles
 } from 'lucide-react';
+import { TelemetryWaitingOverlay } from '../telemetry/TelemetryWaitingOverlay';
+import { NetworkInterfaceInfo } from '../../types/telemetry';
 
 interface SessionStepperViewProps {
   module: Module;
@@ -22,6 +24,7 @@ interface SessionStepperViewProps {
   isUdpConnected: boolean;
   liveFrame: TelemetryFrame | null;
   liveFramesBuffer: TelemetryFrame[];
+  networkInfo?: NetworkInterfaceInfo | null;
   onBack: () => void;
   onChallengePassed: (result: ChallengeResult, nextSessionId: string | null, attempt?: ChallengeAttempt) => void;
   onSaveLap: (lap: LapAnalysis) => void;
@@ -35,6 +38,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
   isUdpConnected,
   liveFrame,
   liveFramesBuffer,
+  networkInfo = null,
   onBack,
   onChallengePassed,
   onSaveLap,
@@ -73,7 +77,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
   // Practice recording timer
   useEffect(() => {
-    if (isRecording) {
+    if (isRecording && isUdpConnected) {
       recordingTimerRef.current = setInterval(() => {
         setRecordingSeconds(prev => prev + 1);
       }, 1000);
@@ -83,7 +87,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
     return () => {
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     };
-  }, [isRecording]);
+  }, [isRecording, isUdpConnected]);
 
   // Capture incoming live frames when Step 5 challenge recording is active
   useEffect(() => {
@@ -94,7 +98,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
   // Challenge recording timer
   useEffect(() => {
-    if (isChallengeRecording) {
+    if (isChallengeRecording && isUdpConnected) {
       challengeTimerRef.current = setInterval(() => {
         setChallengeRecordingSeconds(prev => prev + 1);
       }, 1000);
@@ -104,7 +108,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
     return () => {
       if (challengeTimerRef.current) clearInterval(challengeTimerRef.current);
     };
-  }, [isChallengeRecording]);
+  }, [isChallengeRecording, isUdpConnected]);
 
   // Practice Handlers (Step 2)
   const handleStartRecording = () => {
@@ -566,53 +570,67 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                 </div>
               </div>
 
-              {/* Recording Status & Action Buttons */}
-              <div className="p-4 bg-[#0E0E14] border border-[#222232] flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center space-x-4 font-mono text-xs">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-slate-400">Duration:</span>
-                    <strong className="text-white text-sm tabular-nums">{formatTime(recordingSeconds)}</strong>
+              {/* Telemetry Status & Ingestion Controls */}
+              {!isUdpConnected ? (
+                <div className="py-2">
+                  <TelemetryWaitingOverlay
+                    networkInfo={networkInfo}
+                    isRecording={isRecording}
+                    recordingDurationSec={recordingSeconds}
+                    recordedLapsCount={sessionLaps.length}
+                    onRequestStopRecording={handleStopRecording}
+                    onResetRecording={handleResetRecording}
+                    compact={true}
+                  />
+                </div>
+              ) : (
+                <div className="p-4 bg-[#0E0E14] border border-[#222232] flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center space-x-4 font-mono text-xs">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-slate-400">Duration:</span>
+                      <strong className="text-white text-sm tabular-nums">{formatTime(recordingSeconds)}</strong>
+                    </div>
+                    <div className="h-4 w-[1px] bg-[#222232]" />
+                    <div className="flex items-center space-x-2">
+                      <span className="text-slate-400">Frames Captured:</span>
+                      <strong className="text-[#00F0FF] text-sm tabular-nums">{recordedFrames.length}</strong>
+                    </div>
                   </div>
-                  <div className="h-4 w-[1px] bg-[#222232]" />
-                  <div className="flex items-center space-x-2">
-                    <span className="text-slate-400">Frames Captured:</span>
-                    <strong className="text-[#00F0FF] text-sm tabular-nums">{recordedFrames.length}</strong>
+
+                  <div className="flex items-center space-x-3">
+                    {!isRecording ? (
+                      <button
+                        onClick={handleStartRecording}
+                        disabled={!isUdpConnected}
+                        className={`chamfer-btn flex items-center space-x-2 px-5 py-2.5 text-xs font-racing font-bold tracking-wide transition-all ${
+                          isUdpConnected
+                            ? 'bg-[#E10600] hover:bg-[#FF1801] text-white shadow-lg shadow-red-950/60 active:scale-95 cursor-pointer'
+                            : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'
+                        }`}
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                        <span>Start Recording Stint</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleStopRecording}
+                        className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-racing font-bold tracking-wide shadow-lg shadow-amber-950/60 active:scale-95 cursor-pointer"
+                      >
+                        <Square className="w-4 h-4 fill-current" />
+                        <span>Stop & Analyze Stint</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={handleResetRecording}
+                      disabled={isRecording || recordedFrames.length === 0}
+                      className="px-3.5 py-2.5 bg-[#181824] hover:bg-[#222232] text-slate-400 hover:text-white border border-[#28283C] text-xs font-mono transition-all disabled:opacity-40 cursor-pointer"
+                    >
+                      Reset
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex items-center space-x-3">
-                  {!isRecording ? (
-                    <button
-                      onClick={handleStartRecording}
-                      disabled={!isUdpConnected}
-                      className={`chamfer-btn flex items-center space-x-2 px-5 py-2.5 text-xs font-racing font-bold tracking-wide transition-all ${
-                        isUdpConnected
-                          ? 'bg-[#E10600] hover:bg-[#FF1801] text-white shadow-lg shadow-red-950/60 active:scale-95 cursor-pointer'
-                          : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'
-                      }`}
-                    >
-                      <Play className="w-4 h-4 fill-current" />
-                      <span>Start Recording Stint</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleStopRecording}
-                      className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-racing font-bold tracking-wide shadow-lg shadow-amber-950/60 active:scale-95 cursor-pointer"
-                    >
-                      <Square className="w-4 h-4 fill-current" />
-                      <span>Stop & Analyze Stint</span>
-                    </button>
-                  )}
-
-                  <button
-                    onClick={handleResetRecording}
-                    disabled={isRecording || recordedFrames.length === 0}
-                    className="px-3.5 py-2.5 bg-[#181824] hover:bg-[#222232] text-slate-400 hover:text-white border border-[#28283C] text-xs font-mono transition-all disabled:opacity-40 cursor-pointer"
-                  >
-                    Reset
-                  </button>
-                </div>
-              </div>
+              )}
 
               {/* Last Saved Stint Result */}
               {lastSavedStintLap && (
@@ -829,54 +847,68 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                   </span>
                 </div>
 
-                <div className="p-4 bg-[#14141E] border border-[#20202E] flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center space-x-4 font-mono text-xs">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-slate-400">Stint Timer:</span>
-                      <strong className={`text-sm tabular-nums ${isChallengeRecording ? 'text-amber-400' : 'text-white'}`}>
-                        {formatTime(challengeRecordingSeconds)}
-                      </strong>
+                {!isUdpConnected ? (
+                  <div className="py-2">
+                    <TelemetryWaitingOverlay
+                      networkInfo={networkInfo}
+                      isRecording={isChallengeRecording}
+                      recordingDurationSec={challengeRecordingSeconds}
+                      recordedLapsCount={sessionAttempts.length}
+                      onRequestStopRecording={handleStopChallengeRecording}
+                      onResetRecording={handleResetChallengeRecording}
+                      compact={true}
+                    />
+                  </div>
+                ) : (
+                  <div className="p-4 bg-[#14141E] border border-[#20202E] flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center space-x-4 font-mono text-xs">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-slate-400">Stint Timer:</span>
+                        <strong className={`text-sm tabular-nums ${isChallengeRecording ? 'text-amber-400' : 'text-white'}`}>
+                          {formatTime(challengeRecordingSeconds)}
+                        </strong>
+                      </div>
+                      <div className="h-4 w-[1px] bg-[#222232]" />
+                      <div className="flex items-center space-x-2">
+                        <span className="text-slate-400">Frames Captured:</span>
+                        <strong className="text-[#00F0FF] text-sm tabular-nums">{challengeRecordedFrames.length}</strong>
+                      </div>
                     </div>
-                    <div className="h-4 w-[1px] bg-[#222232]" />
-                    <div className="flex items-center space-x-2">
-                      <span className="text-slate-400">Frames Captured:</span>
-                      <strong className="text-[#00F0FF] text-sm tabular-nums">{challengeRecordedFrames.length}</strong>
+
+                    <div className="flex items-center space-x-3">
+                      {!isChallengeRecording ? (
+                        <button
+                          onClick={handleStartChallengeRecording}
+                          disabled={!isUdpConnected}
+                          className={`chamfer-btn flex items-center space-x-2 px-5 py-2.5 text-xs font-racing font-bold tracking-wide transition-all ${
+                            isUdpConnected
+                              ? 'bg-gradient-to-r from-amber-500 to-[#E10600] hover:from-amber-400 hover:to-[#FF1801] text-white shadow-xl shadow-red-950/60 active:scale-95 cursor-pointer'
+                              : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'
+                          }`}
+                        >
+                          <Play className="w-4 h-4 fill-current" />
+                          <span>Start Official Challenge Attempt #{sessionAttempts.length + 1}</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleStopChallengeRecording}
+                          className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-black text-xs font-racing font-bold tracking-wide shadow-lg shadow-amber-950/60 active:scale-95 cursor-pointer animate-pulse"
+                        >
+                          <Square className="w-4 h-4 fill-current" />
+                          <span>Stop & Evaluate Challenge Stint</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={handleResetChallengeRecording}
+                        disabled={isChallengeRecording || challengeRecordedFrames.length === 0}
+                        className="px-3.5 py-2.5 bg-[#181824] hover:bg-[#222232] text-slate-400 hover:text-white border border-[#28283C] text-xs font-mono transition-all disabled:opacity-40 cursor-pointer"
+                      >
+                        Reset
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center space-x-3">
-                    {!isChallengeRecording ? (
-                      <button
-                        onClick={handleStartChallengeRecording}
-                        disabled={!isUdpConnected}
-                        className={`chamfer-btn flex items-center space-x-2 px-5 py-2.5 text-xs font-racing font-bold tracking-wide transition-all ${
-                          isUdpConnected
-                            ? 'bg-gradient-to-r from-amber-500 to-[#E10600] hover:from-amber-400 hover:to-[#FF1801] text-white shadow-xl shadow-red-950/60 active:scale-95 cursor-pointer'
-                            : 'bg-[#1C1C28] text-slate-500 border border-[#2A2A3C] cursor-not-allowed shadow-none'
-                        }`}
-                      >
-                        <Play className="w-4 h-4 fill-current" />
-                        <span>Start Official Challenge Attempt #{sessionAttempts.length + 1}</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleStopChallengeRecording}
-                        className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-black text-xs font-racing font-bold tracking-wide shadow-lg shadow-amber-950/60 active:scale-95 cursor-pointer animate-pulse"
-                      >
-                        <Square className="w-4 h-4 fill-current" />
-                        <span>Stop & Evaluate Challenge Stint</span>
-                      </button>
-                    )}
-
-                    <button
-                      onClick={handleResetChallengeRecording}
-                      disabled={isChallengeRecording || challengeRecordedFrames.length === 0}
-                      className="px-3.5 py-2.5 bg-[#181824] hover:bg-[#222232] text-slate-400 hover:text-white border border-[#28283C] text-xs font-mono transition-all disabled:opacity-40 cursor-pointer"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* LATEST ATTEMPT RESULT BANNER */}

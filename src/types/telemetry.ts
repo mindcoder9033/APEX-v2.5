@@ -266,3 +266,9 @@ export interface AICoachDebrief {
   };
 }
 
+export interface NetworkInterfaceInfo {
+  directIps: string[];
+  broadcastIps: string[];
+  udpPort: number;
+  secondaryUdpPort: number;
+}

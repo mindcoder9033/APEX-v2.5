@@ -238,20 +238,18 @@ export function App() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // Live recording timer ticker
+  // Live recording timer ticker - smoothly pauses when UDP telemetry drops and resumes when signal returns
   useEffect(() => {
     let timer: any = null;
-    if (isRecording && recordingStartTime) {
+    if (isRecording && isUdpConnected) {
       timer = setInterval(() => {
-        setRecordingDurationSec(Math.max(0, Math.floor((Date.now() - recordingStartTime) / 1000)));
-      }, 500);
-    } else {
-      setRecordingDurationSec(0);
+        setRecordingDurationSec(prev => prev + 1);
+      }, 1000);
     }
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isRecording, recordingStartTime]);
+  }, [isRecording, isUdpConnected]);
 
   // Connect to local Node.js UDP WebSocket bridge with resilient auto-reconnect
   useEffect(() => {
@@ -492,6 +490,7 @@ export function App() {
   const handleStartRecording = () => {
     setIsRecording(true);
     isRecordingRef.current = true;
+    setRecordingDurationSec(0);
     setRecordingStartTime(Date.now());
     setActiveStintLaps([]);
     activeStintLapsRef.current = [];
@@ -920,6 +919,7 @@ export function App() {
               isUdpConnected={isUdpConnected}
               liveFrame={liveFrame}
               liveFramesBuffer={liveFramesBuffer}
+              networkInfo={networkInfo}
               onBack={() => setActiveSessionSelection(null)}
               onChallengePassed={handleChallengePassed}
               onSaveLap={handleSaveLap}
@@ -961,6 +961,7 @@ export function App() {
             recordingDurationSec={recordingDurationSec}
             recordedLapsCount={activeStintLaps.length}
             activeLapBufferLength={activeLapBufferLength}
+            networkInfo={networkInfo}
             onStartRecording={handleStartRecording}
             onRequestStopRecording={handleRequestStopRecording}
             onResetRecording={handleResetRecording}

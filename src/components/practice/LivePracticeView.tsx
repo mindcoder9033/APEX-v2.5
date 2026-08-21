@@ -35,6 +35,9 @@ import {
   GripHorizontal
 } from 'lucide-react';
 
+import { TelemetryWaitingOverlay } from '../telemetry/TelemetryWaitingOverlay';
+import { NetworkInterfaceInfo } from '../../types/telemetry';
+
 interface LivePracticeViewProps {
   isUdpConnected: boolean;
   liveFrame: TelemetryFrame | null;
@@ -44,6 +47,7 @@ interface LivePracticeViewProps {
   recordingDurationSec: number;
   recordedLapsCount: number;
   activeLapBufferLength: number;
+  networkInfo?: NetworkInterfaceInfo | null;
   onStartRecording: () => void;
   onRequestStopRecording: () => void;
   onResetRecording: () => void;
@@ -58,6 +62,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
   recordingDurationSec,
   recordedLapsCount,
   activeLapBufferLength,
+  networkInfo = null,
   onStartRecording,
   onRequestStopRecording,
   onResetRecording
@@ -366,8 +371,13 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
           {!isRecording ? (
             <button
               onClick={onStartRecording}
-              className="chamfer-btn flex items-center space-x-2 px-5 py-2.5 text-xs font-racing font-bold tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/60 active:scale-95 transition-all cursor-pointer border border-emerald-400/40"
-              title="Begin recording multi-lap stint"
+              disabled={!isUdpConnected}
+              className={`chamfer-btn flex items-center space-x-2 px-5 py-2.5 text-xs font-racing font-bold tracking-wider transition-all border ${
+                isUdpConnected
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/60 active:scale-95 cursor-pointer border-emerald-400/40'
+                  : 'bg-[#121E17] text-emerald-700/60 border-[#1B2F23] cursor-not-allowed opacity-60'
+              }`}
+              title={isUdpConnected ? "Begin recording multi-lap stint" : "Waiting for active UDP telemetry to begin recording"}
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>Start Recording</span>
@@ -399,18 +409,31 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
         </div>
       </div>
 
-      {/* View Presets & Interactive Customizer Bar */}
-      <ViewCustomizerControls
-        layout={layout}
-        isEditMode={isEditMode}
-        onToggleEditMode={() => setIsEditMode(!isEditMode)}
-        onSelectPreset={handleSelectPreset}
-        onResetPreset={handleResetPreset}
-        onAddWidget={handleAddWidget}
-      />
+      {!isUdpConnected ? (
+        <div className="flex-1 flex flex-col min-h-[460px] my-auto justify-center">
+          <TelemetryWaitingOverlay
+            networkInfo={networkInfo}
+            isRecording={isRecording}
+            recordingDurationSec={recordingDurationSec}
+            recordedLapsCount={recordedLapsCount}
+            onRequestStopRecording={onRequestStopRecording}
+            onResetRecording={onResetRecording}
+          />
+        </div>
+      ) : (
+        <>
+          {/* View Presets & Interactive Customizer Bar */}
+          <ViewCustomizerControls
+            layout={layout}
+            isEditMode={isEditMode}
+            onToggleEditMode={() => setIsEditMode(!isEditMode)}
+            onSelectPreset={handleSelectPreset}
+            onResetPreset={handleResetPreset}
+            onAddWidget={handleAddWidget}
+          />
 
-      {/* Dynamic Telemetry Widget Grid Container */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-fr">
+          {/* Dynamic Telemetry Widget Grid Container */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-fr">
         {layout.widgets.map((widgetConfig, idx) => {
           const meta = WIDGET_CATALOG[widgetConfig.id];
           const spanClass = widgetConfig.span === 2
@@ -488,6 +511,8 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
           );
         })}
       </div>
+        </>
+      )}
     </div>
   );
 };
