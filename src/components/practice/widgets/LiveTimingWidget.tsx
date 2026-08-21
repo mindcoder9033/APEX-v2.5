@@ -6,13 +6,15 @@ interface LiveTimingWidgetProps {
   recordingDurationSec: number;
   recordedLapsCount: number;
   activeLapBufferLength: number;
+  targetLaps?: number | null;
 }
 
 export const LiveTimingWidget: React.FC<LiveTimingWidgetProps> = ({
   isRecording,
   recordingDurationSec,
   recordedLapsCount,
-  activeLapBufferLength
+  activeLapBufferLength,
+  targetLaps
 }) => {
   const formatTime = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
@@ -27,6 +29,10 @@ export const LiveTimingWidget: React.FC<LiveTimingWidgetProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const currentLapDisplay = targetLaps 
+    ? `LAP #${Math.min(recordedLapsCount + 1, targetLaps)}/${targetLaps}`
+    : `LAP #${recordedLapsCount + 1}`;
+
   return (
     <div className="p-6 bg-[#12121A] border border-[#232332] flex flex-col justify-between shadow-lg hud-bracket group hover:border-[#00F0FF]/30 transition-all min-h-[170px]">
       <div className="flex items-center justify-between">
@@ -39,7 +45,7 @@ export const LiveTimingWidget: React.FC<LiveTimingWidgetProps> = ({
             ? 'bg-red-950/80 text-red-300 border-red-500/50 animate-pulse'
             : 'bg-[#181824] text-slate-400 border-[#2A2A3C]'
         }`}>
-          {isRecording ? `LAP #${recordedLapsCount + 1}` : 'IDLE / READY'}
+          {isRecording ? currentLapDisplay : (targetLaps ? `TARGET: ${targetLaps} LAPS` : 'IDLE / READY')}
         </span>
       </div>
 
@@ -61,7 +67,9 @@ export const LiveTimingWidget: React.FC<LiveTimingWidgetProps> = ({
             <Flag className="w-3 h-3 text-amber-400" />
             <span>Laps:</span>
           </span>
-          <span className="text-white font-bold">{recordedLapsCount}</span>
+          <span className="text-white font-bold">
+            {recordedLapsCount}{targetLaps ? ` / ${targetLaps}` : ''}
+          </span>
         </div>
         <div className="flex items-center justify-between text-slate-400">
           <span className="flex items-center space-x-1">

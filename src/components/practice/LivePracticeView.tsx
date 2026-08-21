@@ -32,7 +32,11 @@ import {
   Maximize2,
   Minimize2,
   X,
-  GripHorizontal
+  GripHorizontal,
+  Target,
+  Flag,
+  Plus,
+  Infinity as InfinityIcon
 } from 'lucide-react';
 
 import { TelemetryWaitingOverlay } from '../telemetry/TelemetryWaitingOverlay';
@@ -48,10 +52,16 @@ interface LivePracticeViewProps {
   recordedLapsCount: number;
   activeLapBufferLength: number;
   networkInfo?: NetworkInterfaceInfo | null;
+  targetLaps: number | null;
+  onSetTargetLaps: (laps: number | null) => void;
+  onExtendTargetLaps: (additionalLaps: number) => void;
+  isStintTargetReached: boolean;
   onStartRecording: () => void;
   onRequestStopRecording: () => void;
   onResetRecording: () => void;
 }
+
+const PRESET_LAP_OPTIONS = [1, 3, 5, 10];
 
 export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
   isUdpConnected,
@@ -63,6 +73,10 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
   recordedLapsCount,
   activeLapBufferLength,
   networkInfo = null,
+  targetLaps,
+  onSetTargetLaps,
+  onExtendTargetLaps,
+  isStintTargetReached,
   onStartRecording,
   onRequestStopRecording,
   onResetRecording
@@ -73,10 +87,24 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
   const [layout, setLayout] = useState<PracticeViewLayout>(() => loadPracticeViewLayout());
   const [isEditMode, setIsEditMode] = useState(false);
 
+  // Custom Lap Target Input State
+  const [isCustomTargetOpen, setIsCustomTargetOpen] = useState(false);
+  const [customInputValue, setCustomInputValue] = useState('');
+
   const formatTimer = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
     const secs = Math.floor(totalSec % 60);
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleCustomInputSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const val = parseInt(customInputValue, 10);
+    if (!isNaN(val) && val > 0 && val <= 99) {
+      onSetTargetLaps(val);
+      setIsCustomTargetOpen(false);
+      setCustomInputValue('');
+    }
   };
 
   // Layout Modification Handlers
@@ -251,6 +279,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
             recordingDurationSec={recordingDurationSec}
             recordedLapsCount={recordedLapsCount}
             activeLapBufferLength={activeLapBufferLength}
+            targetLaps={targetLaps}
           />
         );
 
@@ -290,8 +319,42 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
     }
   };
 
+  const isPresetSelected = (val: number) => targetLaps === val;
+  const isUnlimited = targetLaps === null;
+  const isCustomActive = targetLaps !== null && !PRESET_LAP_OPTIONS.includes(targetLaps);
+
   return (
-    <div className="flex-1 overflow-y-auto p-8 bg-[#0A0A0E] space-y-6">
+    <div className="flex-1 overflow-y-auto p-8 bg-[#0A0A0E] space-y-6 relative">
+      {/* Checkered Flag Stint Completion Celebration Banner */}
+      {isStintTargetReached && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative p-8 max-w-lg w-full mx-4 bg-[#12121A] border-2 border-amber-400/80 shadow-[0_0_50px_rgba(251,191,36,0.3)] hud-bracket text-center">
+            <div className="flex items-center justify-center space-x-2 text-amber-400 mb-3 animate-bounce">
+              <Flag className="w-8 h-8 fill-current" />
+              <span className="text-3xl font-racing font-black tracking-widest uppercase text-white">
+                STINT COMPLETE
+              </span>
+              <Flag className="w-8 h-8 fill-current" />
+            </div>
+
+            <div className="h-1 w-32 mx-auto bg-gradient-to-r from-transparent via-amber-400 to-transparent my-3" />
+
+            <h3 className="text-lg font-hud font-bold text-amber-300 tracking-wider">
+              TARGET OF {recordedLapsCount} {recordedLapsCount === 1 ? 'LAP' : 'LAPS'} ACHIEVED!
+            </h3>
+
+            <p className="text-xs font-mono text-slate-400 mt-2">
+              Telemetry recording & session timer locked • Stint Duration: {formatTimer(recordingDurationSec)}
+            </p>
+
+            <div className="mt-6 flex items-center justify-center space-x-2 text-xs font-mono text-[#00F0FF] animate-pulse">
+              <div className="w-2 h-2 rounded-full bg-[#00F0FF] animate-ping" />
+              <span>Launching Session Debrief & Save Modal...</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Banner Status Strip */}
       <div className="p-5 bg-[#12121A] border border-[#232332] flex flex-wrap items-center justify-between gap-4 shadow-xl hud-bracket">
         <div className="flex items-center space-x-3">
@@ -344,16 +407,159 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
               {isRewinding
                 ? `Rewind detected • Rolling buffer back to synchronized state • Frames: ${activeLapBufferLength}`
                 : isRecording 
-                ? `Recording active • Current Lap: #${recordedLapsCount + 1} (${activeLapBufferLength} frames) • Elapsed: ${formatTimer(recordingDurationSec)}`
+                ? `Recording active • Current Lap: #${recordedLapsCount + 1}${targetLaps ? ` of ${targetLaps}` : ''} (${activeLapBufferLength} frames) • Elapsed: ${formatTimer(recordingDurationSec)}`
                 : hasLiveData 
-                ? 'UDP 60Hz stream ready • Click Start Recording when ready to begin stint'
+                ? (targetLaps ? `UDP 60Hz stream ready • Target: ${targetLaps} laps set • Click Start Recording to begin` : 'UDP 60Hz stream ready • Unlimited stint • Click Start Recording to begin')
                 : 'UDP socket listening on 0.0.0.0:5300 (Bridge ws://localhost:5301)'}
             </p>
           </div>
         </div>
 
-        {/* Action Controls: Start Recording / Stop Recording / Reset */}
-        <div className="flex items-center space-x-2.5">
+        {/* Action Controls: Target Lap Selector + Start/Stop Recording + Reset */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Target Lap Selector (Idle vs Active recording) */}
+          {!isRecording ? (
+            <div className="flex items-center space-x-1.5 bg-[#0D0D14] border border-[#232332] p-1 chamfer-badge">
+              <span className="text-[10px] font-tech font-bold text-slate-400 uppercase tracking-wider px-2 flex items-center space-x-1">
+                <Target className="w-3 h-3 text-[#00F0FF]" />
+                <span className="hidden md:inline">Target:</span>
+              </span>
+
+              {PRESET_LAP_OPTIONS.map((num) => {
+                const active = isPresetSelected(num);
+                return (
+                  <button
+                    key={num}
+                    onClick={() => {
+                      onSetTargetLaps(num);
+                      setIsCustomTargetOpen(false);
+                    }}
+                    className={`px-2.5 py-1 text-[11px] font-mono font-bold transition-all border ${
+                      active
+                        ? 'bg-[#00F0FF]/20 text-[#00F0FF] border-[#00F0FF]/60 shadow-[0_0_10px_rgba(0,240,255,0.2)]'
+                        : 'bg-[#14141E] text-slate-400 border-transparent hover:text-white hover:bg-[#1C1C2A]'
+                    }`}
+                  >
+                    {num}L
+                  </button>
+                );
+              })}
+
+              {/* Unlimited button */}
+              <button
+                onClick={() => {
+                  onSetTargetLaps(null);
+                  setIsCustomTargetOpen(false);
+                }}
+                className={`px-2.5 py-1 text-[11px] font-mono font-bold transition-all border flex items-center space-x-1 ${
+                  isUnlimited
+                    ? 'bg-[#00F0FF]/20 text-[#00F0FF] border-[#00F0FF]/60 shadow-[0_0_10px_rgba(0,240,255,0.2)]'
+                    : 'bg-[#14141E] text-slate-400 border-transparent hover:text-white hover:bg-[#1C1C2A]'
+                }`}
+                title="Continuous recording until manually stopped"
+              >
+                <InfinityIcon className="w-3 h-3" />
+                <span>Open</span>
+              </button>
+
+              {/* Custom Lap Input Toggle */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsCustomTargetOpen(!isCustomTargetOpen)}
+                  className={`px-2 py-1 text-[11px] font-mono font-bold transition-all border ${
+                    isCustomActive
+                      ? 'bg-amber-400/20 text-amber-300 border-amber-400/60 shadow-[0_0_10px_rgba(251,191,36,0.2)]'
+                      : 'bg-[#14141E] text-slate-400 border-transparent hover:text-white hover:bg-[#1C1C2A]'
+                  }`}
+                  title="Enter custom lap target"
+                >
+                  {isCustomActive ? `${targetLaps}L*` : 'Custom'}
+                </button>
+
+                {isCustomTargetOpen && (
+                  <form
+                    onSubmit={handleCustomInputSubmit}
+                    className="absolute right-0 top-full mt-2 z-40 bg-[#12121A] border border-[#00F0FF]/60 p-2 shadow-2xl flex items-center space-x-1.5 w-40"
+                  >
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      autoFocus
+                      placeholder="e.g. 7"
+                      value={customInputValue}
+                      onChange={(e) => setCustomInputValue(e.target.value)}
+                      className="w-16 bg-[#0D0D14] border border-[#2B2B3D] text-white text-xs font-mono px-2 py-1 focus:outline-none focus:border-[#00F0FF]"
+                    />
+                    <button
+                      type="submit"
+                      className="px-2 py-1 bg-[#00F0FF] text-black font-racing font-bold text-xs hover:bg-cyan-300 cursor-pointer"
+                    >
+                      Set
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomTargetOpen(false)}
+                      className="p-1 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Active Stint Target Status & Mid-Stint Modifiers */
+            <div className="flex items-center space-x-2 bg-[#0D0D14] border border-[#2B2B3D] px-3 py-1.5">
+              <div className="flex items-center space-x-2 text-xs font-mono">
+                <Target className="w-3.5 h-3.5 text-[#00F0FF]" />
+                <span className="text-slate-300 font-bold">
+                  {targetLaps ? `Lap ${recordedLapsCount + 1}/${targetLaps}` : `Lap ${recordedLapsCount + 1} (Unlimited)`}
+                </span>
+              </div>
+
+              {/* Progress bar if target is set */}
+              {targetLaps && (
+                <div className="w-16 bg-[#1A1A26] h-1.5 border border-[#2D2D3E] overflow-hidden">
+                  <div
+                    className="bg-[#00F0FF] h-full transition-all duration-300 shadow-[0_0_6px_rgba(0,240,255,0.5)]"
+                    style={{ width: `${Math.min(100, (recordedLapsCount / targetLaps) * 100)}%` }}
+                  />
+                </div>
+              )}
+
+              {/* Mid-Stint Lap Extender Quick Buttons */}
+              <div className="flex items-center space-x-1 pl-2 border-l border-[#262638]">
+                <button
+                  onClick={() => onExtendTargetLaps(1)}
+                  className="px-1.5 py-0.5 bg-[#181826] hover:bg-[#252538] text-[10px] font-mono text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 flex items-center space-x-0.5 cursor-pointer"
+                  title="Extend stint target by 1 lap"
+                >
+                  <Plus className="w-2.5 h-2.5" />
+                  <span>1L</span>
+                </button>
+                <button
+                  onClick={() => onExtendTargetLaps(2)}
+                  className="px-1.5 py-0.5 bg-[#181826] hover:bg-[#252538] text-[10px] font-mono text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 flex items-center space-x-0.5 cursor-pointer"
+                  title="Extend stint target by 2 laps"
+                >
+                  <Plus className="w-2.5 h-2.5" />
+                  <span>2L</span>
+                </button>
+                {targetLaps !== null && (
+                  <button
+                    onClick={() => onSetTargetLaps(null)}
+                    className="px-1.5 py-0.5 bg-[#181826] hover:bg-[#252538] text-[10px] font-mono text-slate-300 border border-slate-700 hover:border-slate-500 flex items-center space-x-0.5 cursor-pointer"
+                    title="Remove limit and switch to open unlimited stint"
+                  >
+                    <InfinityIcon className="w-2.5 h-2.5" />
+                    <span>∞</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {isRecording && (
             <div className="hidden sm:flex items-center space-x-3 px-3 py-1.5 bg-[#0D0D14] border border-[#262638] mr-1">
               <div className="flex items-center space-x-1 text-slate-300 text-xs font-mono">
@@ -363,7 +569,10 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
               <div className="h-3 w-px bg-[#262638]" />
               <div className="flex items-center space-x-1 text-slate-300 text-xs font-mono">
                 <Award className="w-3.5 h-3.5 text-[#00F0FF]" />
-                <span>{recordedLapsCount} {recordedLapsCount === 1 ? 'lap' : 'laps'}</span>
+                <span>
+                  {recordedLapsCount} {recordedLapsCount === 1 ? 'lap' : 'laps'}
+                  {targetLaps ? ` / ${targetLaps}` : ''}
+                </span>
               </div>
             </div>
           )}
@@ -377,7 +586,7 @@ export const LivePracticeView: React.FC<LivePracticeViewProps> = ({
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/60 active:scale-95 cursor-pointer border-emerald-400/40'
                   : 'bg-[#121E17] text-emerald-700/60 border-[#1B2F23] cursor-not-allowed opacity-60'
               }`}
-              title={isUdpConnected ? "Begin recording multi-lap stint" : "Waiting for active UDP telemetry to begin recording"}
+              title={isUdpConnected ? `Begin recording ${targetLaps ? `${targetLaps}-lap` : 'continuous'} stint` : "Waiting for active UDP telemetry to begin recording"}
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>Start Recording</span>

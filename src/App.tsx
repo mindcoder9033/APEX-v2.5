@@ -184,6 +184,8 @@ export function App() {
   const [activeStintLaps, setActiveStintLaps] = useState<LapAnalysis[]>([]);
   const [activeLapBufferLength, setActiveLapBufferLength] = useState<number>(0);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [targetLaps, setTargetLaps] = useState<number | null>(3);
+  const [isStintTargetReached, setIsStintTargetReached] = useState(false);
 
   // Synchronous refs for the high-frequency 60Hz WebSocket callback
   const isRecordingRef = useRef(false);
@@ -195,6 +197,8 @@ export function App() {
   const lastPacketTimestampRef = useRef<number | null>(null);
   const lastDistanceTraveledRef = useRef<number | null>(null);
   const rewindDebounceTimerRef = useRef<any>(null);
+  const targetLapsRef = useRef<number | null>(3);
+  const stintCompletionTimerRef = useRef<any>(null);
 
   // High-frequency live buffer and frame refs for throttled UI dispatching
   const latestLiveFrameRef = useRef<TelemetryFrame | null>(null);
@@ -209,6 +213,10 @@ export function App() {
   useEffect(() => {
     activeStintLapsRef.current = activeStintLaps;
   }, [activeStintLaps]);
+
+  useEffect(() => {
+    targetLapsRef.current = targetLaps;
+  }, [targetLaps]);
 
   // Throttled UI State Dispatcher: Caps React state re-renders to ~20Hz (50ms)
   // while preserving full 60Hz raw stream fidelity in memory refs for physics analysis.
@@ -426,6 +434,22 @@ export function App() {
                     currentLapBufferRef.current = [frame];
                     wasCurrentLapRewoundRef.current = false;
                     consecutiveReversePacketsRef.current = 0;
+
+                    // Auto-stop when target lap limit is reached
+                    if (targetLapsRef.current !== null && activeStintLapsRef.current.length >= targetLapsRef.current) {
+                      isRecordingRef.current = false;
+                      setIsRecording(false);
+                      currentLapBufferRef.current = [];
+                      setIsStintTargetReached(true);
+
+                      if (stintCompletionTimerRef.current) clearTimeout(stintCompletionTimerRef.current);
+                      stintCompletionTimerRef.current = setTimeout(() => {
+                        if (isMounted) {
+                          setIsStintTargetReached(false);
+                          setIsSaveModalOpen(true);
+                        }
+                      }, 1500);
+                    }
                   }
                   currentLapNumRef.current = packet.lapNumber;
                 }
@@ -480,6 +504,7 @@ export function App() {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (packetWatchdogTimer) clearTimeout(packetWatchdogTimer);
       if (rewindDebounceTimerRef.current) clearTimeout(rewindDebounceTimerRef.current);
+      if (stintCompletionTimerRef.current) clearTimeout(stintCompletionTimerRef.current);
       if (ws) {
         try { ws.close(); } catch (_) {}
       }
@@ -488,6 +513,8 @@ export function App() {
 
   // --- Stint Recording Handlers ---
   const handleStartRecording = () => {
+    if (stintCompletionTimerRef.current) clearTimeout(stintCompletionTimerRef.current);
+    setIsStintTargetReached(false);
     setIsRecording(true);
     isRecordingRef.current = true;
     setRecordingDurationSec(0);
@@ -505,7 +532,23 @@ export function App() {
     lastDistanceTraveledRef.current = null;
   };
 
+  const handleSetTargetLaps = (laps: number | null) => {
+    setTargetLaps(laps);
+    targetLapsRef.current = laps;
+  };
+
+  const handleExtendTargetLaps = (additionalLaps: number) => {
+    setTargetLaps(prev => {
+      const base = prev ?? Math.max(activeStintLapsRef.current.length, 1);
+      const updated = base + additionalLaps;
+      targetLapsRef.current = updated;
+      return updated;
+    });
+  };
+
   const handleRequestStopRecording = () => {
+    if (stintCompletionTimerRef.current) clearTimeout(stintCompletionTimerRef.current);
+    setIsStintTargetReached(false);
     setIsSaveModalOpen(true);
   };
 
@@ -635,6 +678,8 @@ export function App() {
   };
 
   const handleResetRecording = () => {
+    if (stintCompletionTimerRef.current) clearTimeout(stintCompletionTimerRef.current);
+    setIsStintTargetReached(false);
     setIsRecording(false);
     isRecordingRef.current = false;
     setRecordingStartTime(null);
@@ -962,6 +1007,10 @@ export function App() {
             recordedLapsCount={activeStintLaps.length}
             activeLapBufferLength={activeLapBufferLength}
             networkInfo={networkInfo}
+            targetLaps={targetLaps}
+            onSetTargetLaps={handleSetTargetLaps}
+            onExtendTargetLaps={handleExtendTargetLaps}
+            isStintTargetReached={isStintTargetReached}
             onStartRecording={handleStartRecording}
             onRequestStopRecording={handleRequestStopRecording}
             onResetRecording={handleResetRecording}
