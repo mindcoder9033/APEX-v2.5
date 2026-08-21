@@ -51,7 +51,8 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
   // Step 2 Practice Stint Recording State
   const [sessionLaps, setSessionLaps] = useState<LapAnalysis[]>([]);
   const [isRecording, setIsRecording] = useState(false);
-  const [recordedFrames, setRecordedFrames] = useState<TelemetryFrame[]>([]);
+  const recordedFramesRef = useRef<TelemetryFrame[]>([]);
+  const [capturedFramesCount, setCapturedFramesCount] = useState(0);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [lastSavedStintLap, setLastSavedStintLap] = useState<LapAnalysis | null>(null);
   const [lastSavedStint, setLastSavedStint] = useState<StintSession | null>(null);
@@ -60,7 +61,8 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
   // Step 5 Dedicated Challenge Recording & Attempt State
   const [isChallengeRecording, setIsChallengeRecording] = useState(false);
-  const [challengeRecordedFrames, setChallengeRecordedFrames] = useState<TelemetryFrame[]>([]);
+  const challengeRecordedFramesRef = useRef<TelemetryFrame[]>([]);
+  const [challengeFramesCount, setChallengeFramesCount] = useState(0);
   const [challengeRecordingSeconds, setChallengeRecordingSeconds] = useState(0);
   const [generatingAttemptId, setGeneratingAttemptId] = useState<string | null>(null);
   const challengeTimerRef = useRef<any>(null);
@@ -72,18 +74,19 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
   const activeChallengeResult = progress.challengeResults[session.challenge.id] || null;
 
-  // Capture incoming live frames when Step 2 practice recording is active
+  // Capture incoming live frames when Step 2 practice recording is active into high-frequency ref
   useEffect(() => {
     if (isRecording && liveFrame) {
-      setRecordedFrames(prev => [...prev, liveFrame]);
+      recordedFramesRef.current.push(liveFrame);
     }
   }, [isRecording, liveFrame]);
 
-  // Practice recording timer
+  // Practice recording timer (updates UI counters at 1Hz instead of 60Hz)
   useEffect(() => {
     if (isRecording && isUdpConnected) {
       recordingTimerRef.current = setInterval(() => {
         setRecordingSeconds(prev => prev + 1);
+        setCapturedFramesCount(recordedFramesRef.current.length);
       }, 1000);
     } else {
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
@@ -93,18 +96,19 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
     };
   }, [isRecording, isUdpConnected]);
 
-  // Capture incoming live frames when Step 5 challenge recording is active
+  // Capture incoming live frames when Step 5 challenge recording is active into high-frequency ref
   useEffect(() => {
     if (isChallengeRecording && liveFrame) {
-      setChallengeRecordedFrames(prev => [...prev, liveFrame]);
+      challengeRecordedFramesRef.current.push(liveFrame);
     }
   }, [isChallengeRecording, liveFrame]);
 
-  // Challenge recording timer
+  // Challenge recording timer (updates UI counters at 1Hz instead of 60Hz)
   useEffect(() => {
     if (isChallengeRecording && isUdpConnected) {
       challengeTimerRef.current = setInterval(() => {
         setChallengeRecordingSeconds(prev => prev + 1);
+        setChallengeFramesCount(challengeRecordedFramesRef.current.length);
       }, 1000);
     } else {
       if (challengeTimerRef.current) clearInterval(challengeTimerRef.current);
@@ -116,16 +120,27 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
   // Practice Handlers (Step 2)
   const handleStartRecording = () => {
-    setRecordedFrames(liveFrame ? [liveFrame] : []);
+    recordedFramesRef.current = liveFrame ? [liveFrame] : [];
+    setCapturedFramesCount(recordedFramesRef.current.length);
     setRecordingSeconds(0);
     setLastSavedStintLap(null);
     setIsRecording(true);
   };
 
+  const handleResetRecording = () => {
+    setIsRecording(false);
+    recordedFramesRef.current = [];
+    setCapturedFramesCount(0);
+    setRecordingSeconds(0);
+    setLastSavedStintLap(null);
+    setLastSavedStint(null);
+  };
+
   const handleStopRecording = () => {
     setIsRecording(false);
-    const framesToAnalyze = recordedFrames.length >= 20 
-      ? recordedFrames 
+    setCapturedFramesCount(recordedFramesRef.current.length);
+    const framesToAnalyze = recordedFramesRef.current.length >= 20 
+      ? recordedFramesRef.current 
       : liveFramesBuffer.length >= 20 
       ? liveFramesBuffer 
       : [];
@@ -182,14 +197,6 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
     }
   };
 
-  const handleResetRecording = () => {
-    setIsRecording(false);
-    setRecordedFrames([]);
-    setRecordingSeconds(0);
-    setLastSavedStintLap(null);
-    setLastSavedStint(null);
-  };
-
   // Practice PDF Export (Step 2)
   const handleExportPracticePdf = async () => {
     if (!lastSavedStintLap || isGeneratingPracticePdf) return;
@@ -241,21 +248,24 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
   // Step 5 Dedicated Challenge Handlers
   const handleStartChallengeRecording = () => {
-    setChallengeRecordedFrames(liveFrame ? [liveFrame] : []);
+    challengeRecordedFramesRef.current = liveFrame ? [liveFrame] : [];
+    setChallengeFramesCount(challengeRecordedFramesRef.current.length);
     setChallengeRecordingSeconds(0);
     setIsChallengeRecording(true);
   };
 
   const handleResetChallengeRecording = () => {
     setIsChallengeRecording(false);
-    setChallengeRecordedFrames([]);
+    challengeRecordedFramesRef.current = [];
+    setChallengeFramesCount(0);
     setChallengeRecordingSeconds(0);
   };
 
   const handleStopChallengeRecording = () => {
     setIsChallengeRecording(false);
-    const framesToAnalyze = challengeRecordedFrames.length >= 20 
-      ? challengeRecordedFrames 
+    setChallengeFramesCount(challengeRecordedFramesRef.current.length);
+    const framesToAnalyze = challengeRecordedFramesRef.current.length >= 20 
+      ? challengeRecordedFramesRef.current 
       : liveFramesBuffer.length >= 20 
       ? liveFramesBuffer 
       : [];
@@ -648,7 +658,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                     <div className="h-4 w-[1px] bg-[#222232]" />
                     <div className="flex items-center space-x-2">
                       <span className="text-slate-400">Frames Captured:</span>
-                      <strong className="text-[#00F0FF] text-sm tabular-nums">{recordedFrames.length}</strong>
+                      <strong className="text-[#00F0FF] text-sm tabular-nums">{capturedFramesCount}</strong>
                     </div>
                   </div>
 
@@ -678,7 +688,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
                     <button
                       onClick={handleResetRecording}
-                      disabled={isRecording || recordedFrames.length === 0}
+                      disabled={isRecording || capturedFramesCount === 0}
                       className="px-3.5 py-2.5 bg-[#181824] hover:bg-[#222232] text-slate-400 hover:text-white border border-[#28283C] text-xs font-mono transition-all disabled:opacity-40 cursor-pointer"
                     >
                       Reset
@@ -939,7 +949,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
                       <div className="h-4 w-[1px] bg-[#222232]" />
                       <div className="flex items-center space-x-2">
                         <span className="text-slate-400">Frames Captured:</span>
-                        <strong className="text-[#00F0FF] text-sm tabular-nums">{challengeRecordedFrames.length}</strong>
+                        <strong className="text-[#00F0FF] text-sm tabular-nums">{challengeFramesCount}</strong>
                       </div>
                     </div>
 
@@ -969,7 +979,7 @@ export const SessionStepperView: React.FC<SessionStepperViewProps> = ({
 
                       <button
                         onClick={handleResetChallengeRecording}
-                        disabled={isChallengeRecording || challengeRecordedFrames.length === 0}
+                        disabled={isChallengeRecording || challengeFramesCount === 0}
                         className="px-3.5 py-2.5 bg-[#181824] hover:bg-[#222232] text-slate-400 hover:text-white border border-[#28283C] text-xs font-mono transition-all disabled:opacity-40 cursor-pointer"
                       >
                         Reset

@@ -184,7 +184,7 @@ export function App() {
   const [activeStintLaps, setActiveStintLaps] = useState<LapAnalysis[]>([]);
   const [activeLapBufferLength, setActiveLapBufferLength] = useState<number>(0);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const [targetLaps, setTargetLaps] = useState<number | null>(3);
+  const [targetLaps, setTargetLaps] = useState<number | null>(null);
   const [isStintTargetReached, setIsStintTargetReached] = useState(false);
 
   // Synchronous refs for the high-frequency 60Hz WebSocket callback
@@ -197,7 +197,7 @@ export function App() {
   const lastPacketTimestampRef = useRef<number | null>(null);
   const lastDistanceTraveledRef = useRef<number | null>(null);
   const rewindDebounceTimerRef = useRef<any>(null);
-  const targetLapsRef = useRef<number | null>(3);
+  const targetLapsRef = useRef<number | null>(null);
   const stintCompletionTimerRef = useRef<any>(null);
 
   // High-frequency live buffer and frame refs for throttled UI dispatching
