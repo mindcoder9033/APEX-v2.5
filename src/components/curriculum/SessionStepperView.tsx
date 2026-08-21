@@ -14,12 +14,9 @@ import {
   Car, MapPin, Flag, Sun, CloudRain, RotateCw, Square, WifiOff,
   History, ChevronDown, ChevronUp, Eye, Sparkles, FileDown, Loader2
 } from 'lucide-react';
-<<<<<<< Updated upstream
 import { TelemetryWaitingOverlay } from '../telemetry/TelemetryWaitingOverlay';
 import { NetworkInterfaceInfo } from '../../types/telemetry';
-=======
 import { generateOfficialPdf } from '../../utils/pdfGenerator';
->>>>>>> Stashed changes
 
 interface SessionStepperViewProps {
   module: Module;
