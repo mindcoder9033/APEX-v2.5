@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { LapAnalysis, CornerTelemetryAnalysis, StintSession, SkipBarberPillarScore } from '../types/telemetry';
-import { Module, Session } from '../types/curriculum';
+import { Module, Session, ChallengeAttempt } from '../types/curriculum';
 import { generateAICoachDebrief, SKIP_BARBER_CITATIONS } from '../engine/aiCoachEngine';
 import {
   renderBrakeTraceChart,
@@ -557,7 +557,8 @@ export const generateOfficialPdf = async (
   module?: Module,
   session?: Session,
   stintSession?: StintSession,
-  comparisonLap?: LapAnalysis | null
+  comparisonLap?: LapAnalysis | null,
+  challengeAttempt?: ChallengeAttempt | null
 ): Promise<void> => {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -590,7 +591,9 @@ export const generateOfficialPdf = async (
   const trackName = stintSession?.trackName || lap.detectedTrackName || 'Lime Rock Park';
   const carName = stintSession?.carName || lap.detectedCarName || 'Formula Skip Barber 2000';
 
-  const userTitle = stintSession?.title || `Lap #${lap.lapNumber} Practice Debrief`;
+  const userTitle = challengeAttempt
+    ? `${session?.title || 'Academy Session'} — Challenge Attempt #${challengeAttempt.attemptNumber}`
+    : stintSession?.title || `Lap #${lap.lapNumber} Practice Debrief`;
 
   // ==========================================================================
   // PAGE 1: COVER PAGE (PDF Structure.md & PDF DESIGN.md)
@@ -623,7 +626,13 @@ export const generateOfficialPdf = async (
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...PDF_COLORS.accent);
-  doc.text('OFFICIAL TELEMETRY DEBRIEF & COACHING DOSSIER', margin + 18, margin + 20);
+  doc.text(
+    challengeAttempt
+      ? 'OFFICIAL TELEMETRY DEBRIEF & CHALLENGE DOSSIER'
+      : 'OFFICIAL TELEMETRY DEBRIEF & COACHING DOSSIER',
+    margin + 18,
+    margin + 20
+  );
 
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
@@ -631,13 +640,13 @@ export const generateOfficialPdf = async (
   doc.text(`Session Date: ${dateStr}`, pageWidth - margin - 6, margin + 12, { align: 'right' });
   doc.text(`Certified Clean Lap: #${lap.lapNumber}`, pageWidth - margin - 6, margin + 18, { align: 'right' });
 
-  let curY = margin + 36;
+  let curY = margin + 34;
 
   // Title Section with wrapping
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...PDF_COLORS.textPrimary);
-  doc.text('DRIVER COACHING REPORT', margin, curY);
+  doc.text(challengeAttempt ? 'CHALLENGE ASSESSMENT REPORT' : 'DRIVER COACHING REPORT', margin, curY);
 
   curY += 6.5;
   doc.setFontSize(11);
@@ -656,11 +665,59 @@ export const generateOfficialPdf = async (
   const safeSessionSub = truncateText(doc, sessionSub, contentWidth);
   doc.text(safeSessionSub, margin, curY);
 
-  curY += 10;
+  curY += 8;
+
+  // DEDICATED CHALLENGE CERTIFICATION BANNER (When challengeAttempt is present)
+  if (challengeAttempt && session?.challenge) {
+    const isPassed = challengeAttempt.result.passed;
+    const statusBg = isPassed
+      ? ([236, 253, 245] as [number, number, number])
+      : ([254, 242, 242] as [number, number, number]);
+    const statusBorder = isPassed ? PDF_COLORS.gradeA : PDF_COLORS.gradeD;
+    const statusText = isPassed ? 'CHALLENGE PASSED' : 'CHALLENGE REQUIREMENT NOT MET';
+    const medalTier = challengeAttempt.result.medal;
+    const medalString = medalTier ? ` • ${medalTier.toUpperCase()} MEDAL ACHIEVED` : '';
+
+    doc.setFillColor(...statusBg);
+    doc.setDrawColor(...statusBorder);
+    doc.roundedRect(margin, curY, contentWidth, 20, 1.5, 1.5, 'FD');
+    doc.setFillColor(...statusBorder);
+    doc.rect(margin, curY, 3.5, 20, 'F');
+
+    doc.setFontSize(7.0);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...statusBorder);
+    doc.text(
+      `OFFICIAL ACADEMY CHALLENGE CERTIFICATION — ATTEMPT #${challengeAttempt.attemptNumber}`,
+      margin + 7,
+      curY + 5.5
+    );
+
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    const challengeTitleText = truncateText(
+      doc,
+      `${session.challenge.name}: ${statusText}${medalString}`,
+      contentWidth - 14
+    );
+    doc.text(challengeTitleText, margin + 7, curY + 11.5);
+
+    doc.setFontSize(6.8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...PDF_COLORS.textSecondary);
+    const targetText = `Target: ${session.challenge.operator === 'gte' ? '≥' : '≤'} ${session.challenge.targetValue} ${session.challenge.unit} (${session.challenge.requiredLaps} req lap${session.challenge.requiredLaps > 1 ? 's' : ''})`;
+    const achievedText = `Achieved: ${challengeAttempt.result.achievedValue} ${session.challenge.unit} (Score: ${challengeAttempt.result.score}%)`;
+    const detailsLine = `${targetText}   |   ${achievedText}   |   ${challengeAttempt.result.notes || 'Official Stint Record'}`;
+    const safeDetails = truncateText(doc, detailsLine, contentWidth - 14);
+    doc.text(safeDetails, margin + 7, curY + 16.5);
+
+    curY += 24;
+  }
 
   // Grade & Delta Dual Banner
   const gradeBoxWidth = (contentWidth - 6) / 2;
-  const gradeBoxHeight = 36;
+  const gradeBoxHeight = 34;
 
   // Box 1: Overall Grade
   doc.setFillColor(...PDF_COLORS.surface);
@@ -668,68 +725,68 @@ export const generateOfficialPdf = async (
   doc.roundedRect(margin, curY, gradeBoxWidth, gradeBoxHeight, 2, 2, 'FD');
 
   doc.setFillColor(...overallGradeInfo.color);
-  doc.circle(margin + 18, curY + 18, 11, 'F');
+  doc.circle(margin + 17, curY + 17, 10, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text(overallGradeInfo.grade, margin + 18, curY + 22.5, { align: 'center' });
+  doc.setFontSize(15);
+  doc.text(overallGradeInfo.grade, margin + 17, curY + 21.2, { align: 'center' });
 
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.2);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...PDF_COLORS.textMuted);
-  doc.text('OVERALL TECHNIQUE GRADE', margin + 34, curY + 10);
+  doc.text('OVERALL TECHNIQUE GRADE', margin + 32, curY + 9);
 
-  const gradeTextLines = getBoundedLines(doc, overallGradeInfo.text, gradeBoxWidth - 38, 2);
-  doc.setFontSize(9.0);
+  const gradeTextLines = getBoundedLines(doc, overallGradeInfo.text, gradeBoxWidth - 36, 2);
+  doc.setFontSize(8.8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...PDF_COLORS.textPrimary);
-  doc.text(gradeTextLines[0], margin + 34, curY + 16.5);
+  doc.text(gradeTextLines[0], margin + 32, curY + 15.5);
   if (gradeTextLines[1]) {
-    doc.text(gradeTextLines[1], margin + 34, curY + 21);
+    doc.text(gradeTextLines[1], margin + 32, curY + 20);
   }
 
-  doc.setFontSize(6.8);
+  doc.setFontSize(6.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...PDF_COLORS.textSecondary);
-  const subtextY = gradeTextLines[1] ? curY + 26 : curY + 23;
-  const splitSubtext = getBoundedLines(doc, overallGradeInfo.subtext, gradeBoxWidth - 38, 2);
-  doc.text(splitSubtext, margin + 34, subtextY);
+  const subtextY = gradeTextLines[1] ? curY + 24.5 : curY + 22;
+  const splitSubtext = getBoundedLines(doc, overallGradeInfo.subtext, gradeBoxWidth - 36, 2);
+  doc.text(splitSubtext, margin + 32, subtextY);
 
   // Box 2: Benchmark Delta
   doc.setFillColor(...PDF_COLORS.surface);
   doc.setDrawColor(...PDF_COLORS.border);
   doc.roundedRect(margin + gradeBoxWidth + 6, curY, gradeBoxWidth, gradeBoxHeight, 2, 2, 'FD');
 
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.2);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...PDF_COLORS.textMuted);
-  doc.text('PACE VS TARGET BENCHMARK', margin + gradeBoxWidth + 12, curY + 10);
+  doc.text('PACE VS TARGET BENCHMARK', margin + gradeBoxWidth + 12, curY + 9);
 
-  doc.setFontSize(10.0);
+  doc.setFontSize(9.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...PDF_COLORS.textPrimary);
   const bestLapLabel = truncateText(doc, `Your Best Lap: ${driverTimeStr}`, gradeBoxWidth - 18);
-  doc.text(bestLapLabel, margin + gradeBoxWidth + 12, curY + 17);
+  doc.text(bestLapLabel, margin + gradeBoxWidth + 12, curY + 15.5);
 
-  doc.setFontSize(7.8);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...PDF_COLORS.textSecondary);
   const targetTimeLabel = truncateText(doc, `Target Benchmark: ${targetTimeStr}`, gradeBoxWidth - 18);
-  doc.text(targetTimeLabel, margin + gradeBoxWidth + 12, curY + 23.5);
+  doc.text(targetTimeLabel, margin + gradeBoxWidth + 12, curY + 21.5);
 
-  doc.setFontSize(9.0);
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...PDF_COLORS.gradeD);
   const deltaLabel = truncateText(doc, `Delta: +${deltaSec.toFixed(2)}s to Target`, gradeBoxWidth - 18);
-  doc.text(deltaLabel, margin + gradeBoxWidth + 12, curY + 30.5);
+  doc.text(deltaLabel, margin + gradeBoxWidth + 12, curY + 28);
 
-  curY += gradeBoxHeight + 8;
+  curY += gradeBoxHeight + 6;
 
   // 6 KPI Micro Tiles
   const kpiCols = 6;
   const kpiGap = 3;
   const kpiWidth = (contentWidth - kpiGap * (kpiCols - 1)) / kpiCols;
-  const kpiHeight = 18;
+  const kpiHeight = 17;
 
   const kpis = [
     { label: 'LAP TIME', value: `${lap.lapTimeSec.toFixed(2)}s`, color: PDF_COLORS.textPrimary },
@@ -750,52 +807,57 @@ export const generateOfficialPdf = async (
     doc.setFillColor(...kpi.color);
     doc.rect(kX, curY, kpiWidth, 1.2, 'F');
 
-    doc.setFontSize(6.0);
+    doc.setFontSize(5.8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...PDF_COLORS.textMuted);
-    doc.text(kpi.label, kX + 3, curY + 6.5);
+    doc.text(kpi.label, kX + 2.5, curY + 6);
 
-    doc.setFontSize(9.0);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...kpi.color);
-    const safeVal = truncateText(doc, kpi.value, kpiWidth - 6);
-    doc.text(safeVal, kX + 3, curY + 14);
+    const safeVal = truncateText(doc, kpi.value, kpiWidth - 5);
+    doc.text(safeVal, kX + 2.5, curY + 13.2);
   });
 
-  curY += kpiHeight + 10;
+  curY += kpiHeight + 8;
 
   // One-Line Summary Quote Box (PDF Structure.md Page 1)
   doc.setFillColor(...PDF_COLORS.accentLight);
   doc.setDrawColor(...PDF_COLORS.accent);
-  doc.roundedRect(margin, curY, contentWidth, 20, 2, 2, 'FD');
+  doc.roundedRect(margin, curY, contentWidth, 18, 1.5, 1.5, 'FD');
   doc.setFillColor(...PDF_COLORS.accent);
-  doc.rect(margin, curY, 3.5, 20, 'F');
+  doc.rect(margin, curY, 3.5, 18, 'F');
 
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...PDF_COLORS.accent);
-  doc.text('COACH’S ONE-LINE DEBRIEF', margin + 8, curY + 6.5);
+  doc.text('COACH’S ONE-LINE DEBRIEF', margin + 8, curY + 6);
 
-  doc.setFontSize(8.8);
+  doc.setFontSize(8.2);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(...PDF_COLORS.textPrimary);
-  const oneLineQuote = isFriendly
+  const oneLineQuote = challengeAttempt
+    ? challengeAttempt.result.passed
+      ? `"Outstanding execution! Target criteria met on Attempt #${challengeAttempt.attemptNumber} with disciplined vehicle dynamics."`
+      : `"Attempt #${challengeAttempt.attemptNumber} fell just short of the target. Focus on smooth trail-braking decay to unlock the delta."`
+    : isFriendly
     ? '"Great driving line! Let’s refine your braking release to unlock consistent speed."'
     : '"Disciplined trajectory; compress initial threshold braking markers for optimal rotation."';
   const splitOneLine = getBoundedLines(doc, oneLineQuote, contentWidth - 16, 2);
-  doc.text(splitOneLine, margin + 8, curY + 13.5);
+  doc.text(splitOneLine, margin + 8, curY + 12.5);
 
-  curY += 28;
+  curY += 24;
 
   // Summary Table: The Learn-As-You-Read Guide
+  const summaryBoxHeight = challengeAttempt ? 62 : 68;
   doc.setFillColor(...PDF_COLORS.surface);
   doc.setDrawColor(...PDF_COLORS.border);
-  doc.roundedRect(margin, curY, contentWidth, 70, 2, 2, 'FD');
+  doc.roundedRect(margin, curY, contentWidth, summaryBoxHeight, 1.5, 1.5, 'FD');
 
-  doc.setFontSize(8.5);
+  doc.setFontSize(8.0);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...PDF_COLORS.textPrimary);
-  doc.text('WHAT THIS 11-PAGE REPORT COVERS:', margin + 6, curY + 8);
+  doc.text('WHAT THIS 11-PAGE REPORT COVERS:', margin + 6, curY + 7);
 
   const reportIndexItems = [
     { p: 'Pages 2 & 3', title: 'AI Coach Assessment & 5-Pillar Scorecard', desc: 'Traction Budget, Trail-Braking, Corner Priorities, Throttle & Consistency.' },
@@ -807,9 +869,9 @@ export const generateOfficialPdf = async (
     { p: 'Pages 10 & 11', title: 'Action Plan & Reference Marks Card', desc: 'Prioritized high-leverage fixes (Bucket Principle) and track reference markers.' }
   ];
 
-  let itemY = curY + 15;
+  let itemY = curY + 14;
   reportIndexItems.forEach(item => {
-    doc.setFontSize(7.2);
+    doc.setFontSize(6.8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...PDF_COLORS.accent);
     doc.text(item.p, margin + 6, itemY);
@@ -823,7 +885,7 @@ export const generateOfficialPdf = async (
     const safeDesc = truncateText(doc, `— ${item.desc}`, contentWidth - 92);
     doc.text(safeDesc, margin + 88, itemY);
 
-    itemY += 7.2;
+    itemY += 6.5;
   });
 
   renderStandardFooter(
